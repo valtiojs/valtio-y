@@ -53,7 +53,7 @@ It automatically syncs across all connected users with **zero configuration**. N
 | Fine-grained Render | ✅ Yes        | ❌ No      | ❌ No           |
 | Offline-First       | ✅ Yes        | ✅ Yes     | ⚠️ Varies       |
 
-> **Note:** Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), and battle-tested performance. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
+Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), and battle-tested performance. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
 
 ### When to Use valtio-y
 
