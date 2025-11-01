@@ -164,27 +164,33 @@ function AddTodo() {
 
 <table>
 <tr>
-<td width="50%">
+<td width="50%" style="padding: 20px; vertical-align: top;">
 
 **✨ Zero API Overhead**
+
 No special methods—just mutate objects like normal JavaScript
 
 **🎯 Fine-Grained Updates**
+
 React components re-render only when their specific data changes
 
 **🔄 Offline-First**
+
 Local changes automatically merge when reconnected
 
 </td>
-<td width="50%">
+<td width="50%" style="padding: 20px; vertical-align: top;">
 
 **⚡ Production-Ready**
+
 Validation, rollback, comprehensive tests, and benchmarks
 
 **🎨 Type-Safe**
+
 Full TypeScript support with complete type inference
 
 **🌐 Provider-Agnostic**
+
 Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
 
 </td>
@@ -491,7 +497,7 @@ tasks[i].order = (tasks[i - 1].order + tasks[i + 1].order) / 2;
 const sorted = [...tasks].sort((a, b) => a.order - b.order);
 ```
 
-**When to use:** Large lists (>100 items) with multiple users frequently reordering  
+**When to use:** Large lists (>100 items) with multiple users frequently reordering
 **When NOT needed:** Single-user apps, small lists, or append-only scenarios
 
 For more details, see [architecture docs](./docs/)
