@@ -7,15 +7,19 @@
 //   transactions tagged with VALTIO_YJS_ORIGIN.
 // - Lazily create nested controllers when a Y value is another Y type.
 import * as Y from "yjs";
-import { proxy, subscribe } from "valtio/vanilla";
+import { proxy, subscribe, ref } from "valtio/vanilla";
 // import removed: origin tagging handled by context scheduler
 
-import type { YSharedContainer } from "../core/yjs-types";
+import type { YSharedContainer, YLeafType } from "../core/yjs-types";
 import type { ValtioYjsCoordinator } from "../core/coordinator";
-import { isYSharedContainer, isYMap } from "../core/guards";
+import { isYSharedContainer, isYMap, isYLeafType } from "../core/guards";
 import { planMapOps } from "../planning/map-ops-planner";
 import { planArrayOps } from "../planning/array-ops-planner";
 import { validateDeepForSharedState } from "../core/converter";
+import {
+  setupLeafNodeAsComputed,
+  setupLeafNodeAsComputedInArray,
+} from "./leaf-computed";
 import { safeStringify } from "../utils/logging";
 import { normalizeIndex } from "../utils/index-utils";
 import {
@@ -28,7 +32,7 @@ import {
 
 // All caches are moved into SynchronizationContext
 
-// Helper: Upgrade a child value (container) in the parent proxy
+// Helper: Upgrade a child value (leaf or container) in the parent proxy
 function upgradeChildIfNeeded(
   coordinator: ValtioYjsCoordinator,
   container: Record<string, unknown> | unknown[],
@@ -44,7 +48,29 @@ function upgradeChildIfNeeded(
       : undefined;
   const isAlreadyController = underlyingYType !== undefined;
 
-  if (!isAlreadyController && isYSharedContainer(yValue)) {
+  // Check leaf types first (before container check) since some leaf types extend containers
+  // (e.g., Y.XmlHook extends Y.Map)
+  if (isYLeafType(yValue)) {
+    // Leaf node: use computed property approach for reactivity
+    // Type assertion is safe here because isYLeafType guard confirmed the type
+    const leafNode = yValue as YLeafType;
+    // Setup reactivity based on container type
+    if (Array.isArray(container)) {
+      setupLeafNodeAsComputedInArray(
+        coordinator,
+        container,
+        key as number,
+        leafNode,
+      );
+    } else {
+      setupLeafNodeAsComputed(
+        coordinator,
+        container as Record<string | symbol, unknown>,
+        key as string,
+        leafNode,
+      );
+    }
+  } else if (!isAlreadyController && isYSharedContainer(yValue)) {
     // Upgrade plain object/array to container controller
     const newController = getOrCreateValtioProxy(coordinator, yValue, doc);
     coordinator.withReconcilingLock(() => {
@@ -62,6 +88,11 @@ function filterMapOperations(ops: unknown[]): unknown[] {
       // If path has more than 1 element, it's a nested property change
       // Only allow top-level changes (path.length === 1)
       if (path.length !== 1) {
+        return false;
+      }
+      // Filter out internal valtio-y properties (version counter, leaf storage)
+      const key = String(path[0]);
+      if (key.startsWith("__valtio_yjs_")) {
         return false;
       }
     }
@@ -277,16 +308,25 @@ function attachValtioMapSubscription(
   return unsubscribe;
 }
 
-// Helper: Process Y.Map entries and convert them for the initial proxy
+// Helper: Process Y.Map entries and categorize them
 function processYMapEntries(
   coordinator: ValtioYjsCoordinator,
   yMap: Y.Map<unknown>,
   doc: Y.Doc,
-): Record<string, unknown> {
+): {
+  initialObj: Record<string, unknown>;
+  leafNodesToSetup: Array<[string, YLeafType]>;
+} {
   const initialObj: Record<string, unknown> = {};
+  const leafNodesToSetup: Array<[string, YLeafType]> = [];
 
   for (const [key, value] of yMap.entries()) {
-    if (isYSharedContainer(value)) {
+    // Check leaf types first (before container check) since some leaf types extend containers
+    // (e.g., Y.XmlHook extends Y.Map)
+    if (isYLeafType(value)) {
+      // Leaf nodes: we'll setup computed properties AFTER creating the proxy
+      leafNodesToSetup.push([key, value as YLeafType]);
+    } else if (isYSharedContainer(value)) {
       // Containers: create controller proxy recursively
       initialObj[key] = getOrCreateValtioProxy(coordinator, value, doc);
     } else {
@@ -295,7 +335,55 @@ function processYMapEntries(
     }
   }
 
-  return initialObj;
+  return { initialObj, leafNodesToSetup };
+}
+
+// Helper: Define computed property for a leaf node on a map proxy
+function defineLeafPropertyOnMap(
+  objProxy: Record<string, unknown>,
+  key: string,
+  leafNode: YLeafType,
+  versionKey: string,
+): void {
+  // Store the ref'd leaf in a hidden string property
+  const storageKey = `__valtio_yjs_leaf_${key}`;
+  objProxy[storageKey] = ref(leafNode);
+
+  // Define the computed property ON THE PROXY (after proxy creation)
+  Object.defineProperty(objProxy, key, {
+    get() {
+      // Touch the version counter - this creates a Valtio dependency
+      void (this as unknown as Record<string, unknown>)[versionKey];
+      // Return the stored leaf node
+      return (this as unknown as Record<string, unknown>)[storageKey];
+    },
+    enumerable: true,
+    configurable: true,
+  });
+}
+
+// Helper: Setup Y.js observer for leaf node in map
+function setupLeafObserverForMap(
+  coordinator: ValtioYjsCoordinator,
+  objProxy: Record<string, unknown>,
+  key: string,
+  leafNode: YLeafType,
+  versionKey: string,
+): void {
+  const handler = () => {
+    const currentVersion = objProxy[versionKey] as number;
+    objProxy[versionKey] = currentVersion + 1;
+  };
+
+  leafNode.observe(handler);
+  coordinator.registerDisposable(() => {
+    leafNode.unobserve(handler);
+  });
+
+  coordinator.logger.debug("[leaf-computed] setup complete", {
+    key,
+    type: leafNode.constructor.name,
+  });
 }
 
 // Create (or reuse from cache) a Valtio proxy that mirrors a Y.Map.
@@ -308,10 +396,30 @@ function getOrCreateValtioProxyForYMap(
   const existing = coordinator.state.yTypeToValtioProxy.get(yMap);
   if (existing) return existing;
 
-  const initialObj = processYMapEntries(coordinator, yMap, doc);
+  const versionKey = "__valtio_yjs_version";
+  const { initialObj, leafNodesToSetup } = processYMapEntries(
+    coordinator,
+    yMap,
+    doc,
+  );
 
-  // Create the proxy with regular properties
+  // Initialize version counter BEFORE creating proxy
+  if (leafNodesToSetup.length > 0) {
+    initialObj[versionKey] = 0;
+  }
+
+  // Create the proxy FIRST (with regular properties only)
   const objProxy = proxy(initialObj) as Record<string, unknown>;
+
+  // NOW setup computed properties AFTER proxy creation
+  for (const [key, leafNode] of leafNodesToSetup) {
+    defineLeafPropertyOnMap(objProxy, key, leafNode, versionKey);
+  }
+
+  // Setup Y.js observers AFTER proxy creation
+  for (const [key, leafNode] of leafNodesToSetup) {
+    setupLeafObserverForMap(coordinator, objProxy, key, leafNode, versionKey);
+  }
 
   coordinator.state.yTypeToValtioProxy.set(yMap, objProxy);
   coordinator.state.valtioProxyToYType.set(objProxy, yMap);
@@ -337,9 +445,28 @@ function processYArrayItems(
     if (isYSharedContainer(value)) {
       // Containers: create controller proxy recursively
       return getOrCreateValtioProxy(coordinator, value, doc);
+    } else if (isYLeafType(value)) {
+      // Leaf nodes: initialize with null, will be set after proxy creation
+      return null;
     } else {
       // Primitives: store as-is
       return value;
+    }
+  });
+}
+
+// Helper: Setup leaf nodes in an array proxy after creation
+function setupLeafNodesInArray(
+  coordinator: ValtioYjsCoordinator,
+  yArray: Y.Array<unknown>,
+  arrProxy: unknown[],
+): void {
+  yArray.toArray().forEach((value, index) => {
+    if (isYLeafType(value)) {
+      // Type assertion is safe here because isYLeafType guard confirmed the type
+      const leafNode = value as YLeafType;
+      // Use computed property approach for reactivity
+      setupLeafNodeAsComputedInArray(coordinator, arrProxy, index, leafNode);
     }
   });
 }
@@ -356,6 +483,9 @@ function getOrCreateValtioProxyForYArray(
 
   const initialItems = processYArrayItems(coordinator, yArray, doc);
   const arrProxy = proxy(initialItems);
+
+  // Setup reactivity for leaf nodes AFTER proxy creation
+  setupLeafNodesInArray(coordinator, yArray, arrProxy);
 
   coordinator.state.yTypeToValtioProxy.set(yArray, arrProxy);
   coordinator.state.valtioProxyToYType.set(arrProxy, yArray);
@@ -386,6 +516,9 @@ export function getYTypeForValtioProxy(
 /**
  * The main router. It takes any Yjs shared type and returns the
  * appropriate Valtio proxy controller for it, creating it if it doesn't exist.
+ *
+ * Note: XML types (XmlFragment, XmlElement, XmlHook) are treated as leaf types,
+ * so they're handled via the leaf type logic in the map/array proxy creators.
  */
 export function getOrCreateValtioProxy(
   coordinator: ValtioYjsCoordinator,
