@@ -490,7 +490,7 @@ tasks[i].order = (tasks[i - 1].order + tasks[i + 1].order) / 2;
 **When NOT needed:** Single-user apps, small lists, or append-only scenarios
 **Why strings over numbers:** String-based fractional indexing scales infinitely without precision issues, while number-based approaches run into floating-point limits after repeated reordering.
 
-For more details, see [architecture docs](./docs/)
+For more details, see the [architecture docs](./docs/architecture/)
 
 ---
 
@@ -556,6 +556,6 @@ All examples use `useSnapshot` from Valtio and work with any Yjs provider. Each 
 
 For detailed technical documentation, see:
 
-- [Architecture](./docs/architecture.md)
-- [Limitations](./docs/limitations.md)
-- [Data Flow](./docs/data-flow.md)
+- [Architecture](./docs/architecture/architecture.md)
+- [Limitations](./docs/architecture/limitations.md)
+- [Data Flow](./docs/architecture/data-flow.md)
