@@ -429,17 +429,16 @@ const user = state.users[0]; // Materializes this user only
 
 These editors have specialized Yjs integrations optimized for their specific use cases.
 
-**Y.Text integration research:**
+**Collaborative text integration research:**
 
-We are actively researching how to best integrate collaborative text editing (Y.Text) and XML types with Valtio's reactive system for non-editor use cases. valtio-y has a different application profile from text editors, and most use cases won't need Y.Text integration at all.
+valtio-y currently focuses on collaborative data structures like maps, arrays, and primitives. Y.Text and Y.Xml\* nodes are **not** part of the supported surface area today because plain strings inside shared objects have covered the real-world use cases we've seen so far. We're still tinkering with richer text and XML nodes on the `research/ytext-integration` branch, so if you rely on those leaf types we'd love to hear what you're building.
 
 **Current status:**
 
 - Core types (Y.Map, Y.Array, primitives) are production-ready with clean, well-tested implementations
-- Leaf types (Y.Text, XML) integration is being researched in the `research/ytext-integration` branch
-- For typical valtio-y use cases, plain strings work perfectly for text fields
+- Notes from the collaborative text/XML prototype remain in the `research/ytext-integration` branch for anyone curious about the trade-offs we explored
 
-**Have a use case for Y.Text in shared state?** We'd love to learn more! Please [open an issue](https://github.com/valtiojs/valtio-y/issues) to discuss your requirements.
+**Have a use case for collaborative text in shared state?** We'd love to learn more! Please [open an issue](https://github.com/valtiojs/valtio-y/issues) to discuss your requirements.
 
 ---
 

@@ -5,7 +5,7 @@
 This library integrates Yjs CRDTs with Valtio's reactive state management:
 
 - **Y.Map, Y.Array, primitives**: ✅ Work really well with clean implementations
-- **Leaf types (Y.Text, Y.Xml\*)**: ⚠️ Work with multi-layer workarounds; tests pass but potential edge cases remain
+- **Leaf types (collaborative text nodes, Y.Xml\*)**: ❌ Not supported today. Historical experiments live in the `research/ytext-integration` branch and are documented below for reference.
 
 ---
 
@@ -25,17 +25,19 @@ These work **really well** with clean, straightforward implementations:
 - **Network sync** - WebRTC, WebSocket providers work correctly
 - **React integration** - `useSnapshot()` triggers re-renders as expected
 
-### ⚠️ Works, But With Workarounds: Leaf Types
+### 🚫 Historical Notes on Leaf Types
 
-These **work in practice** but use multi-layer workarounds. Tests pass, but there could be edge cases we haven't discovered:
+We're exploring collaborative text nodes and Y.Xml\* structures on the `research/ytext-integration` branch. Those investigations haven't shipped because the additional guardrails felt fragile and the real-world apps we work with have done well with plain strings embedded inside maps and arrays.
 
-- **Y.Text** - Rich text editing with React reactivity (computed properties + version counters)
-- **Y.XmlElement** - XML elements with attributes and children (22/22 tests passing)
+If you need to study that prototype, check out the `research/ytext-integration` branch. It contains:
+
+- **Collaborative text nodes** - Rich text editing via computed properties and version counters
+- **Y.XmlElement** - XML elements with attributes and children (22/22 research tests passing at the time)
 - **Y.XmlFragment** - XML fragments as containers
 - **Y.XmlHook** - Custom XML node types
 - **Y.XmlText** - XML text nodes
 
-**Current status:** The implementation works for tested scenarios, but the workaround-heavy approach means we can't be 100% confident about all edge cases.
+Those notes remain here purely as background for future exploration. If you have scenarios where Y.Text or Y.Xml* support would unlock something you can't express today, please let us know—hearing about concrete use cases helps us decide what to revisit.
 
 ---
 
@@ -89,7 +91,7 @@ Sparse arrays in JavaScript are essentially a quirk of the language that don't h
 
 ---
 
-## The Challenge: Leaf Types vs. Containers
+## The Challenge: Leaf Types vs. Containers (Research Context)
 
 ### Two Fundamentally Different Y.js Type Categories
 
@@ -99,27 +101,27 @@ Sparse arrays in JavaScript are essentially a quirk of the language that don't h
 - Their properties/items are the reactive data
 - Changes to properties naturally trigger Valtio updates
 
-**Leaf Types** (Y.Text, Y.XmlElement, Y.XmlHook, etc.):
+**Leaf Types** (collaborative text nodes, Y.XmlElement, Y.XmlHook, etc.):
 
 - Cannot be deeply proxied - they have internal CRDT state
 - They ARE the reactive data themselves
 - Changes happen via methods like `.insert()`, `.delete()`, `.setAttribute()`
 - Need manual notification to trigger React re-renders
 
-### The Core Problem
+### The Core Problem We Observed
 
 When you access `snap.text.toString()` in a React component, Valtio needs to know:
 
 1. That you accessed the `text` property (for dependency tracking)
-2. When the Y.Text content changes (to trigger re-renders)
+2. When the collaborative text node content changes (to trigger re-renders)
 
-But if Y.Text is wrapped in `ref()` to prevent deep proxying, accessing it doesn't create dependencies in Valtio's snapshot system.
+But if that text node is wrapped in `ref()` to prevent deep proxying, accessing it doesn't create dependencies in Valtio's snapshot system.
 
 ---
 
-## Current Implementation: Multi-Layer Workaround
+## Historical Prototype: Multi-Layer Workaround
 
-The library currently uses a combination of techniques to achieve reactivity for leaf types:
+The research branch relied on a combination of techniques to achieve reactivity for leaf types:
 
 ### 1. Global Valtio Customization
 
@@ -185,7 +187,7 @@ objProxy[Symbol.for("valtio-y:leaf:text")] = ref(reactiveLeaf);
 
 ---
 
-## Why This Feels "Work-Around-y"
+## Why the Prototype Felt "Work-Around-y"
 
 ### Multiple Layers of Indirection
 
@@ -220,6 +222,6 @@ The fundamental issue is that Valtio needs a way to handle **opaque objects** - 
 
 1. Cannot be deep proxied (they have internal state)
 2. Still need to trigger re-renders when they change
-3. Have their own notification mechanisms (like Y.Text's `observe()`)
+3. Have their own notification mechanisms (like collaborative text nodes with `observe()`)
 
 Happy for POCs and PRs!

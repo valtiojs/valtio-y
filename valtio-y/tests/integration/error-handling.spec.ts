@@ -279,24 +279,6 @@ describe("Integration: Error Handling", () => {
       );
     });
 
-    it("rejects re-assigning Y.Text that is already in document", async () => {
-      const doc = new Y.Doc();
-      const { proxy } = createYjsProxy<LooseRecord>(doc, {
-        getRoot: (d) => d.getMap("root"),
-      });
-      const yRoot = doc.getMap<unknown>("root");
-
-      const yText = new Y.Text("content");
-      yRoot.set("original", yText);
-      await waitMicrotask();
-
-      expect(() => {
-        proxy.duplicate = yText;
-      }).toThrow(
-        /Cannot re-assign a collaborative object that is already in the document/,
-      );
-    });
-
     it("allows assigning Y type that has no parent", async () => {
       const doc = new Y.Doc();
       const { proxy } = createYjsProxy<LooseRecord>(doc, {

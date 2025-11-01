@@ -27,7 +27,7 @@ export function initializeValtioYjsIntegration(): void {
   // Customize Valtio's canProxy to never deep-proxy Y.js types
   unstable_replaceInternalFunction("canProxy", (defaultCanProxy) => {
     return (x: unknown): boolean => {
-      // Never proxy Y.js AbstractType instances (Y.Map, Y.Array, Y.Text, Y.XmlFragment, etc.)
+      // Never proxy Y.js AbstractType instances (Y.Map, Y.Array, text/XML nodes, etc.)
       if (x instanceof Y.AbstractType) {
         return false;
       }

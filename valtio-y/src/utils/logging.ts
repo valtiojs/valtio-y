@@ -11,21 +11,14 @@ export function safeStringify(value: unknown): string {
     // Handle Y types first
     if (val instanceof Y.AbstractType) {
       // Replace Y types with a simple representation to avoid circular references
-      if (val instanceof Y.Text) {
-        try {
-          const text = val.toString();
-          return `[Y.Text: "${text.slice(0, 50)}${text.length > 50 ? "..." : ""}"]`;
-        } catch {
-          return "[Y.Text: <unreadable>]";
-        }
-      }
       if (val instanceof Y.Map) {
         return "[Y.Map]";
       }
       if (val instanceof Y.Array) {
         return "[Y.Array]";
       }
-      return "[Y.AbstractType]";
+      const typeName = val.constructor?.name ?? "Y.AbstractType";
+      return `[${typeName}]`;
     }
 
     // Handle plain objects and arrays with circular reference detection
