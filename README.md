@@ -13,7 +13,7 @@
 [![Discord](https://img.shields.io/discord/627656437971288081)](https://discord.gg/MrQdmzd)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
 
-Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs. Build collaborative apps with minimal effort—no special APIs, just mutate objects naturally.
+Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs. Build collaborative apps for **structured data** (forms, dashboards, boards)—no special APIs, just mutate objects naturally.
 
 [Getting Started](./guides/getting-started.md) · [Examples](#-examples) · [Guides](#-guides) · [Discord](https://discord.gg/MrQdmzd)
 
@@ -23,10 +23,10 @@ Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs
 
 ## Why valtio-y?
 
-Building collaborative apps is **hard**. You need to handle:
+Building collaborative apps for **structured data** (not text documents, not simple CRUD) is **hard**. You need:
 
-- ❌ **Conflict resolution** when users edit simultaneously
-- ❌ **Offline support** and merge when reconnected
+- ❌ **Automatic conflict resolution** when users edit simultaneously
+- ❌ **Offline support** that merges changes correctly when reconnected
 - ❌ **Network protocols** (WebSocket, WebRTC, etc.)
 - ❌ **State consistency** across clients
 - ❌ **React re-renders** without performance issues
@@ -36,9 +36,12 @@ Building collaborative apps is **hard**. You need to handle:
 ```typescript
 state.todos.push({ text: "Buy milk", done: false });
 state.users[0].name = "Alice";
+state.dashboard.widgets[2].position = { x: 100, y: 200 };
 ```
 
 It automatically syncs across all connected users with **zero configuration**. No special APIs, no operational transforms to understand, no conflict resolution code to write.
+
+**The sweet spot:** valtio-y excels for **collaborative structured data**—forms, boards, dashboards, configuration UIs—where text editors (Lexical/TipTap) are overkill and sync engines (Linear/Notion-style) don't provide conflict-free merging.
 
 ### How It Compares
 
@@ -54,19 +57,26 @@ It automatically syncs across all connected users with **zero configuration**. N
 
 ### When to Use valtio-y
 
+valtio-y excels in the **sweet spot between text editors and sync engines**: real-time collaborative editing of **structured data** (objects, arrays, nested state) where conflicts must resolve automatically.
+
 **✅ Perfect for:**
 
-- Collaborative dashboards, todo lists, project management tools
-- Real-time multiplayer games (see our [Minecraft example](#-examples)!)
-- Offline-first mobile/web apps
-- Multi-device sync
-- Any app with shared state across users
+- **Resume/CV builders** - Multiple people editing sections, reordering, adding content
+- **Form builders** - Drag-and-drop interfaces, field configuration, visual editors
+- **Kanban/project boards** - Task management, card reordering, status updates
+- **Collaborative spreadsheets** - Data entry, cell updates (not heavy text editing)
+- **Dashboard configurators** - Widget placement, settings, real-time layout adjustments
+- **Design tool data** - Layer properties, element positions, configuration (not text content)
+- **Multiplayer game state** - Player positions, inventory, world state (see our [Minecraft example](#-examples)!)
+- **Data annotation tools** - Labeling, categorization, collaborative markup
+- **Configuration panels** - Settings that multiple users can adjust simultaneously
 
-**⚠️ Consider alternatives for:**
+**❌ Wrong tool for the job:**
 
-- **Text editors** → Use [Lexical](https://lexical.dev/), [TipTap](https://tiptap.dev/), or [ProseMirror](https://prosemirror.net/) with native Yjs
-- **Server-authoritative games** → Use traditional client-server architecture
-- **Simple apps** → Plain REST/GraphQL might be simpler
+- **Text/document editors** → Use [Lexical](https://lexical.dev/), [TipTap](https://tiptap.dev/), or [ProseMirror](https://prosemirror.net/) with native Yjs integrations. They handle text-specific reconciliation internally.
+- **Apps like Linear/Notion** → Use sync engines (real-time updates without CRDT conflict resolution). Two users editing the same GitHub commit message isn't a realistic conflict scenario.
+- **Server-authoritative systems** → Traditional request/response where the server is the source of truth.
+- **Simple CRUD apps** → Plain REST/GraphQL is simpler if you don't need real-time collaboration.
 
 > **Note:** Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), and battle-tested performance. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
 
@@ -494,7 +504,7 @@ For more details, see [architecture docs](./docs/)
 
 ## 🎮 Examples
 
-Try these live collaborative demos. Open each example in multiple browser tabs to see real-time sync in action!
+Try these live collaborative demos showcasing valtio-y's sweet spot: **collaborative structured data** (task boards, game state, shared objects). Open each example in multiple browser tabs to see real-time sync in action!
 
 ### 🎓 Learning Path
 
