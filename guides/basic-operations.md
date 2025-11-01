@@ -215,31 +215,35 @@ const user = state.users[0];
 
 // Access in loop
 for (let i = 0; i < 100; i++) {
-  // ❌ Slow - repeatedly accessing deep path
+  // ⚠️ Less efficient - repeated property lookups
   state.data.items[i].nested.value = i;
 }
 
-// ✅ Better - cache the reference
+// ✅ Better - cache the reference to reduce lookups
 const items = state.data.items;
 for (let i = 0; i < 100; i++) {
   items[i].nested.value = i;
 }
 ```
 
+**Note:** Proxies are automatically cached in WeakMaps after creation. Caching references reduces the number of property lookups (`state.data.items` → `items`), not proxy creation overhead.
+
 ### Performance Tips for Deep Structures
 
 ```typescript
-// ❌ Avoid repeated deep access in loops
+// ⚠️ Less efficient: repeated property traversal
 for (const item of items) {
   state.app.data.list.items[item.id].value = item.newValue;
 }
 
-// ✅ Cache the parent reference
+// ✅ Better: cache the parent reference
 const listItems = state.app.data.list.items;
 for (const item of items) {
   listItems[item.id].value = item.newValue;
 }
 ```
+
+**Why this helps:** Reduces property traversal from 4 lookups (`state.app.data.list.items`) per iteration to just 1 lookup (`listItems`). The benefit comes from fewer property accesses, not from avoiding proxy creation (proxies are cached internally).
 
 ---
 
@@ -299,9 +303,9 @@ state.isOpen = !state.isOpen;
 state.todos[0].done = !state.todos[0].done;
 
 // Toggle in event handler
-<button onClick={() => state.sidebar.collapsed = !state.sidebar.collapsed}>
+<button onClick={() => (state.sidebar.collapsed = !state.sidebar.collapsed)}>
   Toggle
-</button>
+</button>;
 ```
 
 ### Incrementing Counters
@@ -327,26 +331,26 @@ for (let i = 0; i < 100; i++) {
 
 ```typescript
 // Remove completed todos
-state.todos = state.todos.filter(todo => !todo.done);
+state.todos = state.todos.filter((todo) => !todo.done);
 
 // Remove item by id
-state.users = state.users.filter(user => user.id !== deleteId);
+state.users = state.users.filter((user) => user.id !== deleteId);
 
 // Remove null/undefined items
-state.items = state.items.filter(item => item != null);
+state.items = state.items.filter((item) => item != null);
 ```
 
 ### Mapping Over Data
 
 ```typescript
 // Transform all items
-state.todos = state.todos.map(todo => ({
+state.todos = state.todos.map((todo) => ({
   ...todo,
   text: todo.text.trim(),
 }));
 
 // Update specific property across all items
-state.todos = state.todos.map(todo => ({
+state.todos = state.todos.map((todo) => ({
   ...todo,
   archived: true,
 }));
@@ -364,10 +368,10 @@ function addTodo(text: string) {
   // ✅ All three mutations become one Yjs transaction
 }
 
-// Bulk array operations (optimized)
+// Bulk array operations (more efficient than loops)
 const newItems = Array(1000).fill({ data: "x" });
 state.items.push(...newItems);
-// ✅ Single optimized operation, ~6x faster than individual pushes
+// ✅ Single optimized operation
 ```
 
 ### Conditional Updates
@@ -449,25 +453,31 @@ For high-frequency concurrent reordering with multiple users (e.g., collaborativ
 
 ```typescript
 // Fractional indexing (advanced use case)
+// Use libraries like 'fractional-indexing' for string-based ordering
+import { generateKeyBetween } from 'fractional-indexing';
+
 type Task = {
   id: string;
   title: string;
-  order: number; // Fractional index
+  order: string; // String-based fractional index (scales infinitely)
 };
 
 function moveTask(taskIndex: number, newPosition: number) {
-  const prevOrder = state.tasks[newPosition - 1]?.order ?? 0;
-  const nextOrder = state.tasks[newPosition + 1]?.order ?? prevOrder + 2;
+  const prevOrder = state.tasks[newPosition - 1]?.order ?? null;
+  const nextOrder = state.tasks[newPosition + 1]?.order ?? null;
 
-  state.tasks[taskIndex].order = (prevOrder + nextOrder) / 2;
+  state.tasks[taskIndex].order = generateKeyBetween(prevOrder, nextOrder);
 }
 
 // Render sorted
-const sortedTasks = [...state.tasks].sort((a, b) => a.order - b.order);
+const sortedTasks = [...state.tasks].sort((a, b) => a.order.localeCompare(b.order));
 ```
 
 **When to use fractional indexing:**
+
 - Lists with >100 items AND multiple users frequently reordering
+- Use **string-based** fractional indexing (scales infinitely)
+- Number-based approaches hit floating-point precision limits
 - Otherwise, standard splice works great
 
 ### Clearing vs Resetting
@@ -480,7 +490,7 @@ state.todos.splice(0);
 state.todos = [];
 
 // Clear specific items
-state.todos = state.todos.filter(todo => !todo.done);
+state.todos = state.todos.filter((todo) => !todo.done);
 
 // Reset entire state branch
 state.app = {
@@ -494,13 +504,16 @@ state.app = {
 ## Next Steps
 
 **For more advanced patterns:**
+
 - [Undo/Redo Guide](./undo-redo.md) - Time travel with Yjs UndoManager
 - [Performance Guide](./performance-guide.md) - Batching and optimization
 - [Validation & Errors](./validation-errors.md) - Error handling patterns
 
 **Common issues:**
+
 - [Troubleshooting Guide](./troubleshooting.md) - Solutions to common problems
 
 **See it in action:**
+
 - [Simple Todos Example](../examples/05_todos_simple) - Basic patterns with comments
 - [Full Todo App](../examples/04_todos) - Advanced UI patterns
