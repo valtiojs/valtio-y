@@ -155,27 +155,54 @@ All of this happens in milliseconds. From your perspective, it's instant.
 
 ### How React Components Update
 
-valtio-y uses Valtio's fine-grained reactivity:
+valtio-y uses Valtio's fine-grained reactivity. Components only re-render when the specific properties they access actually change:
 
 ```typescript
 function TodoList() {
   const snap = useSnapshot(state);
-  // This component ONLY re-renders when state.todos changes
-  return snap.todos.map((todo) => <TodoItem key={todo.id} todo={todo} />);
+
+  // This component re-renders when state.todos array changes
+  // (items added/removed) or when properties of items change
+  return snap.todos.map((todo, index) => (
+    <TodoItem
+      key={todo.id}
+      todo={todo} // Pass snapshot data for reading
+      stateProxy={state} // Pass proxy for mutations
+      index={index} // Pass index for mutations
+    />
+  ));
 }
 
-function TodoItem({ todo }) {
-  // This component ONLY re-renders when THIS specific todo changes
+interface TodoItemProps {
+  todo: { id: string; text: string; done: boolean }; // From snapshot
+  stateProxy: typeof state; // Mutable proxy
+  index: number;
+}
+
+function TodoItem({ todo, stateProxy, index }: TodoItemProps) {
+  // Component re-renders when properties it accesses change
+
+  function toggleDone() {
+    // Mutate the proxy, not the snapshot
+    stateProxy.todos[index].done = !stateProxy.todos[index].done;
+  }
+
   return (
     <input
-      checked={todo.done}
-      onChange={() => (state.todos[i].done = !todo.done)}
+      checked={todo.done} // ✅ Read from snapshot
+      onChange={toggleDone} // ✅ Write to proxy
     />
   );
 }
 ```
 
-Unlike typical React state management where changes trigger re-renders of all subscribers, Valtio tracks exactly which properties each component uses and only re-renders when those specific properties change.
+**Key principle:** Read from snapshots, write to proxies.
+
+- **Snapshots** (from `useSnapshot`) are immutable and track property access for fine-grained re-renders
+- **Proxies** (the original `state` object) are mutable and trigger Yjs sync when changed
+- Valtio tracks exactly which properties each component uses and only re-renders when those specific properties change
+
+Unlike typical React state management where changes trigger re-renders of all subscribers, Valtio's proxy-based tracking ensures minimal re-renders.
 
 ---
 
@@ -650,10 +677,11 @@ Only arrays with recorded deltas are updated granularly. Maps and new arrays are
 
 Now that you understand the core concepts, you're ready to:
 
-1. **[Get Started](./getting-started.md)** - Build your first collaborative app
-2. **[Read the Architecture Docs](../docs/architecture/architecture.md)** - Deep dive into implementation details
-3. **[Try the Examples](../examples/)** - See real-world usage patterns
-4. **[Join Discord](https://discord.gg/MrQdmzd)** - Get help and share your projects
+1. **[Basic Operations](./basic-operations.md)** - Learn common patterns for objects, arrays, and nested structures
+2. **[Performance Guide](./performance-guide.md)** - Optimize your collaborative apps
+3. **[Read the Architecture Docs](../docs/architecture/architecture.md)** - Deep dive into implementation details
+4. **[Try the Examples](../examples/)** - See real-world usage patterns
+5. **[Join Discord](https://discord.gg/MrQdmzd)** - Get help and share your projects
 
 **Questions or feedback?** [Open an issue](https://github.com/valtiojs/valtio-y/issues) or join the discussion!
 

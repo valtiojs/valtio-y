@@ -15,7 +15,7 @@
 
 Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs. Build collaborative apps for **structured data** (forms, dashboards, boards)—no special APIs, just mutate objects naturally.
 
-[Getting Started](./guides/getting-started.md) · [Examples](#-examples) · [Guides](#-guides) · [Discord](https://discord.gg/MrQdmzd)
+[Examples](#-examples) · [Guides](#-guides) · [Discord](https://discord.gg/MrQdmzd)
 
 </div>
 
@@ -201,34 +201,12 @@ Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
 
 ## 📚 Guides
 
-New to valtio-y? Start here to get up and running quickly.
+Core documentation for understanding and using valtio-y effectively:
 
-### Getting Started
-
-- **[Quick Start Guide](./guides/getting-started.md)** - Build your first collaborative app in 5 minutes
 - **[Core Concepts](./guides/concepts.md)** - Understand CRDTs and the valtio-y mental model
-- **[Troubleshooting](./guides/troubleshooting.md)** - Common issues and solutions
-
-### Deployment Recipes
-
-Learn how to deploy valtio-y with different backends:
-
-- **[PartyKit Setup](./guides/partykit-setup.md)** - Serverless real-time with PartyKit
-- **[Cloudflare Durable Objects](./guides/cloudflare-durable-objects.md)** - Deploy on Cloudflare's edge
-- **[WebSocket Server](./guides/yjs-websocket-server.md)** - Custom Node.js WebSocket server
-- **[WebRTC P2P](./guides/webrtc-p2p.md)** - Peer-to-peer without a server
-
-### Common Patterns
-
 - **[Basic Operations](./guides/basic-operations.md)** - Objects, arrays, and nested structures
 - **[Undo/Redo](./guides/undo-redo.md)** - Implement undo/redo with Yjs UndoManager
-- **[Offline Sync](./guides/offline-sync.md)** - Handle disconnects and reconnections
-- **[Validation & Errors](./guides/validation-errors.md)** - Custom validation and error handling
-
-### Performance & Advanced
-
 - **[Performance Guide](./guides/performance-guide.md)** - Batching, bulk operations, and optimization
-- **[Debugging](./guides/debugging.md)** - DevTools, logging, and tracing changes
 
 ---
 
@@ -493,7 +471,7 @@ tasks.splice(to, 0, task);
 
 // Fractional indexing with strings (recommended for advanced cases)
 // Use libraries like fractional-indexing or lexicographic-fractional-indexing
-import { generateKeyBetween } from 'fractional-indexing';
+import { generateKeyBetween } from "fractional-indexing";
 
 type Task = { order: string, title: string };
 tasks[i].order = generateKeyBetween(

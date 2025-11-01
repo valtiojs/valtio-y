@@ -287,7 +287,7 @@ state.user.middleName = null;
 delete state.user.middleName;
 ```
 
-See [Troubleshooting Guide](./troubleshooting.md#problem-undefined-values-not-syncing) for more details.
+The Yjs CRDT protocol doesn't support `undefined` values, so valtio-y can't sync them. Use `null` for optional values or delete the property entirely.
 
 ---
 
@@ -454,7 +454,7 @@ For high-frequency concurrent reordering with multiple users (e.g., collaborativ
 ```typescript
 // Fractional indexing (advanced use case)
 // Use libraries like 'fractional-indexing' for string-based ordering
-import { generateKeyBetween } from 'fractional-indexing';
+import { generateKeyBetween } from "fractional-indexing";
 
 type Task = {
   id: string;
@@ -470,7 +470,9 @@ function moveTask(taskIndex: number, newPosition: number) {
 }
 
 // Render sorted
-const sortedTasks = [...state.tasks].sort((a, b) => a.order.localeCompare(b.order));
+const sortedTasks = [...state.tasks].sort((a, b) =>
+  a.order.localeCompare(b.order)
+);
 ```
 
 **When to use fractional indexing:**
@@ -507,11 +509,7 @@ state.app = {
 
 - [Undo/Redo Guide](./undo-redo.md) - Time travel with Yjs UndoManager
 - [Performance Guide](./performance-guide.md) - Batching and optimization
-- [Validation & Errors](./validation-errors.md) - Error handling patterns
-
-**Common issues:**
-
-- [Troubleshooting Guide](./troubleshooting.md) - Solutions to common problems
+- [Core Concepts](./concepts.md) - Deep dive into CRDTs and the mental model
 
 **See it in action:**
 
