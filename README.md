@@ -9,10 +9,25 @@
 
 Write normal JavaScript, get real-time collaboration for free.
 
-> **What makes valtio-y different?** Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), comprehensive documentation, and battle-tested performance optimizations. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
+## Why valtio-y?
+
+We built valtio-y because existing Yjs state syncing libraries hit a wall when you try to do anything interesting. Need to replace array elements? Move items around? Work with deeply nested state? You'd run into limitations or performance issues.
+
+valtio-y handles all of this naturally. Replace array elements, move them around, nest objects as deep as you want - it just works. And it's fast. We've spent countless hours optimizing the internals and building a comprehensive test suite so you can trust it in production.
+
+> **What makes valtio-y different from valtio-yjs?** Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), comprehensive documentation, and battle-tested performance optimizations. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
+
+## Installation
 
 ```bash
+# npm
 npm install valtio-y valtio yjs
+
+# pnpm
+pnpm add valtio-y valtio yjs
+
+# bun
+bun add valtio-y valtio yjs
 ```
 
 ---

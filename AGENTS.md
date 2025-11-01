@@ -28,12 +28,13 @@ Keep these commands nearby—most tasks you perform will be a combination of the
 
 1. [Standard Agent Workflow](#agent-workflow)
 2. [Guiding Human Developers](#human-workflow)
-3. [Command Reference Library](#command-reference)
-4. [Project Overview](#project-overview)
-5. [Critical Rules for AI Agents](#critical-rules)
-6. [Documentation Reference](#documentation)
-7. [Quick Wins](#quick-wins)
-8. [Need Help?](#need-help)
+3. [Git Workflow & Commit Conventions](#git-workflow)
+4. [Command Reference Library](#command-reference)
+5. [Project Overview](#project-overview)
+6. [Critical Rules for AI Agents](#critical-rules)
+7. [Documentation Reference](#documentation)
+8. [Quick Wins](#quick-wins)
+9. [Need Help?](#need-help)
 
 Use the links above to jump directly to the guidance you need.
 
@@ -90,6 +91,144 @@ cd valtio-y && bun run build
 
 **For running examples:**
 Each example directory has its own setup. Navigate to the example directory and follow its README or package.json scripts.
+
+---
+
+<a id="git-workflow"></a>
+
+## 🌿 Git Workflow & Commit Conventions
+
+### Branch Naming
+
+Use descriptive branch names that follow this pattern:
+
+```
+<type>/<short-description>
+```
+
+**Common types:**
+
+- `feat/` - New features
+- `fix/` - Bug fixes
+- `chore/` - Maintenance tasks (dependencies, tooling, etc.)
+- `docs/` - Documentation updates
+- `refactor/` - Code refactoring
+- `test/` - Test additions or updates
+- `perf/` - Performance improvements
+
+**Examples:**
+
+```bash
+git checkout -b feat/partykit-provider
+git checkout -b fix/array-sync-bug
+git checkout -b chore/readme-updates
+git checkout -b docs/architecture-guide
+```
+
+### Commit Message Convention
+
+We follow [Conventional Commits](https://www.conventionalcommits.org/) format:
+
+```
+<type>(<scope>): <description>
+
+[optional body]
+
+[optional footer]
+```
+
+**Type:**
+
+- `feat` - New feature
+- `fix` - Bug fix
+- `chore` - Maintenance tasks
+- `docs` - Documentation changes
+- `refactor` - Code refactoring
+- `test` - Test updates
+- `perf` - Performance improvements
+- `ci` - CI/CD changes
+
+**Scope** (indicates what part of the codebase):
+
+- `core` - Main valtio-y package
+- `docs` - Documentation
+- `examples` - Example applications
+- `ci` - CI/CD pipeline
+- `deps` - Dependency updates
+- `tests` - Test infrastructure
+
+**Examples:**
+
+```bash
+feat(core): add Y.Text integration support
+fix(core): resolve array sync race condition
+chore(docs): clarify provider setup in README
+docs(architecture): add data flow diagrams
+feat(examples): add PartyKit todo example
+fix(ci): update Node version in GitHub Actions
+chore(deps): upgrade Valtio to 2.1.8
+test(core): add benchmarks for bulk operations
+```
+
+**Guidelines:**
+
+- Keep the description concise (≤72 characters)
+- Use present tense ("add" not "added")
+- Don't capitalize the first letter of description
+- No period at the end of description
+- Use the body to explain **what** and **why**, not **how**
+
+**Example with body:**
+
+```
+feat(core): add custom message support for providers
+
+Enables sending custom string messages over the same WebSocket
+connection used for Yjs sync. Useful for chat features and
+function calling patterns.
+
+Closes #42
+```
+
+### Workflow
+
+1. **Create a branch** from `main`:
+
+   ```bash
+   git checkout main
+   git pull
+   git checkout -b type/description
+   ```
+
+2. **Make changes** and commit following conventions:
+
+   ```bash
+   # Make changes
+   git add .
+   git commit -m "feat(core): add new feature"
+   ```
+
+3. **Run quality checks** before pushing:
+
+   ```bash
+   bun run check              # Format + lint
+   cd valtio-y && bun run typecheck
+   cd valtio-y && bun run test
+   ```
+
+4. **Push and create PR**:
+
+   ```bash
+   git push -u origin type/description
+   # Create PR on GitHub
+   ```
+
+5. **PR Title** should also follow conventional commits:
+   ```
+   feat(core): add PartyKit provider support
+   fix(docs): correct installation instructions
+   chore(ci): update deployment workflow
+   ```
 
 ---
 
@@ -189,13 +328,15 @@ TypeScript monorepo using **Bun** (package manager) for a library that syncs **V
 
 6. ⚠️ **Follow the workspace structure** - The main package is in `valtio-y/`, examples are in `examples/`. Respect the boundaries.
 
-7. ✅ **Test changes thoroughly** - Run tests before committing changes to ensure nothing breaks
+7. ⚠️ **Follow git conventions** - Use conventional commit format (`type(scope): description`) and create feature branches with descriptive names (`type/description`). See [Git Workflow](#git-workflow) for details.
 
-8. ✅ **Check documentation** - Review `docs/` directory for architectural decisions and limitations
+8. ✅ **Test changes thoroughly** - Run tests before committing changes to ensure nothing breaks
 
-9. ✅ **Respect limitations** - See README.md and docs/limitations.md for what's supported and what's not
+9. ✅ **Check documentation** - Review `docs/` directory for architectural decisions and limitations
 
-10. ✅ **Use examples for reference** - Examples demonstrate real-world usage patterns
+10. ✅ **Respect limitations** - See README.md and docs/limitations.md for what's supported and what's not
+
+11. ✅ **Use examples for reference** - Examples demonstrate real-world usage patterns
 
 ---
 
