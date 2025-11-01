@@ -8,15 +8,8 @@ import {
   isYSharedContainer,
   isYArray,
   isYMap,
-  isYLeafType,
 } from "../core/guards";
 import { yTypeToJSON } from "../core/types";
-import {
-  setupLeafNodeAsComputed,
-  setupLeafNodeAsComputedInArray,
-  getUnderlyingLeaf,
-} from "../bridge/leaf-computed";
-import type { YLeafType } from "src/core/yjs-types";
 
 // Reconciler layer
 //
@@ -58,14 +51,7 @@ export function reconcileValtioMap(
       yJson: yTypeToJSON(yMap),
     });
     const yKeys = new Set(Array.from(yMap.keys()).map((k) => String(k)));
-    // EXCLUDE internal valtio-y properties from reconciliation
-    // These properties (like __valtio_yjs_version, __valtio_yjs_leaf_*) are used for reactivity
-    // and should NOT be synced with Y.Map or deleted during reconciliation
-    const valtioKeys = new Set(
-      Object.keys(valtioProxy).filter(
-        (key) => !key.startsWith("__valtio_yjs_"),
-      ),
-    );
+    const valtioKeys = new Set(Object.keys(valtioProxy));
     const allKeys = new Set<string>([...yKeys, ...valtioKeys]);
 
     for (const key of allKeys) {
@@ -74,12 +60,7 @@ export function reconcileValtioMap(
 
       if (inY && !inValtio) {
         const yValue = yMap.get(key);
-        // Check leaf types first (before container check) since some leaf types extend containers
-        // (e.g., Y.XmlHook extends Y.Map)
-        if (isYLeafType(yValue)) {
-          coordinator.logger.debug("[ADD] set leaf node (computed)", key);
-          setupLeafNodeAsComputed(coordinator, valtioProxy, key, yValue);
-        } else if (isYSharedContainer(yValue)) {
+        if (isYSharedContainer(yValue)) {
           coordinator.logger.debug("[ADD] create controller", key);
           valtioProxy[key] = getOrCreateValtioProxy(coordinator, yValue, doc);
           if (isYMap(yValue)) {
@@ -115,38 +96,7 @@ export function reconcileValtioMap(
       if (inY && inValtio) {
         const yValue = yMap.get(key);
         const current = valtioProxy[key];
-        // Check leaf types first (before container check) since some leaf types extend containers
-        // (e.g., Y.XmlHook extends Y.Map)
-        if (isYLeafType(yValue)) {
-          coordinator.logger.debug("[RECONCILE] leaf node detected", key, {
-            currentType: current?.constructor?.name,
-            yValueType: yValue?.constructor?.name,
-            same: current === yValue,
-          });
-
-          // Get the underlying Y.js leaf node from the computed property
-          const underlyingCurrent = getUnderlyingLeaf(valtioProxy, key);
-
-          coordinator.logger.debug("[RECONCILE] underlying current", {
-            key,
-            underlyingCurrent,
-            yValue,
-            same: underlyingCurrent === yValue,
-          });
-
-          // Only replace if the underlying Y.js instance has changed
-          if (underlyingCurrent !== yValue) {
-            coordinator.logger.debug("[RECONCILE] setting up leaf node", key);
-            // Setup new computed property with reactivity
-            setupLeafNodeAsComputed(coordinator, valtioProxy, key, yValue);
-          } else {
-            // Same Y.js instance - computed property is already correct
-            coordinator.logger.debug(
-              "[RECONCILE] leaf node unchanged, skipping setup",
-              key,
-            );
-          }
-        } else if (isYSharedContainer(yValue)) {
+        if (isYSharedContainer(yValue)) {
           const desired = getOrCreateValtioProxy(coordinator, yValue, doc);
           if (current !== desired) {
             coordinator.logger.debug("[REPLACE] replace controller", key);
@@ -214,14 +164,7 @@ export function reconcileValtioArray(
       yJson: yTypeToJSON(yArray),
     });
     const newContent = yArray.toArray().map((item) => {
-      // Check leaf types FIRST, before containers
-      // This is critical because Y.XmlHook extends Y.Map, so it would match
-      // isYSharedContainer before isYLeafType, causing it to be incorrectly
-      // wrapped in a controller proxy instead of being treated as a leaf.
-      if (isYLeafType(item)) {
-        // For array items, we'll set up computed properties after the splice
-        return null;
-      } else if (isYSharedContainer(item)) {
+      if (isYSharedContainer(item)) {
         return getOrCreateValtioProxy(coordinator, item, doc);
       } else {
         return item;
@@ -229,20 +172,6 @@ export function reconcileValtioArray(
     });
     coordinator.logger.debug("reconcile array splice", newContent.length);
     valtioProxy.splice(0, valtioProxy.length, ...newContent);
-
-    // Setup computed properties for leaf nodes after splice
-    yArray.toArray().forEach((item, index) => {
-      if (isYLeafType(item)) {
-        // Type assertion is safe here because isYLeafType guard confirmed the type
-        const leafNode = item as YLeafType;
-        setupLeafNodeAsComputedInArray(
-          coordinator,
-          valtioProxy,
-          index,
-          leafNode,
-        );
-      }
-    });
     coordinator.logger.debug("reconcileValtioArray end", {
       valtioLength: valtioProxy.length,
     });
@@ -311,11 +240,7 @@ export function reconcileValtioArrayWithDelta(
       }
       if (d.insert && d.insert.length > 0) {
         const converted = d.insert.map((item) => {
-          // Check leaf types FIRST (see comment in reconcileValtioArray above)
-          if (isYLeafType(item)) {
-            // For array items, we'll set up computed properties after the insert
-            return null;
-          } else if (isYSharedContainer(item)) {
+          if (isYSharedContainer(item)) {
             return getOrCreateValtioProxy(coordinator, item, doc);
           } else {
             return item;
@@ -343,20 +268,6 @@ export function reconcileValtioArrayWithDelta(
           count: converted.length,
         });
         valtioProxy.splice(position, 0, ...converted);
-
-        // Setup computed properties for inserted leaf nodes
-        d.insert.forEach((item, offset) => {
-          if (isYLeafType(item)) {
-            // Type assertion is safe here because isYLeafType guard confirmed the type
-            const leafNode = item as YLeafType;
-            setupLeafNodeAsComputedInArray(
-              coordinator,
-              valtioProxy,
-              position + offset,
-              leafNode,
-            );
-          }
-        });
 
         position += converted.length;
         continue;
