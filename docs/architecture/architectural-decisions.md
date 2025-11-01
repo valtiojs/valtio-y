@@ -123,7 +123,7 @@
   - Eliminates unhandled promise rejections from async validation
   - Provides clear error messages at the point of invalid assignment
   - Enables defensive programming patterns with try/catch
-- Test Coverage: See `tests/map-validation-rollback.spec.ts` for comprehensive validation scenarios
+- Test Coverage: See `valtio-y/tests/integration/error-handling.spec.ts` ("Map Validation and Rollback" suite) for comprehensive validation scenarios
 
 ## 11) No Implicit Type Conversions (Date, RegExp, etc.)
 
