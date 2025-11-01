@@ -398,7 +398,7 @@ for (let i = 0; i < 100; i++) {
 Large array operations are optimized automatically:
 
 ```js
-// Optimized: 6.3x faster for large inserts
+// Optimized: spread syntax for bulk inserts
 state.items.push(...Array(1000).fill({ data: "x" }));
 state.items.unshift(...newItems);
 ```

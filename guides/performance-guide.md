@@ -72,17 +72,17 @@ user.name = "Alice";         // Now it's a proxy
 Array operations with multiple items are automatically optimized:
 
 ```typescript
-// ✅ Optimized: 6.3x faster for large inserts
+// ✅ Optimized: bulk operations with spread
 state.items.push(...Array(1000).fill({ data: "x" }));
 state.items.unshift(...newItems);
 
-// vs. individual operations (slower)
+// vs. individual operations (less efficient)
 for (const item of items) {
   state.items.push(item); // Each push is a separate operation
 }
 ```
 
-**When this matters:** Operations with 10+ items see significant speedup. Single-item operations are already fast.
+**When this matters:** Operations with 10+ items benefit from bulk operations. Single-item operations are already fast.
 
 ---
 
@@ -166,7 +166,7 @@ for (let i = 0; i < 100; i++) {
 }
 ```
 
-**Performance:** Batched updates of 100 items: ~3-8ms. Unbatched: ~100-300ms.
+**Performance:** Batched updates of 100 items: ~9.5ms (from benchmarks). Unbatched: significantly slower due to transaction overhead.
 
 ---
 
@@ -192,10 +192,10 @@ bootstrap({
 });
 ```
 
-**Performance:**
+**Performance (from official benchmarks):**
 
-- 1000 items: ~15-30ms
-- 5000 items: ~60-100ms
+- 1000 items: ~8ms
+- 5000 items: ~43ms
 - Lazy materialization keeps memory usage low
 
 ### Bulk Array Operations
@@ -203,11 +203,11 @@ bootstrap({
 Use spread syntax for better performance:
 
 ```typescript
-// ✅ Fast: bulk insert (6.3x faster)
+// ✅ Recommended: bulk insert with spread
 const newItems = Array(100).fill({ data: "x" });
 state.items.push(...newItems);
 
-// ❌ Slow: individual inserts
+// ⚠️ Less efficient: individual inserts in loop
 for (const item of newItems) {
   state.items.push(item);
 }
@@ -215,8 +215,8 @@ for (const item of newItems) {
 
 **Performance:**
 
-- Bulk push 100 items: ~3-5ms
-- Individual push 100 times: ~20-30ms
+- Push 100 items individually: ~13ms (from benchmarks)
+- Bulk operations with spread syntax are more efficient and create cleaner Yjs operations
 
 ### Array Mutations
 
@@ -239,22 +239,30 @@ state.items.push(...newItems); // Add many new items
 
 ### Iteration Performance
 
-Cache references when iterating:
+Cache intermediate references to reduce property lookup overhead:
 
 ```typescript
-// ❌ Slow: repeated deep access
+// ❌ Slower: repeated property lookups (~12ms for 1000 items)
 for (let i = 0; i < 1000; i++) {
   state.users[i].profile.settings.theme = "dark";
 }
 
-// ✅ Fast: cache reference
+// ✅ Better: cache intermediate reference (~7.5ms for 1000 items)
 for (let i = 0; i < 1000; i++) {
   const settings = state.users[i].profile.settings;
   settings.theme = "dark";
 }
+
+// ✅ Best: cache array reference (~6ms for 1000 items)
+const users = state.users;
+for (let i = 0; i < 1000; i++) {
+  users[i].profile.settings.theme = "dark";
+}
 ```
 
-**Why this matters:** Each property access may trigger proxy materialization. Cache the deepest object you need.
+**Why this helps:** Caching reduces property lookup overhead in tight loops. Note that proxies themselves are already cached by valtio-y's internal WeakMap, so you're not avoiding proxy creation—you're reducing the number of property accesses per iteration.
+
+**Performance improvement:** ~1.6-1.9x faster for loops with 1000+ iterations. For smaller loops (<100 iterations), the difference is negligible.
 
 ---
 
@@ -267,20 +275,20 @@ Performance with deeply nested structures (10+ levels).
 Lazy materialization makes deep access efficient:
 
 ```typescript
-// First access: creates proxy chain
+// Accessing deep property (creates proxies on first access)
 const value = state.data.level1.level2.level3.value;
-// ~2-4ms for 10 levels
+// ~1.3ms for 10 levels
 
-// Subsequent access: reuses proxies
+// Subsequent access to same path reuses cached proxies
 const value2 = state.data.level1.level2.level3.value;
-// ~0.1ms (cached proxies)
+// Fast - proxies are cached in WeakMaps
 ```
 
-**Performance:**
+**Performance (from official benchmarks):**
 
-- 10 levels deep: ~2-4ms first access
-- 20 levels deep: ~4-8ms first access
-- Cached access: <1ms at any depth
+- 10 levels deep: ~1.3ms first access
+- 20 levels deep: ~1.4ms first access
+- Proxies are cached automatically - subsequent access to the same path is fast
 
 ### Mutation Performance
 
@@ -289,29 +297,29 @@ Mutations at any depth are fast:
 ```typescript
 // Update deep property
 state.data.level1.level2.level3.value = "updated";
-// ~2-4ms regardless of depth
+// ~2.5ms for 10 levels, ~2.6ms for 20 levels
 ```
 
-**Why it's fast:** Only the changed node sends updates to Yjs. Parent nodes don't re-process.
+**Why it's fast:** Only the changed node sends updates to Yjs. Parent nodes don't re-process. Performance is consistent regardless of nesting depth.
 
 ### Cache Deep References
 
-When repeatedly accessing the same deep path:
+When repeatedly accessing the same deep path, cache the reference to reduce property lookups:
 
 ```typescript
-// ❌ Repeated deep access in loop
-for (let i = 0; i < 100; i++) {
-  state.app.data.user.settings.theme = themes[i];
+// ❌ Repeated property lookups (~8ms for 1000 iterations)
+for (let i = 0; i < 1000; i++) {
+  state.app.data.user.settings.theme = `theme-${i}`;
 }
 
-// ✅ Cache the reference
+// ✅ Cache the reference (~6.5ms for 1000 iterations)
 const settings = state.app.data.user.settings;
-for (let i = 0; i < 100; i++) {
-  settings.theme = themes[i];
+for (let i = 0; i < 1000; i++) {
+  settings.theme = `theme-${i}`;
 }
 ```
 
-**Performance improvement:** 3-5x faster for loops with 100+ iterations.
+**Performance improvement:** ~1.2-1.5x faster for loops with 1000+ iterations. This optimization is most valuable when you're updating the **same object** many times in a tight loop.
 
 ---
 
@@ -523,7 +531,7 @@ Patterns to avoid for better performance.
 **Problem:**
 
 ```typescript
-// ❌ Slow: creates new proxy chain on each iteration
+// ❌ Slower: repeated property lookups from root
 for (let i = 0; i < 1000; i++) {
   state.app.data.users[i].profile.name = names[i];
 }
@@ -532,12 +540,14 @@ for (let i = 0; i < 1000; i++) {
 **Solution:**
 
 ```typescript
-// ✅ Fast: cache the deep reference
+// ✅ Faster: cache intermediate reference to reduce lookups
 const users = state.app.data.users;
 for (let i = 0; i < 1000; i++) {
   users[i].profile.name = names[i];
 }
 ```
+
+**Why it helps:** Reduces property traversal from 4 lookups (`state.app.data.users`) per iteration to just 1 lookup (`users`). Proxies are already cached internally, so the benefit comes from fewer property accesses, not from avoiding proxy creation.
 
 ### Breaking Batches with Await
 
@@ -666,17 +676,21 @@ function addTodo() {
 
 ## Performance Characteristics
 
-Summary of typical performance numbers:
+Summary of typical performance numbers (from official benchmark suite):
 
-| Operation                   | Time      | Notes                      |
-| --------------------------- | --------- | -------------------------- |
-| Small updates (1-10 items)  | ~1-3ms    | Typical UI interactions    |
-| Bulk operations (100 items) | ~3-8ms    | Automatically optimized    |
-| Large arrays (1000 items)   | ~15-30ms  | Bootstrap/import scenarios |
-| Deep nesting (10+ levels)   | ~2-4ms    | Lazy materialization       |
-| React re-render             | ~1-5ms    | Fine-grained subscriptions |
-| Multi-client sync (local)   | ~1-5ms    | Same machine               |
-| Multi-client sync (network) | ~50-200ms | Depends on latency         |
+| Operation                     | Time        | Notes                                  |
+| ----------------------------- | ----------- | -------------------------------------- |
+| Bootstrap 1000 items          | ~8ms        | Fast initialization with lazy proxies  |
+| Bootstrap 5000 items          | ~43ms       | Scales linearly                        |
+| Small updates (1-10 items)    | ~1-3ms      | Typical UI interactions                |
+| Batch updates (100 items)     | ~9.5ms      | Updating items in large array          |
+| Batched mutations (1000 ops)  | ~5ms        | Same-tick batching is very effective   |
+| Deep nesting access (10 levels) | ~1.3ms    | First access with lazy materialization |
+| Deep nesting access (20 levels) | ~1.4ms    | Scales well with depth                 |
+| Deep mutation (10 levels)     | ~2.5ms      | Fast regardless of depth               |
+| Multi-client sync (local)     | ~2.4-3.5ms  | Local relay (same machine)             |
+| Multi-client sync (network)   | ~50-200ms   | Depends on network latency             |
+| React re-render               | ~1-5ms      | Fine-grained subscriptions             |
 
 These numbers are from the benchmark suite running on modern hardware. Your mileage may vary based on:
 
@@ -693,8 +707,8 @@ These numbers are from the benchmark suite running on modern hardware. Your mile
 
 1. **Automatic batching** handles most performance concerns - write natural code
 2. **Lazy materialization** makes large nested structures efficient
-3. **Bulk operations** (`push(...items)`) are 6x faster than loops
-4. **Cache deep references** in loops to avoid repeated proxy creation
+3. **Bulk operations** (`push(...items)`) are more efficient than individual operations in loops
+4. **Cache deep references** in loops to reduce property lookup overhead
 5. **Fine-grained subscriptions** in React prevent unnecessary re-renders
 6. **Keep mutations in same tick** to benefit from batching
 7. **Measure** performance in your specific use case
