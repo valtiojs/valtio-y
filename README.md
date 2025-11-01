@@ -1,21 +1,74 @@
-# valtio-y 🔄⚡
+<div align="center">
+
+# valtio-y
+
+### Collaborative State Management for React
+
+**Write normal JavaScript, get real-time sync free**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/valtiojs/valtio-y/ci.yml?branch=main)](https://github.com/valtiojs/valtio-y/actions?query=workflow%3ACI)
-[![npm](https://img.shields.io/npm/v/valtio-y)](https://www.npmjs.com/package/valtio-y)
-[![size](https://img.shields.io/bundlephobia/minzip/valtio-y)](https://bundlephobia.com/result?p=valtio-y)
-[![discord](https://img.shields.io/discord/627656437971288081)](https://discord.gg/MrQdmzd)
+[![npm version](https://img.shields.io/npm/v/valtio-y)](https://www.npmjs.com/package/valtio-y)
+[![bundle size](https://img.shields.io/bundlephobia/minzip/valtio-y)](https://bundlephobia.com/result?p=valtio-y)
+[![npm downloads](https://img.shields.io/npm/dm/valtio-y)](https://www.npmjs.com/package/valtio-y)
+[![Discord](https://img.shields.io/discord/627656437971288081)](https://discord.gg/MrQdmzd)
+[![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
 
-**Collaborative state made easy.** Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs for building multi-user apps with minimal effort.
+Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs. Build collaborative apps with minimal effort—no special APIs, just mutate objects naturally.
 
-Write normal JavaScript, get real-time collaboration for free.
+[Getting Started](./guides/getting-started.md) · [Examples](#-examples) · [Guides](#-guides) · [Discord](https://discord.gg/MrQdmzd)
+
+</div>
+
+---
 
 ## Why valtio-y?
 
-We built valtio-y because existing Yjs state syncing libraries hit a wall when you try to do anything interesting. Need to replace array elements? Move items around? Work with deeply nested state? You'd run into limitations or performance issues.
+Building collaborative apps is **hard**. You need to handle:
 
-valtio-y handles all of this naturally. Replace array elements, move them around, nest objects as deep as you want - it just works. And it's fast. We've spent countless hours optimizing the internals and building a comprehensive test suite so you can trust it in production.
+- ❌ **Conflict resolution** when users edit simultaneously
+- ❌ **Offline support** and merge when reconnected
+- ❌ **Network protocols** (WebSocket, WebRTC, etc.)
+- ❌ **State consistency** across clients
+- ❌ **React re-renders** without performance issues
 
-> **What makes valtio-y different from valtio-yjs?** Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), comprehensive documentation, and battle-tested performance optimizations. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
+**valtio-y handles all of this for you.** Just mutate your state like normal:
+
+```typescript
+state.todos.push({ text: "Buy milk", done: false });
+state.users[0].name = "Alice";
+```
+
+It automatically syncs across all connected users with **zero configuration**. No special APIs, no operational transforms to understand, no conflict resolution code to write.
+
+### How It Compares
+
+|                     | valtio-y      | Plain Yjs  | Other CRDT libs |
+| ------------------- | ------------- | ---------- | --------------- |
+| React Integration   | ✅ Native     | ⚠️ Manual  | ⚠️ Manual       |
+| TypeScript Support  | ✅ Full       | ✅ Full    | ⚠️ Partial      |
+| Learning Curve      | ✅ Low        | ⚠️ Medium  | ❌ High         |
+| Nested Structures   | ✅ Natural    | ⚠️ Manual  | ⚠️ Manual       |
+| Array Operations    | ✅ All native | ⚠️ Y.Array | ⚠️ Limited      |
+| Fine-grained Render | ✅ Yes        | ❌ No      | ❌ No           |
+| Offline-First       | ✅ Yes        | ✅ Yes     | ⚠️ Varies       |
+
+### When to Use valtio-y
+
+**✅ Perfect for:**
+
+- Collaborative dashboards, todo lists, project management tools
+- Real-time multiplayer games (see our [Minecraft example](#-examples)!)
+- Offline-first mobile/web apps
+- Multi-device sync
+- Any app with shared state across users
+
+**⚠️ Consider alternatives for:**
+
+- **Text editors** → Use [Lexical](https://lexical.dev/), [TipTap](https://tiptap.dev/), or [ProseMirror](https://prosemirror.net/) with native Yjs
+- **Server-authoritative games** → Use traditional client-server architecture
+- **Simple apps** → Plain REST/GraphQL might be simpler
+
+> **Note:** Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), and battle-tested performance. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
 
 ## Installation
 
@@ -99,13 +152,71 @@ function AddTodo() {
 }
 ```
 
-### Why valtio-y?
+---
 
-- **Just JavaScript** - No special APIs, write like you normally would
-- **Automatic sync** - Changes propagate via Yjs CRDTs without conflicts
-- **React-friendly** - Works seamlessly with Valtio's `useSnapshot`
-- **Offline-first** - Local changes merge cleanly when reconnected
-- **Type-safe** - Full TypeScript support out of the box
+## ✨ Key Features
+
+<table>
+<tr>
+<td width="50%">
+
+**✨ Zero API Overhead**
+No special methods—just mutate objects like normal JavaScript
+
+**🎯 Fine-Grained Updates**
+React components re-render only when their specific data changes
+
+**🔄 Offline-First**
+Local changes automatically merge when reconnected
+
+</td>
+<td width="50%">
+
+**⚡ Production-Ready**
+Validation, rollback, comprehensive tests, and benchmarks
+
+**🎨 Type-Safe**
+Full TypeScript support with complete type inference
+
+**🌐 Provider-Agnostic**
+Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
+
+</td>
+</tr>
+</table>
+
+---
+
+## 📚 Guides
+
+New to valtio-y? Start here to get up and running quickly.
+
+### Getting Started
+
+- **[Quick Start Guide](./guides/getting-started.md)** - Build your first collaborative app in 5 minutes
+- **[Core Concepts](./guides/concepts.md)** - Understand CRDTs and the valtio-y mental model
+- **[Troubleshooting](./guides/troubleshooting.md)** - Common issues and solutions
+
+### Deployment Recipes
+
+Learn how to deploy valtio-y with different backends:
+
+- **[PartyKit Setup](./guides/partykit-setup.md)** - Serverless real-time with PartyKit
+- **[Cloudflare Durable Objects](./guides/cloudflare-durable-objects.md)** - Deploy on Cloudflare's edge
+- **[WebSocket Server](./guides/yjs-websocket-server.md)** - Custom Node.js WebSocket server
+- **[WebRTC P2P](./guides/webrtc-p2p.md)** - Peer-to-peer without a server
+
+### Common Patterns
+
+- **[Basic Operations](./guides/basic-operations.md)** - Objects, arrays, and nested structures
+- **[Undo/Redo](./guides/undo-redo.md)** - Implement undo/redo with Yjs UndoManager
+- **[Offline Sync](./guides/offline-sync.md)** - Handle disconnects and reconnections
+- **[Validation & Errors](./guides/validation-errors.md)** - Custom validation and error handling
+
+### Performance & Advanced
+
+- **[Performance Guide](./guides/performance-guide.md)** - Batching, bulk operations, and optimization
+- **[Debugging](./guides/debugging.md)** - DevTools, logging, and tracing changes
 
 ---
 
@@ -381,17 +492,61 @@ For more details, see [architecture docs](./docs/)
 
 ---
 
-## Examples
+## 🎮 Examples
 
-Try these live collaborative demos:
+Try these live collaborative demos. Open each example in multiple browser tabs to see real-time sync in action!
 
-- **[Object sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Basic object synchronization
-- **[Array sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Shared arrays and lists
-- **[Minecraft clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Multi-player 3D world with WebRTC
-- **[Todo app](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)** - Full-featured collaborative todo list
-- **[Simple todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple)** - Minimal todo example
+### 🎓 Learning Path
 
-All examples use `useSnapshot` from Valtio and work with any Yjs provider for real-time sync.
+**Start here** if you're new to valtio-y:
+
+#### 1. [Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple) 🌟 **Best for Learning**
+
+Single-file example with detailed comments. Learn core concepts including CRUD operations, nested todos, reordering, and offline/online simulation.
+
+**What you'll learn:** Basic setup, array operations, nested objects, state mutations
+
+---
+
+#### 2. [Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)
+
+Minimal object synchronization with WebSocket provider. See how key-value pairs sync in real-time.
+
+**What you'll learn:** WebSocket provider setup, basic object mutations
+
+---
+
+#### 3. [Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)
+
+Demonstrates array operations (push, pop, splice) with WebSocket sync.
+
+**What you'll learn:** Array manipulation, list operations
+
+---
+
+### 🚀 Advanced Examples
+
+#### 4. [Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)
+
+Production-ready todo app with drag-and-drop, bulk operations, filtering, and selection modes.
+
+**What you'll learn:** Advanced UI patterns, @dnd-kit integration, bulk operations, complex state management
+
+**Tech:** React, Tailwind CSS, dnd-kit, lucide-react
+
+---
+
+#### 5. [Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft) 🎮 **Most Impressive**
+
+Real-time multiplayer 3D game with WebRTC peer-to-peer sync. Move around a voxel world with other players!
+
+**What you'll learn:** High-frequency position updates, WebRTC P2P, multiplayer coordination, performance optimization
+
+**Tech:** Three.js, WebRTC (y-webrtc)
+
+---
+
+All examples use `useSnapshot` from Valtio and work with any Yjs provider. Each example includes full source code you can explore and modify.
 
 ---
 
