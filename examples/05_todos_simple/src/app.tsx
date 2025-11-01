@@ -286,6 +286,15 @@ function TodoItemComponent({
     });
   };
 
+  const handleEditTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEditText(e.target.value);
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleSave();
+    if (e.key === "Escape") setIsEditing(false);
+  };
+
   return (
     <div
       className={`rounded-lg p-3 mb-2 ${isSubtask ? "ml-8 bg-slate-50 border border-slate-200" : "bg-white border border-slate-300 shadow-sm"}`}
@@ -305,12 +314,9 @@ function TodoItemComponent({
             <input
               type="text"
               value={editText}
-              onChange={(e) => setEditText(e.target.value)}
+              onChange={handleEditTextChange}
               onBlur={handleSave}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") handleSave();
-                if (e.key === "Escape") setIsEditing(false);
-              }}
+              onKeyDown={handleEditKeyDown}
               className="w-full px-2 py-1 border rounded"
               autoFocus
             />
@@ -453,6 +459,14 @@ function ClientView({ name, stateProxy, color, clientId }: ClientViewProps) {
   const todoCount = snap.todos?.length || 0;
   const completedCount = snap.todos?.filter((t) => t.completed).length || 0;
 
+  const handleNewTodoTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setNewTodoText(e.target.value);
+  };
+
+  const handleNewTodoKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") handleAddTodo();
+  };
+
   return (
     <div
       className={`flex-1 rounded-xl shadow-lg border-2 p-6 transition-all ${
@@ -493,8 +507,8 @@ function ClientView({ name, stateProxy, color, clientId }: ClientViewProps) {
           <input
             type="text"
             value={newTodoText}
-            onChange={(e) => setNewTodoText(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAddTodo()}
+            onChange={handleNewTodoTextChange}
+            onKeyDown={handleNewTodoKeyDown}
             placeholder="What needs to be done?"
             className="flex-1 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
@@ -615,7 +629,7 @@ const App = () => {
 
           <div className="mt-4 pt-4 border-t border-slate-200">
             <h4 className="text-sm font-semibold text-slate-900 mb-2">
-              The "Glue": How CRDT Sync Works
+              The &quot;Glue&quot;: How CRDT Sync Works
             </h4>
             <p className="text-xs text-slate-600 mb-2">
               When <strong>both clients are offline</strong> and make changes,
