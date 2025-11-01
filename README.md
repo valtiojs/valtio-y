@@ -41,8 +41,6 @@ state.dashboard.widgets[2].position = { x: 100, y: 200 };
 
 It automatically syncs across all connected users with **zero configuration**. No special APIs, no operational transforms to understand, no conflict resolution code to write.
 
-**The sweet spot:** valtio-y excels for **collaborative structured data**—forms, boards, dashboards, configuration UIs—where text editors (Lexical/TipTap) are overkill and sync engines (Linear/Notion-style) don't provide conflict-free merging.
-
 ### How It Compares
 
 |                     | valtio-y      | Plain Yjs  | Other CRDT libs |
@@ -54,6 +52,8 @@ It automatically syncs across all connected users with **zero configuration**. N
 | Array Operations    | ✅ All native | ⚠️ Y.Array | ⚠️ Limited      |
 | Fine-grained Render | ✅ Yes        | ❌ No      | ❌ No           |
 | Offline-First       | ✅ Yes        | ✅ Yes     | ⚠️ Varies       |
+
+> **Note:** Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), and battle-tested performance. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
 
 ### When to Use valtio-y
 
@@ -77,8 +77,6 @@ valtio-y excels in the **sweet spot between text editors and sync engines**: rea
 - **Apps like Linear/Notion** → Use sync engines (real-time updates without CRDT conflict resolution). Two users simultaneously editing the same Linear issue title or description doesn't need automatic merging—one user's change wins, and they can communicate to resolve it.
 - **Server-authoritative systems** → Traditional request/response where the server is the source of truth.
 - **Simple CRUD apps** → Plain REST/GraphQL is simpler if you don't need real-time collaboration.
-
-> **Note:** Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), and battle-tested performance. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
 
 ## Installation
 
