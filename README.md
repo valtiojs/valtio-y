@@ -74,7 +74,6 @@ valtio-y excels in the **sweet spot between text editors and sync engines**: rea
 
 - **Text/document editors** → Use [Lexical](https://lexical.dev/), [TipTap](https://tiptap.dev/), or [ProseMirror](https://prosemirror.net/) with native Yjs integrations. They handle text-specific reconciliation internally.
 - **Apps like Linear/Notion** → Use sync engines (real-time updates without CRDT conflict resolution). Two users simultaneously editing the same Linear issue title or description doesn't need automatic merging—one user's change wins, and they can communicate to resolve it.
-- **Server-authoritative systems** → Traditional request/response where the server is the source of truth.
 - **Simple CRUD apps** → Plain REST/GraphQL is simpler if you don't need real-time collaboration.
 
 ## Installation
