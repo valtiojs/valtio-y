@@ -27,7 +27,7 @@ These work **really well** with clean, straightforward implementations:
 
 ### 🚫 Historical Notes on Leaf Types
 
-We previously experimented with supporting collaborative text nodes and Y.Xml\* structures behind a feature flag. Those experiments lived on a research branch and never graduated into the supported surface area because the required workarounds felt fragile.
+We're exploring collaborative text nodes and Y.Xml\* structures on the `research/ytext-integration` branch. Those investigations haven't shipped because the additional guardrails felt fragile and the real-world apps we work with have done well with plain strings embedded inside maps and arrays.
 
 If you need to study that prototype, check out the `research/ytext-integration` branch. It contains:
 
@@ -37,7 +37,7 @@ If you need to study that prototype, check out the `research/ytext-integration` 
 - **Y.XmlHook** - Custom XML node types
 - **Y.XmlText** - XML text nodes
 
-Those notes remain here purely as background for future exploration.
+Those notes remain here purely as background for future exploration. If you have scenarios where Y.Text or Y.Xml* support would unlock something you can't express today, please let us know—hearing about concrete use cases helps us decide what to revisit.
 
 ---
 
