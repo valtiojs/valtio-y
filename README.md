@@ -491,14 +491,26 @@ For most apps, standard array operations work perfectly. For **high-frequency co
 const [task] = tasks.splice(from, 1);
 tasks.splice(to, 0, task);
 
-// Fractional indexing (for heavy concurrent reordering)
+// Fractional indexing with strings (recommended for advanced cases)
+// Use libraries like fractional-indexing or lexicographic-fractional-indexing
+import { generateKeyBetween } from 'fractional-indexing';
+
+type Task = { order: string, title: string };
+tasks[i].order = generateKeyBetween(
+  tasks[i - 1]?.order ?? null,
+  tasks[i + 1]?.order ?? null
+);
+const sorted = [...tasks].sort((a, b) => a.order.localeCompare(b.order));
+
+// Number-based approach (simpler but doesn't scale well)
+// Avoid for production - floating-point precision limits reordering depth
 type Task = { order: number, title: string };
 tasks[i].order = (tasks[i - 1].order + tasks[i + 1].order) / 2;
-const sorted = [...tasks].sort((a, b) => a.order - b.order);
 ```
 
-**When to use:** Large lists (>100 items) with multiple users frequently reordering
+**When to use fractional indexing:** Large lists (>100 items) with multiple users frequently reordering
 **When NOT needed:** Single-user apps, small lists, or append-only scenarios
+**Why strings over numbers:** String-based fractional indexing scales infinitely without precision issues, while number-based approaches run into floating-point limits after repeated reordering.
 
 For more details, see [architecture docs](./docs/)
 
