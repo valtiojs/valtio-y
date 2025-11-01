@@ -4,11 +4,7 @@ import {
   getValtioProxyForYType,
 } from "../bridge/valtio-bridge";
 import type { ValtioYjsCoordinator } from "../core/coordinator";
-import {
-  isYSharedContainer,
-  isYArray,
-  isYMap,
-} from "../core/guards";
+import { isYSharedContainer, isYArray, isYMap } from "../core/guards";
 import { yTypeToJSON } from "../core/types";
 
 // Reconciler layer

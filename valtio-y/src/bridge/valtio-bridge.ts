@@ -7,7 +7,7 @@
 //   transactions tagged with VALTIO_YJS_ORIGIN.
 // - Lazily create nested controllers when a Y value is another Y type.
 import * as Y from "yjs";
-import { proxy, subscribe, ref } from "valtio/vanilla";
+import { proxy, subscribe } from "valtio/vanilla";
 // import removed: origin tagging handled by context scheduler
 
 import type { YSharedContainer } from "../core/yjs-types";

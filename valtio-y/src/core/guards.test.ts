@@ -21,7 +21,6 @@ describe("Type Guards", () => {
       expect(isYMap(yArr)).toBe(false);
     });
 
-
     it("returns false for plain objects", () => {
       expect(isYMap({})).toBe(false);
       expect(isYMap({ key: "value" })).toBe(false);
@@ -55,7 +54,6 @@ describe("Type Guards", () => {
       expect(isYArray(yMap)).toBe(false);
     });
 
-
     it("returns false for plain arrays", () => {
       expect(isYArray([])).toBe(false);
       expect(isYArray([1, 2, 3])).toBe(false);
@@ -83,7 +81,6 @@ describe("Type Guards", () => {
       expect(isYSharedContainer(yArr)).toBe(true);
     });
 
-
     it("returns false for plain objects and arrays", () => {
       expect(isYSharedContainer({})).toBe(false);
       expect(isYSharedContainer([])).toBe(false);
@@ -105,7 +102,6 @@ describe("Type Guards", () => {
       const yArr = new Y.Array();
       expect(isYAbstractType(yArr)).toBe(true);
     });
-
 
     it("returns false for plain objects and arrays", () => {
       expect(isYAbstractType({})).toBe(false);
