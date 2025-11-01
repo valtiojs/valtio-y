@@ -143,7 +143,7 @@
     - Primitives (string, number, boolean, null)
     - Plain objects (created with `{}` or `Object.create(null)`)
     - Plain arrays
-    - Y.js collaborative types (Y.Map, Y.Array, Y.Text)
+    - Y.js collaborative types (Y.Map, Y.Array)
 - Examples:
 
   ```typescript

@@ -5,7 +5,7 @@
 This library integrates Yjs CRDTs with Valtio's reactive state management:
 
 - **Y.Map, Y.Array, primitives**: ✅ Work really well with clean implementations
-- **Leaf types (Y.Text, Y.Xml\*)**: ⚠️ Work with multi-layer workarounds; tests pass but potential edge cases remain
+- **Leaf types (collaborative text nodes, Y.Xml\*)**: ⚠️ Work with multi-layer workarounds; tests pass but potential edge cases remain
 
 ---
 
@@ -29,7 +29,7 @@ These work **really well** with clean, straightforward implementations:
 
 These **work in practice** but use multi-layer workarounds. Tests pass, but there could be edge cases we haven't discovered:
 
-- **Y.Text** - Rich text editing with React reactivity (computed properties + version counters)
+- **Collaborative text nodes** - Rich text editing with React reactivity (computed properties + version counters)
 - **Y.XmlElement** - XML elements with attributes and children (22/22 tests passing)
 - **Y.XmlFragment** - XML fragments as containers
 - **Y.XmlHook** - Custom XML node types
@@ -99,7 +99,7 @@ Sparse arrays in JavaScript are essentially a quirk of the language that don't h
 - Their properties/items are the reactive data
 - Changes to properties naturally trigger Valtio updates
 
-**Leaf Types** (Y.Text, Y.XmlElement, Y.XmlHook, etc.):
+**Leaf Types** (collaborative text nodes, Y.XmlElement, Y.XmlHook, etc.):
 
 - Cannot be deeply proxied - they have internal CRDT state
 - They ARE the reactive data themselves
@@ -111,9 +111,9 @@ Sparse arrays in JavaScript are essentially a quirk of the language that don't h
 When you access `snap.text.toString()` in a React component, Valtio needs to know:
 
 1. That you accessed the `text` property (for dependency tracking)
-2. When the Y.Text content changes (to trigger re-renders)
+2. When the collaborative text node content changes (to trigger re-renders)
 
-But if Y.Text is wrapped in `ref()` to prevent deep proxying, accessing it doesn't create dependencies in Valtio's snapshot system.
+But if that text node is wrapped in `ref()` to prevent deep proxying, accessing it doesn't create dependencies in Valtio's snapshot system.
 
 ---
 
@@ -220,6 +220,6 @@ The fundamental issue is that Valtio needs a way to handle **opaque objects** - 
 
 1. Cannot be deep proxied (they have internal state)
 2. Still need to trigger re-renders when they change
-3. Have their own notification mechanisms (like Y.Text's `observe()`)
+3. Have their own notification mechanisms (like collaborative text nodes with `observe()`)
 
 Happy for POCs and PRs!

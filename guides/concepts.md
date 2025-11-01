@@ -447,7 +447,7 @@ Some applications are better served by other approaches:
 - [TipTap](https://tiptap.dev/) with Yjs extension
 - [ProseMirror](https://prosemirror.net/) with `y-prosemirror`
 
-**Why?** Text editing requires specialized CRDTs (Y.Text) with cursor tracking, formatting, and undo/redo. These editors have battle-tested integrations.
+**Why?** Text editing requires specialized collaborative text CRDTs with cursor tracking, formatting, and undo/redo. These editors have battle-tested integrations.
 
 valtio-y is for **shared application state** (objects, arrays, primitives), not building text editors.
 
