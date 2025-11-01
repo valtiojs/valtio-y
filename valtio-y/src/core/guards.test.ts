@@ -5,7 +5,6 @@ import * as Y from "yjs";
 import {
   isYMap,
   isYArray,
-  isYText,
   isYSharedContainer,
   isYAbstractType,
 } from "./guards";
@@ -20,11 +19,6 @@ describe("Type Guards", () => {
     it("returns false for Y.Array instances", () => {
       const yArr = new Y.Array();
       expect(isYMap(yArr)).toBe(false);
-    });
-
-    it("returns false for Y.Text instances", () => {
-      const yText = new Y.Text();
-      expect(isYMap(yText)).toBe(false);
     });
 
     it("returns false for plain objects", () => {
@@ -60,11 +54,6 @@ describe("Type Guards", () => {
       expect(isYArray(yMap)).toBe(false);
     });
 
-    it("returns false for Y.Text instances", () => {
-      const yText = new Y.Text();
-      expect(isYArray(yText)).toBe(false);
-    });
-
     it("returns false for plain arrays", () => {
       expect(isYArray([])).toBe(false);
       expect(isYArray([1, 2, 3])).toBe(false);
@@ -81,43 +70,6 @@ describe("Type Guards", () => {
     });
   });
 
-  describe("isYText()", () => {
-    it("returns true for Y.Text instances", () => {
-      const yText = new Y.Text();
-      expect(isYText(yText)).toBe(true);
-    });
-
-    it("returns true for Y.Text with content", () => {
-      const yText = new Y.Text("hello");
-      expect(isYText(yText)).toBe(true);
-    });
-
-    it("returns false for Y.Map instances", () => {
-      const yMap = new Y.Map();
-      expect(isYText(yMap)).toBe(false);
-    });
-
-    it("returns false for Y.Array instances", () => {
-      const yArr = new Y.Array();
-      expect(isYText(yArr)).toBe(false);
-    });
-
-    it("returns false for strings", () => {
-      expect(isYText("hello")).toBe(false);
-      expect(isYText("")).toBe(false);
-    });
-
-    it("returns false for null and undefined", () => {
-      expect(isYText(null)).toBe(false);
-      expect(isYText(undefined)).toBe(false);
-    });
-
-    it("returns false for objects with toString method", () => {
-      const obj = { toString: () => "hello" };
-      expect(isYText(obj)).toBe(false);
-    });
-  });
-
   describe("isYSharedContainer()", () => {
     it("returns true for Y.Map instances", () => {
       const yMap = new Y.Map();
@@ -127,11 +79,6 @@ describe("Type Guards", () => {
     it("returns true for Y.Array instances", () => {
       const yArr = new Y.Array();
       expect(isYSharedContainer(yArr)).toBe(true);
-    });
-
-    it("returns false for Y.Text instances", () => {
-      const yText = new Y.Text();
-      expect(isYSharedContainer(yText)).toBe(false);
     });
 
     it("returns false for plain objects and arrays", () => {
@@ -154,11 +101,6 @@ describe("Type Guards", () => {
     it("returns true for Y.Array instances", () => {
       const yArr = new Y.Array();
       expect(isYAbstractType(yArr)).toBe(true);
-    });
-
-    it("returns true for Y.Text instances", () => {
-      const yText = new Y.Text();
-      expect(isYAbstractType(yText)).toBe(true);
     });
 
     it("returns false for plain objects and arrays", () => {
@@ -198,32 +140,18 @@ describe("Type Guards", () => {
       expect(isYSharedContainer(retrieved)).toBe(true);
     });
 
-    it("handles Y.Text in structures", () => {
-      const doc = new Y.Doc();
-      const yMap = doc.getMap("map");
-      const yText = new Y.Text("content");
-      yMap.set("text", yText);
-
-      const retrieved = yMap.get("text");
-      expect(isYText(retrieved)).toBe(true);
-      expect(isYAbstractType(retrieved)).toBe(true);
-      expect(isYSharedContainer(retrieved)).toBe(false);
-    });
-
     it("correctly identifies different types in mixed array", () => {
       const doc = new Y.Doc();
       const yArr = doc.getArray("arr");
       const yMap = new Y.Map();
-      const yText = new Y.Text();
       const yNestedArr = new Y.Array();
 
-      yArr.insert(0, [yMap, yText, yNestedArr, "string", 42]);
+      yArr.insert(0, [yMap, yNestedArr, "string", 42]);
 
       expect(isYMap(yArr.get(0))).toBe(true);
-      expect(isYText(yArr.get(1))).toBe(true);
-      expect(isYArray(yArr.get(2))).toBe(true);
+      expect(isYArray(yArr.get(1))).toBe(true);
+      expect(isYMap(yArr.get(2))).toBe(false);
       expect(isYMap(yArr.get(3))).toBe(false);
-      expect(isYMap(yArr.get(4))).toBe(false);
     });
   });
 });
