@@ -431,13 +431,13 @@ These editors have specialized Yjs integrations optimized for their specific use
 
 **Collaborative text integration research:**
 
-We are actively researching how to best integrate collaborative text editing types and XML nodes with Valtio's reactive system for non-editor use cases. valtio-y has a different application profile from text editors, and most use cases won't need rich text CRDT integration at all.
+The **main branch intentionally does not expose Y.Text or Y.Xml\*** integration. For valtio-y's target scenarios, plain strings inside shared objects are sufficient, and the extra complexity of collaborative text nodes hasn't been justified.
 
 **Current status:**
 
 - Core types (Y.Map, Y.Array, primitives) are production-ready with clean, well-tested implementations
-- Leaf types (collaborative text and XML) integration is being researched in the `research/ytext-integration` branch
-- For typical valtio-y use cases, plain strings work perfectly for text fields
+- Experiments around collaborative text and XML nodes live in the `research/ytext-integration` branch for teams that want to explore the trade-offs
+- We don't have near-term plans to ship those experiments on `main`, but we'd love to hear about concrete use cases before revisiting the decision
 
 **Have a use case for collaborative text in shared state?** We'd love to learn more! Please [open an issue](https://github.com/valtiojs/valtio-y/issues) to discuss your requirements.
 

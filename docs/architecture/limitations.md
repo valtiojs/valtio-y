@@ -5,7 +5,7 @@
 This library integrates Yjs CRDTs with Valtio's reactive state management:
 
 - **Y.Map, Y.Array, primitives**: ✅ Work really well with clean implementations
-- **Leaf types (collaborative text nodes, Y.Xml\*)**: ⚠️ Work with multi-layer workarounds; tests pass but potential edge cases remain
+- **Leaf types (collaborative text nodes, Y.Xml\*)**: ❌ Not supported on `main`. Historical experiments live in the `research/ytext-integration` branch and are documented below for reference.
 
 ---
 
@@ -25,17 +25,19 @@ These work **really well** with clean, straightforward implementations:
 - **Network sync** - WebRTC, WebSocket providers work correctly
 - **React integration** - `useSnapshot()` triggers re-renders as expected
 
-### ⚠️ Works, But With Workarounds: Leaf Types
+### 🚫 Removed from Main: Leaf Types (Historical Notes)
 
-These **work in practice** but use multi-layer workarounds. Tests pass, but there could be edge cases we haven't discovered:
+We previously experimented with supporting collaborative text nodes and Y.Xml\* structures behind a feature flag. Those experiments lived on a long-running branch and never shipped to `main`. They relied on multi-layer workarounds that felt fragile, so we removed them entirely from the supported surface area.
 
-- **Collaborative text nodes** - Rich text editing with React reactivity (computed properties + version counters)
-- **Y.XmlElement** - XML elements with attributes and children (22/22 tests passing)
+If you need to study that prototype, check out the `research/ytext-integration` branch. It contains:
+
+- **Collaborative text nodes** - Rich text editing via computed properties and version counters
+- **Y.XmlElement** - XML elements with attributes and children (22/22 research tests passing at the time)
 - **Y.XmlFragment** - XML fragments as containers
 - **Y.XmlHook** - Custom XML node types
 - **Y.XmlText** - XML text nodes
 
-**Current status:** The implementation works for tested scenarios, but the workaround-heavy approach means we can't be 100% confident about all edge cases.
+Those notes remain here purely as background for future exploration.
 
 ---
 
@@ -89,7 +91,7 @@ Sparse arrays in JavaScript are essentially a quirk of the language that don't h
 
 ---
 
-## The Challenge: Leaf Types vs. Containers
+## The Challenge: Leaf Types vs. Containers (Research Context)
 
 ### Two Fundamentally Different Y.js Type Categories
 
@@ -106,7 +108,7 @@ Sparse arrays in JavaScript are essentially a quirk of the language that don't h
 - Changes happen via methods like `.insert()`, `.delete()`, `.setAttribute()`
 - Need manual notification to trigger React re-renders
 
-### The Core Problem
+### The Core Problem We Observed
 
 When you access `snap.text.toString()` in a React component, Valtio needs to know:
 
@@ -117,9 +119,9 @@ But if that text node is wrapped in `ref()` to prevent deep proxying, accessing 
 
 ---
 
-## Current Implementation: Multi-Layer Workaround
+## Historical Prototype: Multi-Layer Workaround
 
-The library currently uses a combination of techniques to achieve reactivity for leaf types:
+The research branch relied on a combination of techniques to achieve reactivity for leaf types:
 
 ### 1. Global Valtio Customization
 
@@ -185,7 +187,7 @@ objProxy[Symbol.for("valtio-y:leaf:text")] = ref(reactiveLeaf);
 
 ---
 
-## Why This Feels "Work-Around-y"
+## Why the Prototype Felt "Work-Around-y"
 
 ### Multiple Layers of Indirection
 

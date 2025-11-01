@@ -103,8 +103,8 @@ export function setupSyncListener(
           // Ensure that direct array targets with deltas still get a boundary reconcile after deltas too
           // by scheduling a post-task via the context (apply layer already posts reconciles; this is extra safety).
         }
-        // Note: XML types (XmlFragment, XmlElement, XmlHook) are treated as leaf types,
-        // not containers, so they don't need reconciliation here
+        // Note: If collaborative text/XML support returns in research builds,
+        // those Y.js leaf types remain non-container values and don't need reconciliation here.
       }
       // Phase 2: apply granular array deltas to direct targets
       for (const [arr, delta] of arrayTargetToDelta) {
