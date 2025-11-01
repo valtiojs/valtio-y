@@ -61,7 +61,6 @@ valtio-y excels in the **sweet spot between text editors and sync engines**: rea
 
 **✅ Perfect for:**
 
-- **Resume/CV builders** - Multiple people editing sections, reordering, adding content
 - **Form builders** - Drag-and-drop interfaces, field configuration, visual editors
 - **Kanban/project boards** - Task management, card reordering, status updates
 - **Collaborative spreadsheets** - Data entry, cell updates (not heavy text editing)
