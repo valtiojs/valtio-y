@@ -1,49 +1,61 @@
 /* eslint react/no-unknown-property: "off" */
 
 import * as THREE from 'three';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useLoader } from '@react-three/fiber';
 import type { ThreeEvent } from '@react-three/fiber';
 import { useBox } from '@react-three/cannon';
 import type { BoxProps } from '@react-three/cannon';
-import { proxy, subscribe, snapshot } from 'valtio';
+import { useSnapshot } from 'valtio';
 import * as Y from 'yjs';
-import { bind } from 'valtio-yjs';
+import { createYjsProxy } from 'valtio-yjs';
 import { WebrtcProvider } from 'y-webrtc';
 // @ts-expect-error no types
 import dirt from './assets/dirt.jpg';
 
 const ydoc = new Y.Doc();
-new WebrtcProvider('minecraft-valtio-yjs-demo-2', ydoc);
-const ymap = ydoc.getMap('map');
+
+const provider = new WebrtcProvider('minecraft-valtio-yjs-demo-3', ydoc, {
+  signaling: ['ws://localhost:4444'],
+});
+
+// (optional) attach provider event logs when debugging connectivity
+
+
+const { proxy: state, bootstrap } = createYjsProxy<{
+  cubes: [number, number, number][];
+}>(ydoc, {
+  getRoot: (doc: Y.Doc) => doc.getMap('map'),
+});
+
+// Initialize shared state once per room:
+// - Wait for `synced` so late joiners first receive remote state.
+// - Call `bootstrap` after that; it already no-ops if the root isn't empty, preventing
+//   double-initialization.
+provider.on('synced', () => {
+  try {
+    bootstrap({ cubes: [] });
+  } catch (e) {
+    // Ignore bootstrap errors in example
+  }
+});
 
 // This is a super naive implementation and wouldn't allow for more than a few thousand boxes.
 // In order to make this scale this has to be one instanced mesh, then it could easily be
 // hundreds of thousands.
 
-const cubeStore = proxy({
-  cubes: [] as [number, number, number][],
-});
 const addCube = (x: number, y: number, z: number) => {
-  cubeStore.cubes.push([x, y, z]);
+  const arr = state.cubes;
+  arr[arr.length] = [x, y, z];
 };
-const useCubes = () => {
-  const [slice, setSlice] = useState(() => snapshot(cubeStore).cubes);
-  useEffect(() => {
-    return subscribe(cubeStore, () => {
-      setSlice(snapshot(cubeStore).cubes);
-    });
-  }, []);
-  return slice || [];
-};
-
-bind(cubeStore, ymap);
 
 export const Cubes = () => {
-  const cubes = useCubes();
-  return cubes.map((coords, index) => (
-    <Cube key={index} position={coords as [number, number, number]} />
-  ));
+  const snap = useSnapshot(state, { sync: true });
+  const cubes = snap.cubes;
+  return cubes.map((coords, index) => {
+    const pos = Array.from(coords) as [number, number, number];
+    return <Cube key={index} position={pos} />;
+  });
 };
 
 export const Cube = (props: BoxProps) => {

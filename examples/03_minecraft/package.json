@@ -11,8 +11,9 @@
     "react-dom": "latest",
     "three": "latest",
     "valtio": "latest",
-    "valtio-yjs": "latest",
-    "y-webrtc": "latest"
+    "valtio-yjs": "workspace:*",
+    "y-webrtc": "latest",
+    "yjs": "latest"
   },
   "devDependencies": {
     "@types/react": "latest",
@@ -22,6 +23,6 @@
     "vite": "latest"
   },
   "scripts": {
-    "dev": "vite"
+    "dev": "PORT=4444 node node_modules/y-webrtc/bin/server.js & vite"
   }
 }

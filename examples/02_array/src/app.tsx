@@ -1,24 +1,30 @@
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-import { bind } from 'valtio-yjs';
-import { proxy, useSnapshot } from 'valtio';
+import { createYjsProxy } from 'valtio-yjs';
+import { useSnapshot } from 'valtio';
 import { useState } from 'react';
 
 const genId = () => `${Math.random()}`.slice(-8);
 
 const ydoc = new Y.Doc();
+const provider = new WebsocketProvider('ws://localhost:1234', 'valtio-yjs-demo', ydoc);
 
-new WebsocketProvider('wss://demos.yjs.dev', 'valtio-yjs-demo', ydoc);
-
-const yarray = ydoc.getArray('messages.v2');
-const messages = proxy([] as { id: string; text: string; vote: number }[]);
-bind(messages, yarray);
+type Message = { id: string; text: string; vote: number };
+const { proxy: messages, bootstrap } = createYjsProxy<Message[]>(ydoc, {
+  getRoot: (doc: Y.Doc) => doc.getArray('messages.v2'),
+});
+// Initialize after sync; no-op if remote data exists
+provider.on('sync', () => {
+  try {
+    bootstrap([]);
+  } catch {}
+});
 
 const MyMessage = () => {
   const [message, setMessage] = useState('');
   const send = () => {
     if (message) {
-      messages.unshift({ id: genId(), text: message, vote: 1 });
+      messages.push({ id: genId(), text: message, vote: 1 });
       setMessage('');
     }
   };

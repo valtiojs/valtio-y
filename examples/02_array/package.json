@@ -7,16 +7,18 @@
     "react": "latest",
     "react-dom": "latest",
     "valtio": "latest",
-    "valtio-yjs": "latest",
-    "y-websocket": "latest"
+    "valtio-yjs": "workspace:*",
+    "y-websocket": "latest",
+    "yjs": "latest"
   },
   "devDependencies": {
     "@types/react": "latest",
     "@types/react-dom": "latest",
+    "@y/websocket-server": "latest",
     "typescript": "latest",
     "vite": "latest"
   },
   "scripts": {
-    "dev": "vite"
+    "dev": "HOST=localhost PORT=1234 npx y-websocket & vite"
   }
 }

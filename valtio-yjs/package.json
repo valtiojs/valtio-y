@@ -1,0 +1,84 @@
+{
+  "name": "valtio-yjs",
+  "description": "valtio-yjs makes yjs state easy",
+  "version": "0.6.4",
+  "type": "module",
+  "author": "Daishi Kato",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/valtiojs/valtio-yjs.git"
+  },
+  "exports": {
+    "./package.json": "./package.json",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "node": {
+        "module": "./dist/index.js",
+        "import": "./dist/index.js",
+        "require": "./dist/index.cjs"
+      },
+      "browser": {
+        "module": "./dist/index.js",
+        "import": "./dist/index.js"
+      },
+      "default": "./dist/index.js"
+    }
+  },
+  "sideEffects": false,
+  "files": [
+    "src",
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsdown",
+    "dev": "tsdown --watch ./src",
+    "test": "pnpm vitest --run",
+    "bench": "pnpm vitest bench --config vitest.bench.config.ts",
+    "typecheck": "pnpm tsc -b --emitDeclarationOnly",
+    "lint": "pnpm eslint ."
+  },
+  "keywords": [
+    "valtio",
+    "yjs",
+    "crdt"
+  ],
+  "license": "MIT",
+  "prettier": {
+    "singleQuote": true
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.32.0",
+    "@testing-library/jest-dom": "^6.6.4",
+    "@types/node": "^24.2.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^5.0.4",
+    "@vitest/browser": "^3.2.4",
+    "eslint": "^9.32.0",
+    "eslint-import-resolver-typescript": "^4.4.4",
+    "eslint-plugin-import": "^2.32.0",
+    "eslint-plugin-jsx-a11y": "^6.10.2",
+    "eslint-plugin-react": "^7.37.5",
+    "eslint-plugin-react-hooks": "6.0.0-rc.1",
+    "fast-check": "^4.3.0",
+    "happy-dom": "^18.0.1",
+    "playwright": "^1.55.0",
+    "prettier": "^3.6.2",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "tsdown": "^0.14.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.39.0",
+    "valtio": "^2.1.8",
+    "vite": "^7.1.9",
+    "vite-tsconfig-paths": "^5.1.4",
+    "vitest": "^3.2.4",
+    "vitest-browser-react": "^1.0.1",
+    "yjs": "^13.6.27"
+  },
+  "peerDependencies": {
+    "valtio": ">=2.1.8",
+    "yjs": ">=13.6.27"
+  }
+}

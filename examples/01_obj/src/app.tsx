@@ -1,16 +1,21 @@
 import * as Y from 'yjs';
 import { WebsocketProvider } from 'y-websocket';
-import { bind } from 'valtio-yjs';
-import { proxy, useSnapshot } from 'valtio';
+import { createYjsProxy } from 'valtio-yjs';
+import { useSnapshot } from 'valtio';
 import { useState } from 'react';
 
 const ydoc = new Y.Doc();
+const provider = new WebsocketProvider('ws://localhost:1234', 'valtio-yjs-demo', ydoc);
 
-new WebsocketProvider('wss://demos.yjs.dev', 'valtio-yjs-demo', ydoc);
-
-const ymap = ydoc.getMap('messages.v1');
-const mesgMap = proxy({} as Record<string, string>);
-bind(mesgMap, ymap);
+const { proxy: mesgMap, bootstrap } = createYjsProxy<Record<string, string>>(ydoc, {
+  getRoot: (doc: Y.Doc) => doc.getMap('messages.v1'),
+});
+// Initialize once after network sync; bootstrap is a no-op if remote state exists
+provider.on('sync', () => {
+  try {
+    bootstrap({});
+  } catch {}
+});
 
 const MyMessage = () => {
   const [name, setName] = useState('');

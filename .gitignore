@@ -1,4 +1,6 @@
 *~
 *.swp
 node_modules
-/dist
+**/dist
+**/repomix-output.xml
+*.tsbuild
