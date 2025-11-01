@@ -56,7 +56,7 @@ export function applyMapSets(
     }
 
     // Ensure the Valtio proxy is reconciled after setting values in the Y.Map.
-    // If research builds reintroduce Y.js leaf instances (Y.Text, Y.Xml*),
+    // If future work reintroduces Y.js leaf instances (Y.Text, Y.Xml*),
     // this keeps the proxy aligned with the concrete Y type rather than a stale reference.
     const mapDocNow = getYDoc(yMap);
     if (mapDocNow) {

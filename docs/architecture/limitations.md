@@ -5,7 +5,7 @@
 This library integrates Yjs CRDTs with Valtio's reactive state management:
 
 - **Y.Map, Y.Array, primitives**: ✅ Work really well with clean implementations
-- **Leaf types (collaborative text nodes, Y.Xml\*)**: ❌ Not supported on `main`. Historical experiments live in the `research/ytext-integration` branch and are documented below for reference.
+- **Leaf types (collaborative text nodes, Y.Xml\*)**: ❌ Not supported today. Historical experiments live in the `research/ytext-integration` branch and are documented below for reference.
 
 ---
 
@@ -25,9 +25,9 @@ These work **really well** with clean, straightforward implementations:
 - **Network sync** - WebRTC, WebSocket providers work correctly
 - **React integration** - `useSnapshot()` triggers re-renders as expected
 
-### 🚫 Removed from Main: Leaf Types (Historical Notes)
+### 🚫 Historical Notes on Leaf Types
 
-We previously experimented with supporting collaborative text nodes and Y.Xml\* structures behind a feature flag. Those experiments lived on a long-running branch and never shipped to `main`. They relied on multi-layer workarounds that felt fragile, so we removed them entirely from the supported surface area.
+We previously experimented with supporting collaborative text nodes and Y.Xml\* structures behind a feature flag. Those experiments lived on a research branch and never graduated into the supported surface area because the required workarounds felt fragile.
 
 If you need to study that prototype, check out the `research/ytext-integration` branch. It contains:
 

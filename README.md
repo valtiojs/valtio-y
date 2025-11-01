@@ -431,13 +431,13 @@ These editors have specialized Yjs integrations optimized for their specific use
 
 **Collaborative text integration research:**
 
-The **main branch intentionally does not expose Y.Text or Y.Xml\*** integration. For valtio-y's target scenarios, plain strings inside shared objects are sufficient, and the extra complexity of collaborative text nodes hasn't been justified.
+valtio-y currently focuses on collaborative data structures like maps, arrays, and primitives. Y.Text and Y.Xml\* nodes are **not** part of the supported surface area today because plain strings inside shared objects have covered the real-world use cases we've seen so far.
 
 **Current status:**
 
 - Core types (Y.Map, Y.Array, primitives) are production-ready with clean, well-tested implementations
-- Experiments around collaborative text and XML nodes live in the `research/ytext-integration` branch for teams that want to explore the trade-offs
-- We don't have near-term plans to ship those experiments on `main`, but we'd love to hear about concrete use cases before revisiting the decision
+- We previously prototyped collaborative text and XML handling; those notes live in the `research/ytext-integration` branch for anyone curious about the trade-offs we explored
+- We're still interested in understanding concrete scenarios where full Y.Text or Y.Xml\* support would be valuable
 
 **Have a use case for collaborative text in shared state?** We'd love to learn more! Please [open an issue](https://github.com/valtiojs/valtio-y/issues) to discuss your requirements.
 
