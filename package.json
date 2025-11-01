@@ -12,6 +12,7 @@
     "dev": "turbo run dev",
     "test": "turbo run test",
     "typecheck": "turbo run typecheck",
+    "publish": "turbo run publish",
     "lint": "oxlint --type-aware .",
     "lint:fix": "oxlint --type-aware --fix .",
     "format": "bun oxfmt ."

@@ -1,7 +1,7 @@
 {
   "name": "valtio-y",
   "description": "Collaborative Valtio state",
-  "version": "0.6.4",
+  "version": "1.0.0",
   "type": "module",
   "author": "Daishi Kato, Alex Gogl",
   "repository": {
@@ -26,7 +26,6 @@
   },
   "sideEffects": false,
   "files": [
-    "src",
     "dist",
     "README.md"
   ],
@@ -35,7 +34,8 @@
     "dev": "tsdown --watch ./src",
     "test": "bun vitest",
     "bench": "bun vitest bench --config vitest.bench.config.ts",
-    "typecheck": "bun tsc -b --emitDeclarationOnly"
+    "typecheck": "bun tsc -b --emitDeclarationOnly",
+    "publish": "bun publish --access public"
   },
   "keywords": [
     "valtio",
