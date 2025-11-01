@@ -1,4 +1,4 @@
-# valtio-y 💊🚀
+# valtio-y 🔄⚡
 
 [![CI](https://img.shields.io/github/actions/workflow/status/valtiojs/valtio-y/ci.yml?branch=main)](https://github.com/valtiojs/valtio-y/actions?query=workflow%3ACI)
 [![npm](https://img.shields.io/npm/v/valtio-y)](https://www.npmjs.com/package/valtio-y)
@@ -8,6 +8,8 @@
 **Collaborative state made easy.** Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs for building multi-user apps with minimal effort.
 
 Write normal JavaScript, get real-time collaboration for free.
+
+> **What makes valtio-y different?** Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), comprehensive documentation, and battle-tested performance optimizations. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
 
 ```bash
 npm install valtio-y valtio yjs
@@ -113,6 +115,7 @@ state.message = "Hello from client 1";
 **Supported providers:**
 
 - [y-websocket](https://github.com/yjs/y-websocket) - WebSocket sync
+- [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver) - PartyKit/Cloudflare Durable Objects backend
 - [y-webrtc](https://github.com/yjs/y-webrtc) - P2P WebRTC sync
 - [y-indexeddb](https://github.com/yjs/y-indexeddb) - Offline persistence
 - Any Yjs provider
