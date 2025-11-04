@@ -103,8 +103,9 @@ import { createYjsProxy } from "valtio-y";
 const ydoc = new Y.Doc();
 
 // Create a synchronized proxy
+// getRoot selects which Yjs structure to sync (all clients must use the same name)
 const { proxy: state } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("mymap"),
+  getRoot: (doc) => doc.getMap("root"), // Most apps use one root Map
 });
 
 // Mutate state like a normal object
@@ -203,6 +204,7 @@ Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
 
 Core documentation for understanding and using valtio-y effectively:
 
+- **[Structuring Your App](./guides/structuring-your-app.md)** ⭐ **Start here** - How to organize state with `getRoot`
 - **[Core Concepts](./guides/concepts.md)** - Understand CRDTs and the valtio-y mental model
 - **[Basic Operations](./guides/basic-operations.md)** - Objects, arrays, and nested structures
 - **[Undo/Redo](./guides/undo-redo.md)** - Implement undo/redo with Yjs UndoManager

@@ -19,6 +19,62 @@ import type { LogLevel } from "./core/logger";
  * Options for creating a Y.js-backed Valtio proxy.
  */
 export interface CreateYjsProxyOptions<_T> {
+  /**
+   * Selects which Yjs structure to synchronize with the Valtio proxy.
+   *
+   * ⚠️ **IMPORTANT:** All clients syncing the same data MUST use the same root name.
+   * Think of this like a database table name - everyone needs to agree on it.
+   *
+   * 💡 **RECOMMENDED PATTERN:** Most apps should use one root Map for all state:
+   *
+   * @example
+   * ```typescript
+   * // ✅ Recommended: One root Map containing all app state
+   * const { proxy: state } = createYjsProxy(doc, {
+   *   getRoot: (doc) => doc.getMap("root")
+   * });
+   *
+   * // Structure everything inside
+   * state.todos = [];
+   * state.users = [];
+   * state.settings = {};
+   * ```
+   *
+   * @example
+   * ```typescript
+   * // ✅ Alternative: Direct array root (when your entire app state is a list)
+   * const { proxy: todos } = createYjsProxy(doc, {
+   *   getRoot: (doc) => doc.getArray("todos")
+   * });
+   *
+   * todos.push({ id: 1, text: "Buy milk" });
+   * ```
+   *
+   * @example
+   * ```typescript
+   * // ⚠️ Advanced: Multiple roots (for specialized use cases)
+   * const { proxy: gameState } = createYjsProxy(doc, {
+   *   getRoot: (doc) => doc.getMap("gameState")
+   * });
+   * const { proxy: chat } = createYjsProxy(doc, {
+   *   getRoot: (doc) => doc.getArray("chat")
+   * });
+   *
+   * // Use when you need separate undo managers or selective sync
+   * ```
+   *
+   * **How Yjs sync works:**
+   * - The Y.Doc is a container with multiple named structures
+   * - WebSocket/WebRTC providers sync the ENTIRE Y.Doc
+   * - `getRoot` tells valtio-y which structure to wrap in a Valtio proxy
+   * - Different clients can access different structures from the same synced doc
+   *
+   * **Server/Client relationship:**
+   * - If server creates `doc.getMap("root")`, clients must use the same name
+   * - The name is part of the sync contract, like a shared schema
+   *
+   * @see https://github.com/valtiojs/valtio-y/blob/main/guides/structuring-your-app.md
+   */
   getRoot: (doc: Y.Doc) => Y.Map<unknown> | Y.Array<unknown>;
   logLevel?: LogLevel;
 }
