@@ -22,13 +22,56 @@ import { createYjsProxy } from "../../src/index";
 
 const waitMicrotask = () => Promise.resolve();
 
+// Type definitions for test scenarios
+interface NestedState {
+  nested?: { value: number };
+}
+
+interface DataState {
+  data?: { version: number };
+}
+
+interface DeepNestedState {
+  parent?: {
+    child?: {
+      grandchild?: {
+        value: number;
+      };
+      [key: string]: unknown;
+    };
+    [key: string]: unknown;
+  };
+}
+
+interface TempFinalState {
+  temp?: { iteration: number };
+  final?: { value: number };
+}
+
+interface ComplexNestedState {
+  parent?: {
+    child?: {
+      grandchild?: {
+        value: number;
+      };
+    };
+  };
+}
+
+interface MixedDataState {
+  data?: {
+    users?: Array<{ id: number; name: string }>;
+    settings?: { theme?: string; [key: string]: string | number | undefined };
+  };
+}
+
 describe("Memory Leak Prevention", () => {
   describe("Subscription Cleanup", () => {
     it("deleted map controller: no longer receives updates from Yjs", async () => {
       const doc = new Y.Doc();
       const yRoot = doc.getMap<unknown>("root");
 
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<NestedState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -36,7 +79,7 @@ describe("Memory Leak Prevention", () => {
       proxy.nested = { value: 1 };
       await waitMicrotask();
 
-      const nestedProxy = proxy.nested as Record<string, unknown>;
+      const nestedProxy = proxy.nested!;
       const yNested = yRoot.get("nested") as Y.Map<unknown>;
 
       // Verify initial state
@@ -94,7 +137,7 @@ describe("Memory Leak Prevention", () => {
       const doc = new Y.Doc();
       const yRoot = doc.getMap<unknown>("root");
 
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<DataState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -102,14 +145,14 @@ describe("Memory Leak Prevention", () => {
       proxy.data = { version: 1 };
       await waitMicrotask();
 
-      const oldProxy = proxy.data as Record<string, unknown>;
+      const oldProxy = proxy.data!;
       const oldYMap = yRoot.get("data") as Y.Map<unknown>;
 
       // Replace with new object
       proxy.data = { version: 2 };
       await waitMicrotask();
 
-      const newProxy = proxy.data as Record<string, unknown>;
+      const newProxy = proxy.data!;
       const newYMap = yRoot.get("data") as Y.Map<unknown>;
 
       expect(newYMap).not.toBe(oldYMap);
@@ -128,7 +171,7 @@ describe("Memory Leak Prevention", () => {
       const doc = new Y.Doc();
       const yRoot = doc.getMap<unknown>("root");
 
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<NestedState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -136,7 +179,7 @@ describe("Memory Leak Prevention", () => {
       proxy.nested = { value: 1 };
       await waitMicrotask();
 
-      const nestedProxy = proxy.nested as Record<string, unknown>;
+      const nestedProxy = proxy.nested!;
       const yNested = yRoot.get("nested") as Y.Map<unknown>;
 
       // Test bidirectional sync works
@@ -169,7 +212,7 @@ describe("Memory Leak Prevention", () => {
       expect(nestedProxy.value).toBe(oldProxyValueBeforeDelete); // Frozen at 3
 
       // New proxy should work independently
-      const newNestedProxy = proxy.nested as Record<string, unknown>;
+      const newNestedProxy = proxy.nested!;
       expect(newNestedProxy.value).toBe(100);
 
       // Mutating new proxy shouldn't affect old proxy
@@ -222,7 +265,7 @@ describe("Memory Leak Prevention", () => {
       const doc = new Y.Doc();
       const yRoot = doc.getMap<unknown>("root");
 
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<DeepNestedState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -236,9 +279,9 @@ describe("Memory Leak Prevention", () => {
       };
       await waitMicrotask();
 
-      const parentProxy = proxy.parent as Record<string, unknown>;
-      const childProxy = parentProxy.child as Record<string, unknown>;
-      const grandchildProxy = childProxy.grandchild as Record<string, unknown>;
+      const parentProxy = proxy.parent!;
+      const childProxy = parentProxy.child!;
+      const grandchildProxy = childProxy.grandchild!;
 
       const yParent = yRoot.get("parent") as Y.Map<unknown>;
       const yChild = yParent.get("child") as Y.Map<unknown>;
@@ -269,7 +312,7 @@ describe("Memory Leak Prevention", () => {
     it("deleted controller: creating new object uses fresh cache", async () => {
       const doc = new Y.Doc();
 
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<NestedState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -277,7 +320,7 @@ describe("Memory Leak Prevention", () => {
       proxy.nested = { value: 1 };
       await waitMicrotask();
 
-      const firstProxy = proxy.nested as Record<string, unknown>;
+      const firstProxy = proxy.nested!;
 
       // Delete the controller
       delete proxy.nested;
@@ -287,7 +330,7 @@ describe("Memory Leak Prevention", () => {
       proxy.nested = { value: 2 };
       await waitMicrotask();
 
-      const secondProxy = proxy.nested as Record<string, unknown>;
+      const secondProxy = proxy.nested!;
 
       // Should be a different proxy instance (cache was cleaned up)
       expect(secondProxy).not.toBe(firstProxy);
@@ -310,7 +353,7 @@ describe("Memory Leak Prevention", () => {
       const doc = new Y.Doc();
       const yRoot = doc.getMap<unknown>("root");
 
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<DataState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -318,14 +361,14 @@ describe("Memory Leak Prevention", () => {
       proxy.data = { version: 1 };
       await waitMicrotask();
 
-      const oldProxy = proxy.data as Record<string, unknown>;
+      const oldProxy = proxy.data!;
       const oldYMap = yRoot.get("data") as Y.Map<unknown>;
 
       // Replace with new object
       proxy.data = { version: 2 };
       await waitMicrotask();
 
-      const newProxy = proxy.data as Record<string, unknown>;
+      const newProxy = proxy.data!;
       const newYMap = yRoot.get("data") as Y.Map<unknown>;
 
       // Verify they're different instances
@@ -346,7 +389,7 @@ describe("Memory Leak Prevention", () => {
     it("nested structure deletion: recreating creates fresh nested proxies", async () => {
       const doc = new Y.Doc();
 
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<ComplexNestedState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -360,8 +403,8 @@ describe("Memory Leak Prevention", () => {
       };
       await waitMicrotask();
 
-      const firstParent = proxy.parent as Record<string, unknown>;
-      const firstChild = firstParent.child as Record<string, unknown>;
+      const firstParent = proxy.parent!;
+      const firstChild = firstParent.child!;
 
       // Delete parent - should clean up all nested caches
       delete proxy.parent;
@@ -378,15 +421,15 @@ describe("Memory Leak Prevention", () => {
       await waitMicrotask();
 
       // Accessing should create new proxies
-      const secondParent = proxy.parent as Record<string, unknown>;
-      const secondChild = secondParent.child as Record<string, unknown>;
+      const secondParent = proxy.parent!;
+      const secondChild = secondParent.child!;
 
       // Verify new instances (cache was cleaned)
       expect(secondParent).not.toBe(firstParent);
       expect(secondChild).not.toBe(firstChild);
 
       // New proxies should be live
-      const grandchild = secondChild.grandchild as Record<string, unknown>;
+      const grandchild = secondChild.grandchild!;
       expect(grandchild.value).toBe(2);
 
       grandchild.value = 3;
@@ -445,7 +488,7 @@ describe("Memory Leak Prevention", () => {
     it("delete-then-create cycle: cache properly reset", async () => {
       const doc = new Y.Doc();
 
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<TempFinalState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -454,7 +497,7 @@ describe("Memory Leak Prevention", () => {
         proxy.temp = { iteration: i };
         await waitMicrotask();
 
-        const tempProxy = proxy.temp as Record<string, unknown>;
+        const tempProxy = proxy.temp!;
         expect(tempProxy.iteration).toBe(i);
 
         delete proxy.temp;
@@ -465,7 +508,7 @@ describe("Memory Leak Prevention", () => {
       proxy.final = { value: 999 };
       await waitMicrotask();
 
-      const finalProxy = proxy.final as Record<string, unknown>;
+      const finalProxy = proxy.final!;
       expect(finalProxy.value).toBe(999);
 
       // Verify it's live
@@ -481,13 +524,13 @@ describe("Memory Leak Prevention", () => {
   describe("Long-Running Scenarios", () => {
     it("repeated add/delete cycles: no subscription accumulation", async () => {
       const doc = new Y.Doc();
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<TempFinalState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
       // Perform many add/delete cycles
       for (let i = 0; i < 100; i++) {
-        proxy.temp = { value: i };
+        proxy.temp = { iteration: i };
         await waitMicrotask();
 
         delete proxy.temp;
@@ -499,7 +542,7 @@ describe("Memory Leak Prevention", () => {
       proxy.final = { value: 999 };
       await waitMicrotask();
 
-      const finalProxy = proxy.final as Record<string, unknown>;
+      const finalProxy = proxy.final!;
       expect(finalProxy.value).toBe(999);
 
       // Verify subscription still works
@@ -573,7 +616,25 @@ describe("Memory Leak Prevention", () => {
 
     it("nested object creation/deletion loop: no memory accumulation", async () => {
       const doc = new Y.Doc();
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+
+      interface NestedLoopState {
+        temp?: {
+          nested: {
+            deep: {
+              value: number;
+            };
+          };
+        };
+        final?: {
+          nested: {
+            deep: {
+              value: number;
+            };
+          };
+        };
+      }
+
+      const { proxy } = createYjsProxy<NestedLoopState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -605,9 +666,9 @@ describe("Memory Leak Prevention", () => {
       };
       await waitMicrotask();
 
-      const finalProxy = proxy.final as Record<string, unknown>;
-      const nestedProxy = finalProxy.nested as Record<string, unknown>;
-      const deepProxy = nestedProxy.deep as Record<string, unknown>;
+      const finalProxy = proxy.final!;
+      const nestedProxy = finalProxy.nested;
+      const deepProxy = nestedProxy.deep;
 
       expect(deepProxy.value).toBe(999);
 
@@ -657,7 +718,7 @@ describe("Memory Leak Prevention", () => {
 
     it("mixed operations over time: system remains stable", async () => {
       const doc = new Y.Doc();
-      const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
+      const { proxy } = createYjsProxy<MixedDataState>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
@@ -668,12 +729,9 @@ describe("Memory Leak Prevention", () => {
       };
       await waitMicrotask();
 
-      const dataProxy = proxy.data as Record<string, unknown>;
-      const usersProxy = dataProxy.users as Array<{
-        id: number;
-        name: string;
-      }>;
-      const settingsProxy = dataProxy.settings as Record<string, unknown>;
+      const dataProxy = proxy.data!;
+      const usersProxy = dataProxy.users!;
+      const settingsProxy = dataProxy.settings!;
 
       // Perform many mixed operations
       for (let i = 0; i < 30; i++) {
