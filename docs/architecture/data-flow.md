@@ -13,7 +13,7 @@ Scenario: `userProxy.profile.email = '...'` in the UI.
 7. `yRoot.observeDeep` callback fires, but the handler ignores it because `transaction.origin === VALTIO_YJS_ORIGIN`.
 8. `doc.on('update')` may fire via the provider and propagate to peers.
 
-Note: When assigning a plain object/array into a controller proxy, the system eagerly upgrades it to a Y type and replaces the plain value with a live controller proxy under a reconciliation lock. This keeps nested edits encapsulated within the child controller proxy and avoids parent-level routing.
+Note: When assigning a plain object/array into a controller proxy, the system eagerly upgrades it to a Y type during planning. After the scheduler's transaction completes and the Y type is fully integrated, post-transaction callbacks replace the plain value with a live controller proxy under a reconciliation lock. This ensures the controller is created only after the Y value exists and keeps nested edits encapsulated within the child controller proxy, avoiding parent-level routing.
 
 ## 2) Remote Change (Network -> Yjs -> UI)
 

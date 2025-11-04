@@ -111,7 +111,9 @@
 - Implementation:
   - Validate synchronously using `validateDeepForSharedState` before enqueueing operations
   - Wrap validation and enqueue logic in try/catch blocks
-  - On error, use Valtio operation metadata to rollback proxy to previous state
+  - On error, rollback the proxy to previous state using strategy appropriate to the data structure:
+    - **Arrays**: Resync from Y.Array source of truth (more robust, ensures exact match with Yjs state)
+    - **Maps**: Use Valtio operation metadata to restore previous key values
   - Re-throw error to allow user-level error handling
 - Rationale:
   - **Consistency**: Valtio proxy and Yjs document always stay in sync
