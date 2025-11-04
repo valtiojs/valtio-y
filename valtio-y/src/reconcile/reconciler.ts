@@ -23,6 +23,53 @@ function cleanupNestedValue(
   coordinator.state.valtioProxyToYType.delete(value as object);
 }
 
+/**
+ * Finds object-type items that were removed from an array, handling duplicates correctly.
+ * Uses multiset difference: counts occurrences in new array, then finds old items not retained.
+ *
+ * Purpose: Identifies Valtio proxy objects that need cleanup (unsubscription and cache removal)
+ * when arrays are reconciled during Yjs → Valtio sync.
+ *
+ * Example: old=[A, A, B], new=[A, C] → returns [A, B] (one A and B were removed)
+ *
+ * @internal - Exported for testing purposes only
+ */
+export function findRemovedControllers(
+  oldItems: unknown[],
+  newItems: unknown[],
+): object[] {
+  // Early exit: no objects to cleanup
+  if (oldItems.length === 0) return [];
+
+  // Count how many times each object appears in the new array
+  const retainedCounts = new Map<object, number>();
+  for (const item of newItems) {
+    if (item && typeof item === "object") {
+      const obj = item as object;
+      retainedCounts.set(obj, (retainedCounts.get(obj) ?? 0) + 1);
+    }
+  }
+
+  // Find objects from old array that aren't sufficiently retained in new array
+  const removed: object[] = [];
+  for (const item of oldItems) {
+    if (!item || typeof item !== "object") continue;
+
+    const obj = item as object;
+    const count = retainedCounts.get(obj) ?? 0;
+
+    if (count > 0) {
+      // This instance is retained, decrement count
+      retainedCounts.set(obj, count - 1);
+    } else {
+      // No more retained instances, this one was removed
+      removed.push(obj);
+    }
+  }
+
+  return removed;
+}
+
 // Reconciler layer
 //
 // Responsibility:
@@ -185,37 +232,23 @@ export function reconcileValtioArray(
         return item;
       }
     });
-    const previousItems = valtioProxy.slice();
-    const retained = new Map<object, number>();
-    for (const item of newContent) {
-      if (item && typeof item === "object") {
-        const obj = item as object;
-        retained.set(obj, (retained.get(obj) ?? 0) + 1);
-      }
-    }
-    const removedControllers: object[] = [];
-    for (const item of previousItems) {
-      if (!item || typeof item !== "object") continue;
-      const obj = item as object;
-      const count = retained.get(obj);
-      if (count && count > 0) {
-        retained.set(obj, count - 1);
-        continue;
-      }
-      removedControllers.push(obj);
-    }
+    // Find controllers that need cleanup (present in old array but not in new)
+    // Uses reference counting to handle duplicates correctly (same object appearing multiple times)
+    const removedControllers = findRemovedControllers(
+      valtioProxy.slice(),
+      newContent,
+    );
+
     coordinator.logger.debug("reconcile array splice", newContent.length);
     valtioProxy.splice(0, valtioProxy.length, ...newContent);
+
+    // Cleanup removed controllers (unsubscribe and remove from caches)
     for (const removed of removedControllers) {
       cleanupNestedValue(coordinator, removed);
     }
-    coordinator.logger.debug("reconcileValtioArray end", {
-      valtioLength: valtioProxy.length,
-    });
 
-    // Eagerly ensure nested children of shared containers are also materialized
-    for (let i = 0; i < newContent.length; i++) {
-      const item = yArray.get(i) as unknown;
+    // Recursively reconcile nested containers to ensure deep materialization
+    for (const item of newContent) {
       if (item && isYSharedContainer(item)) {
         if (isYMap(item)) {
           reconcileValtioMap(
@@ -234,6 +267,10 @@ export function reconcileValtioArray(
         }
       }
     }
+
+    coordinator.logger.debug("reconcileValtioArray end", {
+      valtioLength: valtioProxy.length,
+    });
   });
 }
 
