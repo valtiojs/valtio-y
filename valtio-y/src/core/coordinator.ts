@@ -3,8 +3,7 @@ import {
   SynchronizationState,
   type AnySharedType,
 } from "./synchronization-state";
-import { createLogger, type Logger } from "./logger";
-import { createTraceSink, type TraceSink } from "./trace-sink";
+import { createLogger, type Logger, type LogLevel } from "./logger";
 import {
   WriteScheduler,
   type ApplyFunctions,
@@ -39,16 +38,14 @@ export class ValtioYjsCoordinator {
   // Exposed for components that need state/logging
   readonly state: SynchronizationState;
   readonly logger: Logger;
-  readonly trace: TraceSink;
 
   // Internal components
   private readonly scheduler: WriteScheduler;
 
-  constructor(doc: Y.Doc, debug?: boolean, trace?: boolean) {
+  constructor(doc: Y.Doc, logLevel?: LogLevel) {
     // Create pure components with no dependencies
     this.state = new SynchronizationState();
-    this.logger = createLogger(debug ?? false, trace ?? false);
-    this.trace = createTraceSink(trace ?? false);
+    this.logger = createLogger(logLevel ?? "off");
 
     // Wire up apply functions with proper dependencies via closures
     // This eliminates the need for setter injection
@@ -75,12 +72,7 @@ export class ValtioYjsCoordinator {
 
     // Create scheduler with all dependencies (constructor injection)
     // No setter injection needed - fully initialized immediately
-    this.scheduler = new WriteScheduler(
-      doc,
-      this.logger,
-      this.trace,
-      applyFunctions,
-    );
+    this.scheduler = new WriteScheduler(doc, this.logger, applyFunctions);
   }
 
   // ===== Coordination Methods =====
@@ -175,11 +167,9 @@ export class ValtioYjsCoordinator {
   ): void {
     const doc = getYDoc(yMap);
     if (!doc) return;
-    if (this.trace.enabled) {
-      this.trace.log("[coordinator] schedule map finalize", {
-        keys: Array.from(yMap.keys()),
-      });
-    }
+    this.logger.trace("[coordinator] schedule map finalize", {
+      keys: Array.from(yMap.keys()),
+    });
     queue.enqueue(() =>
       reconcileValtioMap(this, yMap, doc, withReconcilingLock),
     );
@@ -192,11 +182,9 @@ export class ValtioYjsCoordinator {
   ): void {
     const doc = getYDoc(yArray);
     if (!doc) return;
-    if (this.trace.enabled) {
-      this.trace.log("[coordinator] schedule array finalize", {
-        length: yArray.length,
-      });
-    }
+    this.logger.trace("[coordinator] schedule array finalize", {
+      length: yArray.length,
+    });
     queue.enqueue(() =>
       reconcileValtioArray(this, yArray, doc, withReconcilingLock),
     );

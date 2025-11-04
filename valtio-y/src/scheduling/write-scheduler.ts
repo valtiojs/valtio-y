@@ -1,7 +1,6 @@
 import * as Y from "yjs";
 import type { PendingMapEntry, PendingArrayEntry } from "./batch-types";
 import type { Logger } from "../core/logger";
-import type { TraceSink } from "../core/trace-sink";
 import { VALTIO_YJS_ORIGIN } from "../core/constants";
 import { PostTransactionQueue } from "./post-transaction-queue";
 
@@ -54,7 +53,6 @@ function collectYSubtree(root: unknown): {
 export class WriteScheduler {
   private readonly doc: Y.Doc;
   private readonly log: Logger;
-  private readonly trace: TraceSink;
   private readonly applyFunctions: ApplyFunctions;
 
   // Write scheduler state
@@ -81,19 +79,12 @@ export class WriteScheduler {
    * No incomplete initialization possible - WriteScheduler is ready to use immediately.
    *
    * @param doc - Y.Doc instance for transactions
-   * @param log - Logger instance for debug output
-   * @param trace - Trace sink used for verbose instrumentation
+   * @param log - Logger instance for debug and trace output
    * @param applyFunctions - Callbacks for applying batched operations
    */
-  constructor(
-    doc: Y.Doc,
-    log: Logger,
-    trace: TraceSink,
-    applyFunctions: ApplyFunctions,
-  ) {
+  constructor(doc: Y.Doc, log: Logger, applyFunctions: ApplyFunctions) {
     this.doc = doc;
     this.log = log;
-    this.trace = trace;
     this.applyFunctions = applyFunctions;
   }
 
@@ -370,98 +361,92 @@ export class WriteScheduler {
     }
 
     // Trace mode: log planned intents for debugging
-    if (this.trace.enabled) {
-      this.trace.log("[scheduler] planned intents for this flush", {
-        mapSets:
-          mapSets.size > 0
-            ? Array.from(mapSets.entries()).map(([yMap, keyMap]) => ({
-                target: yMap.constructor.name,
-                operations: Array.from(keyMap.keys()),
-              }))
-            : [],
-        mapDeletes:
-          mapDeletes.size > 0
-            ? Array.from(mapDeletes.entries()).map(([yMap, keySet]) => ({
-                target: yMap.constructor.name,
-                operations: Array.from(keySet),
-              }))
-            : [],
-        arraySets:
-          arraySets.size > 0
-            ? Array.from(arraySets.entries()).map(([yArray, indexMap]) => ({
-                target: yArray.constructor.name,
-                operations: Array.from(indexMap.keys()),
-              }))
-            : [],
-        arrayDeletes:
-          arrayDeletes.size > 0
-            ? Array.from(arrayDeletes.entries()).map(([yArray, indexSet]) => ({
-                target: yArray.constructor.name,
-                operations: Array.from(indexSet),
-              }))
-            : [],
-        arrayReplaces:
-          arrayReplaces.size > 0
-            ? Array.from(arrayReplaces.entries()).map(([yArray, indexMap]) => ({
-                target: yArray.constructor.name,
-                operations: Array.from(indexMap.keys()),
-              }))
-            : [],
-      });
-    }
+    this.log.trace("[scheduler] planned intents for this flush", {
+      mapSets:
+        mapSets.size > 0
+          ? Array.from(mapSets.entries()).map(([yMap, keyMap]) => ({
+              target: yMap.constructor.name,
+              operations: Array.from(keyMap.keys()),
+            }))
+          : [],
+      mapDeletes:
+        mapDeletes.size > 0
+          ? Array.from(mapDeletes.entries()).map(([yMap, keySet]) => ({
+              target: yMap.constructor.name,
+              operations: Array.from(keySet),
+            }))
+          : [],
+      arraySets:
+        arraySets.size > 0
+          ? Array.from(arraySets.entries()).map(([yArray, indexMap]) => ({
+              target: yArray.constructor.name,
+              operations: Array.from(indexMap.keys()),
+            }))
+          : [],
+      arrayDeletes:
+        arrayDeletes.size > 0
+          ? Array.from(arrayDeletes.entries()).map(([yArray, indexSet]) => ({
+              target: yArray.constructor.name,
+              operations: Array.from(indexSet),
+            }))
+          : [],
+      arrayReplaces:
+        arrayReplaces.size > 0
+          ? Array.from(arrayReplaces.entries()).map(([yArray, indexMap]) => ({
+              target: yArray.constructor.name,
+              operations: Array.from(indexMap.keys()),
+            }))
+          : [],
+    });
 
     // Sibling purge heuristic removed in favor of precise descendant-only purging
 
     // DEBUG-TRACE: dump the exact batch about to be applied
-    if (this.trace.enabled) {
-      const mapDeletesLog = Array.from(mapDeletes.entries()).map(
-        ([yMap, keySet]) => ({
-          targetId: (
-            yMap as unknown as { _item?: { id?: { toString?: () => string } } }
-          )?._item?.id?.toString?.(),
-          keys: Array.from(keySet),
-        }),
-      );
-      const mapSetsLog = Array.from(mapSets.entries()).map(
-        ([yMap, keyMap]) => ({
-          targetId: (
-            yMap as unknown as { _item?: { id?: { toString?: () => string } } }
-          )?._item?.id?.toString?.(),
-          keys: Array.from(keyMap.keys()),
-        }),
-      );
-      const arrayDeletesLog = Array.from(arrayDeletes.entries()).map(
-        ([yArr, idxSet]) => ({
-          targetId: (
-            yArr as unknown as { _item?: { id?: { toString?: () => string } } }
-          )?._item?.id?.toString?.(),
-          indices: Array.from(idxSet).sort((a, b) => a - b),
-        }),
-      );
-      const arraySetsLog = Array.from(arraySets.entries()).map(
-        ([yArr, idxMap]) => ({
-          targetId: (
-            yArr as unknown as { _item?: { id?: { toString?: () => string } } }
-          )?._item?.id?.toString?.(),
-          indices: Array.from(idxMap.keys()).sort((a, b) => a - b),
-        }),
-      );
-      const arrayReplacesLog = Array.from(arrayReplaces.entries()).map(
-        ([yArr, idxMap]) => ({
-          targetId: (
-            yArr as unknown as { _item?: { id?: { toString?: () => string } } }
-          )?._item?.id?.toString?.(),
-          indices: Array.from(idxMap.keys()).sort((a, b) => a - b),
-        }),
-      );
-      this.trace.log("[scheduler] flushing transaction", {
-        mapDeletes: mapDeletesLog,
-        mapSets: mapSetsLog,
-        arrayDeletes: arrayDeletesLog,
-        arraySets: arraySetsLog,
-        arrayReplaces: arrayReplacesLog,
-      });
-    }
+    const mapDeletesLog = Array.from(mapDeletes.entries()).map(
+      ([yMap, keySet]) => ({
+        targetId: (
+          yMap as unknown as { _item?: { id?: { toString?: () => string } } }
+        )?._item?.id?.toString?.(),
+        keys: Array.from(keySet),
+      }),
+    );
+    const mapSetsLog = Array.from(mapSets.entries()).map(([yMap, keyMap]) => ({
+      targetId: (
+        yMap as unknown as { _item?: { id?: { toString?: () => string } } }
+      )?._item?.id?.toString?.(),
+      keys: Array.from(keyMap.keys()),
+    }));
+    const arrayDeletesLog = Array.from(arrayDeletes.entries()).map(
+      ([yArr, idxSet]) => ({
+        targetId: (
+          yArr as unknown as { _item?: { id?: { toString?: () => string } } }
+        )?._item?.id?.toString?.(),
+        indices: Array.from(idxSet).sort((a, b) => a - b),
+      }),
+    );
+    const arraySetsLog = Array.from(arraySets.entries()).map(
+      ([yArr, idxMap]) => ({
+        targetId: (
+          yArr as unknown as { _item?: { id?: { toString?: () => string } } }
+        )?._item?.id?.toString?.(),
+        indices: Array.from(idxMap.keys()).sort((a, b) => a - b),
+      }),
+    );
+    const arrayReplacesLog = Array.from(arrayReplaces.entries()).map(
+      ([yArr, idxMap]) => ({
+        targetId: (
+          yArr as unknown as { _item?: { id?: { toString?: () => string } } }
+        )?._item?.id?.toString?.(),
+        indices: Array.from(idxMap.keys()).sort((a, b) => a - b),
+      }),
+    );
+    this.log.trace("[scheduler] flushing transaction", {
+      mapDeletes: mapDeletesLog,
+      mapSets: mapSetsLog,
+      arrayDeletes: arrayDeletesLog,
+      arraySets: arraySetsLog,
+      arrayReplaces: arrayReplacesLog,
+    });
 
     // Create post-transaction queue for callbacks
     const postQueue = new PostTransactionQueue(this.log);

@@ -57,15 +57,15 @@ export function createTwoDocsWithRelay(): {
 
 export function createRelayedProxiesMapRoot<
   T extends object = LooseRecord,
->(options?: { debug?: boolean }) {
+>(options?: { logLevel?: "off" | "error" | "warn" | "debug" | "trace" }) {
   const { docA, docB } = createTwoDocsWithRelay();
   const a = createYjsProxy<T>(docA, {
     getRoot: (d) => d.getMap("root"),
-    debug: options?.debug,
+    logLevel: options?.logLevel,
   });
   const b = createYjsProxy<T>(docB, {
     getRoot: (d) => d.getMap("root"),
-    debug: options?.debug,
+    logLevel: options?.logLevel,
   });
   return {
     docA,

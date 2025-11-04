@@ -4,87 +4,186 @@ import { ValtioYjsCoordinator } from "./coordinator";
 
 describe("ValtioYjsCoordinator", () => {
   describe("Constructor and Logger", () => {
-    it("creates coordinator with default settings (debug=false)", () => {
+    it("creates coordinator with default settings (logging off)", () => {
       const doc = new Y.Doc();
       const coordinator = new ValtioYjsCoordinator(doc);
       expect(coordinator).toBeInstanceOf(ValtioYjsCoordinator);
       expect(coordinator.state.isReconciling).toBe(false);
       expect(coordinator.logger).toBeDefined();
+      expect(coordinator.logger.trace).toBeInstanceOf(Function);
       expect(coordinator.logger.debug).toBeInstanceOf(Function);
       expect(coordinator.logger.warn).toBeInstanceOf(Function);
       expect(coordinator.logger.error).toBeInstanceOf(Function);
     });
 
-    it("creates coordinator with debug enabled", () => {
+    it("creates coordinator with error level", () => {
       const doc = new Y.Doc();
-      const coordinator = new ValtioYjsCoordinator(doc, true);
+      const coordinator = new ValtioYjsCoordinator(doc, "error");
       expect(coordinator).toBeInstanceOf(ValtioYjsCoordinator);
     });
 
-    it("creates coordinator with trace mode enabled", () => {
+    it("creates coordinator with warn level", () => {
       const doc = new Y.Doc();
-      const coordinator = new ValtioYjsCoordinator(doc, false, true);
+      const coordinator = new ValtioYjsCoordinator(doc, "warn");
       expect(coordinator).toBeInstanceOf(ValtioYjsCoordinator);
     });
 
-    it("creates coordinator with both debug and trace enabled", () => {
+    it("creates coordinator with debug level", () => {
       const doc = new Y.Doc();
-      const coordinator = new ValtioYjsCoordinator(doc, true, true);
+      const coordinator = new ValtioYjsCoordinator(doc, "debug");
       expect(coordinator).toBeInstanceOf(ValtioYjsCoordinator);
     });
 
-    it("debug logs are disabled by default", () => {
-      const consoleSpy = vi
+    it("creates coordinator with trace level", () => {
+      const doc = new Y.Doc();
+      const coordinator = new ValtioYjsCoordinator(doc, "trace");
+      expect(coordinator).toBeInstanceOf(ValtioYjsCoordinator);
+    });
+
+    it("trace and debug logs are disabled by default (off level)", () => {
+      const consoleDebugSpy = vi
         .spyOn(console, "debug")
         .mockImplementation(() => {});
-      const doc = new Y.Doc();
-      const coordinator = new ValtioYjsCoordinator(doc, false);
-
-      coordinator.logger.debug("test message");
-
-      expect(consoleSpy).not.toHaveBeenCalled();
-      consoleSpy.mockRestore();
-    });
-
-    it("debug logs are enabled when debug=true", () => {
-      const consoleSpy = vi
-        .spyOn(console, "debug")
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
         .mockImplementation(() => {});
-      const doc = new Y.Doc();
-      const coordinator = new ValtioYjsCoordinator(doc, true);
-
-      coordinator.logger.debug("test message", 123);
-
-      expect(consoleSpy).toHaveBeenCalledWith("[valtio-y] test message", 123);
-      consoleSpy.mockRestore();
-    });
-
-    it("warn logs always work regardless of debug setting", () => {
-      const consoleSpy = vi.spyOn(console, "warn").mockImplementation(() => {});
-      const doc = new Y.Doc();
-      const coordinator = new ValtioYjsCoordinator(doc, false);
-
-      coordinator.logger.warn("warning message");
-
-      expect(consoleSpy).toHaveBeenCalledWith("[valtio-y] warning message");
-      consoleSpy.mockRestore();
-    });
-
-    it("error logs always work regardless of debug setting", () => {
-      const consoleSpy = vi
+      const consoleErrorSpy = vi
         .spyOn(console, "error")
         .mockImplementation(() => {});
       const doc = new Y.Doc();
-      const coordinator = new ValtioYjsCoordinator(doc, false);
+      const coordinator = new ValtioYjsCoordinator(doc);
 
+      coordinator.logger.trace("trace message");
+      coordinator.logger.debug("debug message");
+      coordinator.logger.warn("warn message");
+      coordinator.logger.error("error message");
+
+      // Trace and debug should not be called
+      expect(consoleDebugSpy).not.toHaveBeenCalled();
+      // Warn and error ALWAYS log (important user-facing messages)
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[valtio-y] warn message");
+      expect(consoleErrorSpy).toHaveBeenCalledWith("[valtio-y] error message");
+
+      consoleDebugSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("error level logs warnings and errors (but not debug/trace)", () => {
+      const consoleDebugSpy = vi
+        .spyOn(console, "debug")
+        .mockImplementation(() => {});
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const doc = new Y.Doc();
+      const coordinator = new ValtioYjsCoordinator(doc, "error");
+
+      coordinator.logger.trace("trace message");
+      coordinator.logger.debug("debug message");
+      coordinator.logger.warn("warn message");
+      coordinator.logger.error("error message");
+
+      // Trace and debug should not be called
+      expect(consoleDebugSpy).not.toHaveBeenCalled();
+      // Warn and error ALWAYS log
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[valtio-y] warn message");
+      expect(consoleErrorSpy).toHaveBeenCalledWith("[valtio-y] error message");
+
+      consoleDebugSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("warn level logs warnings and errors", () => {
+      const consoleDebugSpy = vi
+        .spyOn(console, "debug")
+        .mockImplementation(() => {});
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const doc = new Y.Doc();
+      const coordinator = new ValtioYjsCoordinator(doc, "warn");
+
+      coordinator.logger.trace("trace message");
+      coordinator.logger.debug("debug message");
+      coordinator.logger.warn("warn message");
+      coordinator.logger.error("error message");
+
+      expect(consoleDebugSpy).not.toHaveBeenCalled();
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[valtio-y] warn message");
+      expect(consoleErrorSpy).toHaveBeenCalledWith("[valtio-y] error message");
+
+      consoleDebugSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("debug level logs debug, warnings, and errors", () => {
+      const consoleSpy = vi
+        .spyOn(console, "debug")
+        .mockImplementation(() => {});
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const doc = new Y.Doc();
+      const coordinator = new ValtioYjsCoordinator(doc, "debug");
+
+      coordinator.logger.trace("trace message");
+      coordinator.logger.debug("debug message", 123);
+      coordinator.logger.warn("warn message");
+      coordinator.logger.error("error message");
+
+      expect(consoleSpy).toHaveBeenCalledWith("[valtio-y] debug message", 123);
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[valtio-y] warn message");
+      expect(consoleErrorSpy).toHaveBeenCalledWith("[valtio-y] error message");
+      // Trace should not be called
+      expect(consoleSpy).toHaveBeenCalledTimes(1);
+
+      consoleSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
+    });
+
+    it("trace level logs all messages", () => {
+      const consoleSpy = vi
+        .spyOn(console, "debug")
+        .mockImplementation(() => {});
+      const consoleWarnSpy = vi
+        .spyOn(console, "warn")
+        .mockImplementation(() => {});
+      const consoleErrorSpy = vi
+        .spyOn(console, "error")
+        .mockImplementation(() => {});
+      const doc = new Y.Doc();
+      const coordinator = new ValtioYjsCoordinator(doc, "trace");
+
+      coordinator.logger.trace("trace message");
+      coordinator.logger.debug("debug message");
+      coordinator.logger.warn("warn message");
       const testError = new Error("test");
       coordinator.logger.error("error message", testError);
 
-      expect(consoleSpy).toHaveBeenCalledWith(
+      expect(consoleSpy).toHaveBeenCalledWith("[valtio-y] trace message");
+      expect(consoleSpy).toHaveBeenCalledWith("[valtio-y] debug message");
+      expect(consoleWarnSpy).toHaveBeenCalledWith("[valtio-y] warn message");
+      expect(consoleErrorSpy).toHaveBeenCalledWith(
         "[valtio-y] error message",
         testError,
       );
+
       consoleSpy.mockRestore();
+      consoleWarnSpy.mockRestore();
+      consoleErrorSpy.mockRestore();
     });
   });
 
