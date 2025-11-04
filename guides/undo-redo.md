@@ -11,9 +11,13 @@ import * as Y from "yjs";
 import { UndoManager } from "yjs";
 import { createYjsProxy } from "valtio-y";
 
+type State = {
+  count: number;
+};
+
 // Create your Yjs document and proxy
 const ydoc = new Y.Doc();
-const { proxy: state } = createYjsProxy(ydoc, {
+const { proxy: state } = createYjsProxy<State>(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
 });
 
@@ -160,8 +164,13 @@ function TodoApp() {
 Track only specific parts of your state by passing specific Yjs types:
 
 ```typescript
+type State = {
+  todos: Array<{ text: string; done: boolean }>;
+  settings: { theme: string };
+};
+
 const ydoc = new Y.Doc();
-const { proxy: state } = createYjsProxy(ydoc, {
+const { proxy: state } = createYjsProxy<State>(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
 });
 

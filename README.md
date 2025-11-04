@@ -95,16 +95,23 @@ bun add valtio-y valtio yjs
 
 Create a synchronized proxy and mutate it like any normal object. Changes automatically sync across clients.
 
-```js
+```typescript
 import * as Y from "yjs";
 import { createYjsProxy } from "valtio-y";
 
+type State = {
+  text: string;
+  count: number;
+  user: { name: string; age: number };
+  todos: Array<{ text: string; done: boolean }>;
+};
+
 // Create a Yjs document
-const ydoc = new Y.Doc();
+const ydoc: Y.Doc = new Y.Doc();
 
 // Create a synchronized proxy
 // getRoot selects which Yjs structure to sync (all clients must use the same name)
-const { proxy: state } = createYjsProxy(ydoc, {
+const { proxy: state } = createYjsProxy<State>(ydoc, {
   getRoot: (doc) => doc.getMap("root"), // Most apps use one root Map
 });
 

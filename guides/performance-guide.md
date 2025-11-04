@@ -179,8 +179,12 @@ Handling arrays with 1000+ items efficiently.
 Loading large arrays is fast with `bootstrap`:
 
 ```typescript
+type State = {
+  items: Array<{ id: number; value: string }>;
+};
+
 // ✅ Fast initialization
-const { proxy: state, bootstrap } = createYjsProxy(ydoc, {
+const { proxy: state, bootstrap } = createYjsProxy<State>(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
 });
 

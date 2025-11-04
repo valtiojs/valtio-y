@@ -47,7 +47,13 @@ Think of it like selecting a table from a database - all clients need to use the
 Use a single root `Y.Map` to contain all your application state:
 
 ```typescript
-const { proxy: state, bootstrap } = createYjsProxy(doc, {
+type AppState = {
+  todos: Array<{ id: number; title: string; completed: boolean }>;
+  users: Array<{ id: number; name: string; avatar: string }>;
+  settings: { theme: string; language: string };
+};
+
+const { proxy: state, bootstrap } = createYjsProxy<AppState>(doc, {
   getRoot: (doc) => doc.getMap("root"),
 });
 
@@ -316,6 +322,12 @@ provider.on("synced", () => {
 // SHARED: Both server and client use this
 const ROOT_NAME = "root"; // Single source of truth for root name
 
+type AppState = {
+  todos: Array<{ id: number; text: string; done: boolean }>;
+  filter: string;
+  user: { name: string } | null;
+};
+
 // SERVER
 const serverDoc = new Y.Doc();
 const root = serverDoc.getMap(ROOT_NAME);
@@ -326,7 +338,7 @@ root.set("filter", "all");
 root.set("user", new Y.Map());
 
 // CLIENT
-const { proxy: state } = createYjsProxy(clientDoc, {
+const { proxy: state } = createYjsProxy<AppState>(clientDoc, {
   getRoot: (doc) => doc.getMap(ROOT_NAME),
 });
 
