@@ -13,7 +13,7 @@ import { createLogger } from "./logger";
 describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
   it("plainObjectToYType handles primitives, undefined, null", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     // Test valid primitives
     const validVals = [0, 1, "s", true, null];
     const converted = validVals.map((v) =>
@@ -29,7 +29,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("plainObjectToYType converts nested structures", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     // Test with valid nested structure (no undefined)
     const input = {
       a: 1,
@@ -56,7 +56,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("plainObjectToYType rejects Date (must be explicitly converted)", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     const d = new Date("2020-01-01T00:00:00.000Z");
     expect(() => plainObjectToYType(d, state, logger)).toThrow(
       /Unable to convert non-plain object of type "Date"/,
@@ -65,7 +65,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("plainObjectToYType rejects RegExp (must be explicitly converted)", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     const r = /abc/gi;
     expect(() => plainObjectToYType(r, state, logger)).toThrow(
       /Unable to convert non-plain object of type "RegExp"/,
@@ -74,7 +74,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("plainObjectToYType throws on unknown non-plain objects", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     class Foo {
       constructor(public x: number) {}
     }
@@ -84,7 +84,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("plainObjectToYType rejects URL (must be explicitly converted)", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     const u = new URL("https://example.com/path?q=1");
     expect(() => plainObjectToYType(u, state, logger)).toThrow(
       /Unable to convert non-plain object of type "URL"/,
@@ -93,7 +93,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("roundtrip: plain → Y → plain for supported shapes (normalized)", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     // Use only supported values - no undefined, explicitly convert Date/RegExp/URL
     const input = {
       a: 1,
@@ -126,7 +126,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("arrays of explicitly converted special objects convert to string arrays", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     const arr = [
       new Date("2021-01-01T00:00:00.000Z").toISOString(),
       /x/gi.toString(),
@@ -170,7 +170,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("throws for unsupported primitives and values", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     expect(() => plainObjectToYType(BigInt(1), state, logger)).toThrowError();
     expect(() => plainObjectToYType(Symbol("x"), state, logger)).toThrowError();
     expect(() => plainObjectToYType(() => {}, state, logger)).toThrowError();
@@ -180,7 +180,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("throws for unsupported object types", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     expect(() =>
       plainObjectToYType(new Promise(() => {}), state, logger),
     ).toThrowError();
@@ -211,7 +211,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("throws for unsupported nested values in objects and arrays", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     const obj = { ok: 1, bad: new Map([["a", 1]]) } as const;
     expect(() => plainObjectToYType(obj, state, logger)).toThrowError();
 
@@ -221,7 +221,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("rejects nested Date/RegExp/URL inside containers (must be explicitly converted)", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     const d = new Date("2020-01-01T00:00:00.000Z");
     const r = /abc/gi;
     const u = new URL("https://example.com");
@@ -260,7 +260,7 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
 
   it("plainObjectToYType leaves AbstractType and controller proxies as-is", () => {
     const state = new SynchronizationState();
-    const logger = createLogger(false);
+    const logger = createLogger();
     const yMap = new Y.Map();
     // Simulate controller proxy mapping
     const controller = {};

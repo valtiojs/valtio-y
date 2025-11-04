@@ -9,7 +9,7 @@ import { reconcileValtioArrayWithDelta } from "./reconciler";
 describe("Reconciler: delta insert materializes fields immediately", () => {
   it("delta.insert of Y.Map makes fields available on proxy right away", () => {
     const doc = new Y.Doc();
-    const coordinator = new ValtioYjsCoordinator(doc, true);
+    const coordinator = new ValtioYjsCoordinator(doc, "debug");
     const yArr = new Y.Array<unknown>();
     const proxy = getOrCreateValtioProxy(coordinator, yArr, doc) as unknown[];
 

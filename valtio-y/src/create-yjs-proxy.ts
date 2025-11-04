@@ -13,13 +13,14 @@ import {
   reconcileValtioMap,
 } from "./reconcile/reconciler";
 import { initializeValtioYjsIntegration } from "./core/valtio-y-integration";
+import type { LogLevel } from "./core/logger";
 
 /**
  * Options for creating a Y.js-backed Valtio proxy.
  */
 export interface CreateYjsProxyOptions<_T> {
   getRoot: (doc: Y.Doc) => Y.Map<unknown> | Y.Array<unknown>;
-  debug?: boolean;
+  logLevel?: LogLevel;
 }
 
 /**
@@ -44,7 +45,7 @@ export function createYjsProxy<T extends object>(
   const yRoot = getRoot(doc);
 
   // 1. Create the coordinator (fully initialized via constructor injection)
-  const coordinator = new ValtioYjsCoordinator(doc, options.debug);
+  const coordinator = new ValtioYjsCoordinator(doc, options.logLevel);
   const stateProxy = getOrCreateValtioProxy(coordinator, yRoot, doc);
 
   // 2. Provide developer-driven bootstrap for initial data.

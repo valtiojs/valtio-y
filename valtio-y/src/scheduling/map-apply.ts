@@ -31,7 +31,7 @@ export function applyMapSets(
   withReconcilingLock: (fn: () => void) => void,
 ): void {
   for (const [yMap, keyToEntry] of mapSets) {
-    coordinator.trace.log("[mapApply] batch", {
+    coordinator.logger.trace("[mapApply] batch", {
       targetId: (
         yMap as unknown as { _item?: { id?: { toString?: () => string } } }
       )._item?.id?.toString?.(),
@@ -46,7 +46,7 @@ export function applyMapSets(
         coordinator.state,
         coordinator.logger,
       );
-      coordinator.trace.log("[mapApply] map.set", { key });
+      coordinator.logger.trace("[mapApply] map.set", { key });
       yMap.set(key, yValue);
       if (entry.after) {
         postQueue.enqueue(() => entry.after!(yValue));

@@ -38,7 +38,7 @@ export function applyArrayOperations(
       arrayReplaces.get(yArray) ?? new Map<number, PendingArrayEntry>();
 
     // DEBUG-TRACE: per-array batch snapshot
-    coordinator.trace.log("[arrayApply] batch", {
+    coordinator.logger.trace("[arrayApply] batch", {
       targetId: getYItemId(yArray),
       replaces: Array.from(replacesForArray.keys()).sort((a, b) => a - b),
       deletes: Array.from(deletesForArray.values()).sort((a, b) => a - b),
@@ -48,14 +48,14 @@ export function applyArrayOperations(
 
     // 1) Handle Replaces first (canonical delete-then-insert at same index)
     handleReplaces(coordinator, yArray, replacesForArray, postQueue);
-    coordinator.trace.log("[arrayApply] after replaces", {
+    coordinator.logger.trace("[arrayApply] after replaces", {
       len: yArray.length,
       json: toJSONSafe(yArray),
     });
 
     // 2) Handle Pure Deletes next (descending order to avoid index shifts)
     handleDeletes(coordinator.logger, yArray, deletesForArray);
-    coordinator.trace.log("[arrayApply] after deletes", {
+    coordinator.logger.trace("[arrayApply] after deletes", {
       len: yArray.length,
       json: toJSONSafe(yArray),
     });
@@ -70,7 +70,7 @@ export function applyArrayOperations(
         lengthAtStart,
         postQueue,
       );
-      coordinator.trace.log("[arrayApply] after sets", {
+      coordinator.logger.trace("[arrayApply] after sets", {
         len: yArray.length,
         json: toJSONSafe(yArray),
       });

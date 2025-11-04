@@ -21,7 +21,7 @@ describe("Reconciler: map/array/delta", () => {
     yMap.set("b", 2);
 
     // Force reconcile
-    const coordinator = new ValtioYjsCoordinator(doc, true);
+    const coordinator = new ValtioYjsCoordinator(doc, "debug");
     // Ensure reconciler can find the existing proxy instance
     // We reuse the controller created by createYjsProxy by linking caches
     coordinator.state.yTypeToValtioProxy.set(yMap, proxy);
@@ -55,7 +55,7 @@ describe("Reconciler: map/array/delta", () => {
       getRoot: (d) => d.getArray("arr"),
     });
 
-    const coordinator = new ValtioYjsCoordinator(doc, true);
+    const coordinator = new ValtioYjsCoordinator(doc, "debug");
     coordinator.state.yTypeToValtioProxy.set(yArr, proxy);
     coordinator.state.valtioProxyToYType.set(proxy, yArr);
 
@@ -75,7 +75,7 @@ describe("Reconciler: map/array/delta", () => {
       getRoot: (d) => d.getArray("arr"),
     });
 
-    const coordinator = new ValtioYjsCoordinator(doc, true);
+    const coordinator = new ValtioYjsCoordinator(doc, "debug");
     coordinator.state.yTypeToValtioProxy.set(yArr, proxy);
     coordinator.state.valtioProxyToYType.set(proxy, yArr);
 
@@ -94,7 +94,7 @@ describe("Reconciler: map/array/delta", () => {
       getRoot: (d) => d.getMap("root"),
     });
 
-    const coordinator = new ValtioYjsCoordinator(doc, true);
+    const coordinator = new ValtioYjsCoordinator(doc, "debug");
     coordinator.state.yTypeToValtioProxy.set(yRoot, proxy);
     coordinator.state.valtioProxyToYType.set(proxy, yRoot);
 
@@ -129,7 +129,7 @@ describe("Reconciler: map/array/delta", () => {
     level2.set("child", level3);
     yRoot.set("parent", level2);
 
-    const coordinator = new ValtioYjsCoordinator(doc, true);
+    const coordinator = new ValtioYjsCoordinator(doc, "debug");
     coordinator.state.yTypeToValtioProxy.set(yRoot, proxy);
     coordinator.state.valtioProxyToYType.set(proxy, yRoot);
 
@@ -166,7 +166,7 @@ describe("Reconciler: map/array/delta", () => {
       getRoot: (d) => d.getArray("arr"),
     });
 
-    const coordinator = new ValtioYjsCoordinator(doc, true);
+    const coordinator = new ValtioYjsCoordinator(doc, "debug");
     coordinator.state.yTypeToValtioProxy.set(yArr, proxy);
     coordinator.state.valtioProxyToYType.set(proxy, yArr);
 
