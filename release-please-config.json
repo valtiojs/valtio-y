@@ -1,0 +1,20 @@
+{
+  "include-component-in-tag": true,
+  "separate-pull-requests": true,
+  "packages": {
+    "valtio-y": {
+      "release-type": "node",
+      "package-name": "valtio-y",
+      "changelog-sections": [
+        { "type": "feat", "section": "Features", "hidden": false },
+        { "type": "fix", "section": "Bug Fixes", "hidden": false },
+        { "type": "perf", "section": "Performance", "hidden": false },
+        { "type": "refactor", "section": "Refactoring", "hidden": false },
+        { "type": "docs", "section": "Documentation", "hidden": false },
+        { "type": "test", "section": "Tests", "hidden": true },
+        { "type": "chore", "section": "Miscellaneous", "hidden": true },
+        { "type": "ci", "section": "CI/CD", "hidden": true }
+      ]
+    }
+  }
+}

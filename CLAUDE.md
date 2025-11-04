@@ -137,6 +137,8 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 [optional footer]
 ```
 
+**⚠️ IMPORTANT: Scope is REQUIRED. All commits and PR titles must include a scope.**
+
 **Type:**
 
 - `feat` - New feature
@@ -148,7 +150,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 - `perf` - Performance improvements
 - `ci` - CI/CD changes
 
-**Scope** (indicates what part of the codebase):
+**Scope** (REQUIRED - indicates what part of the codebase):
 
 - `core` - Main valtio-y package
 - `docs` - Documentation
@@ -156,6 +158,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 - `ci` - CI/CD pipeline
 - `deps` - Dependency updates
 - `tests` - Test infrastructure
+- `repo` - Repository-wide changes (tooling, configuration, etc.)
 
 **Examples:**
 
@@ -168,10 +171,12 @@ feat(examples): add PartyKit todo example
 fix(ci): update Node version in GitHub Actions
 chore(deps): upgrade Valtio to 2.1.8
 test(core): add benchmarks for bulk operations
+chore(repo): update release-please configuration
 ```
 
 **Guidelines:**
 
+- **Scope is mandatory** - PR titles without a scope will be rejected by CI
 - Keep the description concise (≤72 characters)
 - Use present tense ("add" not "added")
 - Don't capitalize the first letter of description
@@ -223,12 +228,48 @@ Closes #42
    # Create PR on GitHub
    ```
 
-5. **PR Title** should also follow conventional commits:
+5. **PR Title** must follow conventional commits with scope (enforced by CI):
    ```
    feat(core): add PartyKit provider support
    fix(docs): correct installation instructions
    chore(ci): update deployment workflow
    ```
+
+   **Note:** PR titles without a scope will be rejected. See `.github/workflows/pr-title.yml` for enforcement details.
+
+### Release Workflow
+
+This project uses **release-please** to automate versioning and releases based on conventional commits.
+
+**How it works:**
+
+1. **Push to main** - When commits are merged to main, release-please analyzes them
+2. **Release PR created** - A "Release PR" is automatically created/updated with:
+   - Version bump (based on commit types: feat = minor, fix = patch)
+   - Auto-generated changelog
+   - Updated package.json version
+3. **Merge to release** - When you merge the Release PR:
+   - A GitHub release is created
+   - The publish workflow automatically publishes to npm with provenance
+
+**For maintainers:**
+
+- Just merge PRs normally with conventional commit titles
+- Release-please tracks all unreleased changes in a single Release PR
+- Merge the Release PR when ready to publish
+- Publishing happens automatically on release creation
+
+**Version bumping rules:**
+
+- `feat(scope):` → Minor version bump (1.0.0 → 1.1.0)
+- `fix(scope):` → Patch version bump (1.0.0 → 1.0.1)
+- `feat(scope)!:` or `BREAKING CHANGE:` → Major version bump (1.0.0 → 2.0.0)
+
+**Related workflows:**
+
+- `.github/workflows/release-please.yml` - Creates/updates release PRs
+- `.github/workflows/publish.yml` - Publishes to npm on release creation
+- `.github/workflows/pr-title.yml` - Enforces conventional commit format for PR titles
 
 ---
 
