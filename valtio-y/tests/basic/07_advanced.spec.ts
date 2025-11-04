@@ -3,6 +3,7 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { createYjsProxy } from "../../src/index";
+import { syncedText } from "../../src/synced-types";
 import type { LooseRecord } from "../helpers/test-helpers";
 
 const waitMicrotask = () => Promise.resolve();
@@ -257,7 +258,43 @@ describe("Advanced Capabilities", () => {
     });
   });
 
-  describe("6. Automatic Transaction Batching", () => {
+  describe("6. Collaborative Text Editing (Y.Text Integration)", () => {
+    it("Y.Text works seamlessly with Valtio reactivity", async () => {
+      const doc1 = new Y.Doc();
+      const doc2 = new Y.Doc();
+
+      doc1.on("update", (u) => Y.applyUpdate(doc2, u));
+      doc2.on("update", (u) => Y.applyUpdate(doc1, u));
+
+      const { proxy: p1 } = createYjsProxy<{ document: Y.Text }>(doc1, {
+        getRoot: (d) => d.getMap("root"),
+      });
+      const { proxy: p2 } = createYjsProxy<{ document: Y.Text }>(doc2, {
+        getRoot: (d) => d.getMap("root"),
+      });
+
+      // Create collaborative text
+      p1.document = syncedText("Hello World");
+      await waitMicrotask();
+
+      // User 1 edits
+      p1.document.insert(11, "!");
+      await waitMicrotask();
+
+      // User 2 sees the change
+      expect(p2.document.toString()).toBe("Hello World!");
+
+      // User 2 edits
+      p2.document.insert(0, "👋 ");
+      await waitMicrotask();
+
+      // ✨ Both users see the merged result
+      expect(p1.document.toString()).toBe("👋 Hello World!");
+      expect(p2.document.toString()).toBe("👋 Hello World!");
+    });
+  });
+
+  describe("7. Automatic Transaction Batching", () => {
     it("multiple mutations in same tick become single transaction", async () => {
       const doc = new Y.Doc();
       const { proxy: p } = createYjsProxy<Record<string, number>>(doc, {

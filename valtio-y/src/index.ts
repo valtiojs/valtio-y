@@ -11,6 +11,9 @@ export type { CreateYjsProxyOptions, YjsProxy } from "./create-yjs-proxy";
 // Constants
 export { VALTIO_YJS_ORIGIN } from "./core/constants";
 
+// Synced types
+export { syncedText } from "./synced-types";
+
 // Type utilities for advanced users
 export type {
   ValtioProxy,
