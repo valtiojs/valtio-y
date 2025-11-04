@@ -13,8 +13,6 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 import { createYjsProxy } from "../../src/index";
-import { ValtioYjsCoordinator } from "../../src/core/coordinator";
-import { getValtioProxyForYType } from "../../src/bridge/valtio-bridge";
 
 const waitMicrotask = () => Promise.resolve();
 
@@ -24,35 +22,23 @@ describe("Controller Creation Timing", () => {
       const doc = new Y.Doc();
       const yRoot = doc.getMap<unknown>("root");
 
-      // Create coordinator to inspect internal state
-      const coordinator = new ValtioYjsCoordinator(doc, "debug");
-
-      // Initially, no controller should exist for an unmaterialized nested map
-      const yNested = new Y.Map<unknown>();
-
-      // Before setting in parent, the nested map has no proxy
-      const proxyBeforeSet = getValtioProxyForYType(coordinator, yNested);
-      expect(proxyBeforeSet).toBeUndefined();
-
-      // Set the Y.Map into the parent
-      yRoot.set("nested", yNested);
-      await waitMicrotask();
-
-      // Now create the proxy system
       const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
-      // Access the nested property to materialize it
+      // No Y.Map exists yet, so accessing the nested property returns undefined
+      expect(proxy.nested).toBeUndefined();
+
+      // Materialize the nested Y.Map in the doc
+      const yNested = new Y.Map<unknown>();
+      yRoot.set("nested", yNested);
+      await waitMicrotask();
+
+      // After the Y value exists, the controller should be materialized lazily
       const nestedProxy = proxy.nested as Record<string, unknown>;
       expect(typeof nestedProxy).toBe("object");
 
-      // The nested map should now have a controller proxy registered
-      const yNestedFromRoot = yRoot.get("nested") as Y.Map<unknown>;
-      expect(yNestedFromRoot).toBe(yNested);
-      expect(yNestedFromRoot instanceof Y.Map).toBe(true);
-
-      // Verify the proxy is a live controller
+      // Verify the proxy is a live controller by syncing writes back to Yjs
       nestedProxy.key = "value";
       await waitMicrotask();
       expect(yNested.get("key")).toBe("value");
@@ -62,29 +48,23 @@ describe("Controller Creation Timing", () => {
       const doc = new Y.Doc();
       const yRoot = doc.getMap<unknown>("root");
 
-      const coordinator = new ValtioYjsCoordinator(doc, "debug");
-
-      // Create Y.Array but don't attach it yet
-      const yArr = new Y.Array<unknown>();
-
-      // No proxy should exist before attachment
-      const proxyBeforeSet = getValtioProxyForYType(coordinator, yArr);
-      expect(proxyBeforeSet).toBeUndefined();
-
-      // Attach the array to the root
-      yRoot.set("items", yArr);
-      await waitMicrotask();
-
-      // Create the proxy system
       const { proxy } = createYjsProxy<Record<string, unknown>>(doc, {
         getRoot: (d) => d.getMap("root"),
       });
 
-      // Access the array property to materialize it
+      // Without a backing Y.Array, the controller should not be materialized
+      expect(proxy.items).toBeUndefined();
+
+      // Attach the array to the Y document
+      const yArr = new Y.Array<unknown>();
+      yRoot.set("items", yArr);
+      await waitMicrotask();
+
+      // The controller should now exist and expose observable array behavior
       const itemsProxy = proxy.items as unknown[];
       expect(Array.isArray(itemsProxy)).toBe(true);
 
-      // Verify the proxy is a live controller
+      // Verify the controller is live and stays in sync with the Y.Array
       itemsProxy.push(1);
       await waitMicrotask();
       expect(yArr.toArray()).toEqual([1]);
