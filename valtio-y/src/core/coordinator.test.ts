@@ -33,6 +33,34 @@ describe("ValtioYjsCoordinator", () => {
       expect(coordinator).toBeInstanceOf(ValtioYjsCoordinator);
     });
 
+    it("trace logs are disabled by default", () => {
+      const consoleSpy = vi
+        .spyOn(console, "debug")
+        .mockImplementation(() => {});
+      const doc = new Y.Doc();
+      const coordinator = new ValtioYjsCoordinator(doc);
+
+      coordinator.trace.log("trace message", { value: 1 });
+
+      expect(consoleSpy).not.toHaveBeenCalled();
+      consoleSpy.mockRestore();
+    });
+
+    it("trace logs emit even when debug is disabled", () => {
+      const consoleSpy = vi
+        .spyOn(console, "debug")
+        .mockImplementation(() => {});
+      const doc = new Y.Doc();
+      const coordinator = new ValtioYjsCoordinator(doc, false, true);
+
+      coordinator.trace.log("trace message", { value: 2 });
+
+      expect(consoleSpy).toHaveBeenCalledWith("[valtio-y] trace message", {
+        value: 2,
+      });
+      consoleSpy.mockRestore();
+    });
+
     it("debug logs are disabled by default", () => {
       const consoleSpy = vi
         .spyOn(console, "debug")

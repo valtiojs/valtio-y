@@ -4,12 +4,19 @@ import {
   type AnySharedType,
 } from "./synchronization-state";
 import { createLogger, type Logger } from "./logger";
+import { createTraceSink, type TraceSink } from "./trace-sink";
 import {
   WriteScheduler,
   type ApplyFunctions,
 } from "../scheduling/write-scheduler";
 import { applyMapDeletes, applyMapSets } from "../scheduling/map-apply";
 import { applyArrayOperations } from "../scheduling/array-apply";
+import {
+  reconcileValtioArray,
+  reconcileValtioMap,
+} from "../reconcile/reconciler";
+import { getYDoc } from "./types";
+import type { PostTransactionQueue } from "../scheduling/post-transaction-queue";
 
 /**
  * Orchestrates all valtio-y components using dependency injection.
@@ -32,6 +39,7 @@ export class ValtioYjsCoordinator {
   // Exposed for components that need state/logging
   readonly state: SynchronizationState;
   readonly logger: Logger;
+  readonly trace: TraceSink;
 
   // Internal components
   private readonly scheduler: WriteScheduler;
@@ -40,6 +48,7 @@ export class ValtioYjsCoordinator {
     // Create pure components with no dependencies
     this.state = new SynchronizationState();
     this.logger = createLogger(debug ?? false, trace ?? false);
+    this.trace = createTraceSink(trace ?? false);
 
     // Wire up apply functions with proper dependencies via closures
     // This eliminates the need for setter injection
@@ -69,8 +78,8 @@ export class ValtioYjsCoordinator {
     this.scheduler = new WriteScheduler(
       doc,
       this.logger,
+      this.trace,
       applyFunctions,
-      trace ?? false,
     );
   }
 
@@ -153,5 +162,39 @@ export class ValtioYjsCoordinator {
 
   shouldSkipArrayStructuralReconcile(arr: Y.Array<unknown>): boolean {
     return this.state.shouldSkipArrayStructuralReconcile(arr);
+  }
+
+  requestMapStructuralFinalize(
+    yMap: Y.Map<unknown>,
+    queue: PostTransactionQueue,
+    withReconcilingLock: (fn: () => void) => void,
+  ): void {
+    const doc = getYDoc(yMap);
+    if (!doc) return;
+    if (this.trace.enabled) {
+      this.trace.log("[coordinator] schedule map finalize", {
+        keys: Array.from(yMap.keys()),
+      });
+    }
+    queue.enqueue(() =>
+      reconcileValtioMap(this, yMap, doc, withReconcilingLock),
+    );
+  }
+
+  requestArrayStructuralFinalize(
+    yArray: Y.Array<unknown>,
+    queue: PostTransactionQueue,
+    withReconcilingLock: (fn: () => void) => void,
+  ): void {
+    const doc = getYDoc(yArray);
+    if (!doc) return;
+    if (this.trace.enabled) {
+      this.trace.log("[coordinator] schedule array finalize", {
+        length: yArray.length,
+      });
+    }
+    queue.enqueue(() =>
+      reconcileValtioArray(this, yArray, doc, withReconcilingLock),
+    );
   }
 }
