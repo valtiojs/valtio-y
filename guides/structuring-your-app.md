@@ -22,7 +22,7 @@ The `getRoot` function is your way of telling valtio-y: **"Which Yjs structure s
 
 ```typescript
 const { proxy: state } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("root")
+  getRoot: (doc) => doc.getMap("root"),
 });
 ```
 
@@ -48,21 +48,17 @@ Use a single root `Y.Map` to contain all your application state:
 
 ```typescript
 const { proxy: state, bootstrap } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("root")
+  getRoot: (doc) => doc.getMap("root"),
 });
 
 // Bootstrap entire app structure at once
 bootstrap({
-  todos: [
-    { id: 1, title: "Learn valtio-y", completed: false }
-  ],
-  users: [
-    { id: 1, name: "Alice", avatar: "..." }
-  ],
+  todos: [{ id: 1, title: "Learn valtio-y", completed: false }],
+  users: [{ id: 1, name: "Alice", avatar: "..." }],
   settings: {
     theme: "dark",
-    language: "en"
-  }
+    language: "en",
+  },
 });
 
 // Natural property access
@@ -96,15 +92,15 @@ Create separate proxies for different parts of your application:
 ```typescript
 // Separate roots for different concerns
 const { proxy: todos } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getArray("todos")
+  getRoot: (doc) => doc.getArray("todos"),
 });
 
 const { proxy: users } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("users")
+  getRoot: (doc) => doc.getMap("users"),
 });
 
 const { proxy: chat } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getArray("chat")
+  getRoot: (doc) => doc.getArray("chat"),
 });
 
 // Each proxy is independent
@@ -116,9 +112,9 @@ chat.push({ user: "alice", message: "Hello!" });
 #### Advantages
 
 - ✅ Separate undo managers per root
-- ✅ Selective sync (could sync some roots but not others)
-- ✅ Different access control per section
+- ✅ Different access control per section (custom provider logic)
 - ✅ Lazy load different sections independently
+- ✅ Independent lifecycle management per root
 
 #### When to Use
 
@@ -134,9 +130,10 @@ chat.push({ user: "alice", message: "Hello!" });
 ### Use Pattern 1 (One Root Map) When:
 
 ✅ **Building a standard application**
+
 ```typescript
 const { proxy: state } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("root")
+  getRoot: (doc) => doc.getMap("root"),
 });
 
 state.todos = [];
@@ -145,11 +142,13 @@ state.users = [];
 ```
 
 ✅ **You want simple DX**
+
 - Intuitive: `state.todos.push(...)`
 - One bootstrap call
 - Matches Redux/Zustand patterns
 
 ✅ **Unified undo/redo**
+
 ```typescript
 const undoManager = new UndoManager(doc.getMap("root"));
 // Undoes changes across entire app state
@@ -158,12 +157,13 @@ const undoManager = new UndoManager(doc.getMap("root"));
 ### Use Pattern 2 (Multiple Roots) When:
 
 ⚠️ **Need independent undo managers**
+
 ```typescript
 const { proxy: canvas } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("canvas")
+  getRoot: (doc) => doc.getMap("canvas"),
 });
 const { proxy: chat } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getArray("chat")
+  getRoot: (doc) => doc.getArray("chat"),
 });
 
 // Separate undo managers
@@ -175,23 +175,25 @@ canvasUndo.undo();
 ```
 
 ⚠️ **Different sections have different lifecycles**
+
 ```typescript
 // Game state syncs constantly
 const { proxy: gameState } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("gameState")
+  getRoot: (doc) => doc.getMap("gameState"),
 });
 
 // Chat history persists even when game resets
 const { proxy: chat } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getArray("chat")
+  getRoot: (doc) => doc.getArray("chat"),
 });
 ```
 
 ⚠️ **Very large documents (>10MB)**
+
 ```typescript
 // Load different sections on demand
 const { proxy: metadata } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("metadata")
+  getRoot: (doc) => doc.getMap("metadata"),
 });
 // Don't load full data until needed
 ```
@@ -221,11 +223,11 @@ const serverDoc = new Y.Doc();
 
 // CLIENT
 const clientDoc = new Y.Doc();
-const provider = new WebsocketProvider('ws://server', 'room', clientDoc);
+const provider = new WebsocketProvider("ws://server", "room", clientDoc);
 
 // Choose which structures to wrap in proxies
 const { proxy: state } = createYjsProxy(clientDoc, {
-  getRoot: (doc) => doc.getMap("root")
+  getRoot: (doc) => doc.getMap("root"),
 });
 ```
 
@@ -241,12 +243,12 @@ const { proxy: state } = createYjsProxy(clientDoc, {
 ```typescript
 // CLIENT A - Only cares about todos
 const { proxy: todos } = createYjsProxy(docA, {
-  getRoot: (doc) => doc.getArray("todos")
+  getRoot: (doc) => doc.getArray("todos"),
 });
 
 // CLIENT B - Only cares about users
 const { proxy: users } = createYjsProxy(docB, {
-  getRoot: (doc) => doc.getMap("users")
+  getRoot: (doc) => doc.getMap("users"),
 });
 
 // Both structures still sync!
@@ -263,16 +265,14 @@ The server doesn't need valtio-y - just the Y.Doc:
 
 ```typescript
 // SERVER (Node.js)
-import * as Y from 'yjs';
+import * as Y from "yjs";
 
 const serverDoc = new Y.Doc();
 
 // Optional: Pre-populate data
 const root = serverDoc.getMap("root");
 root.set("todos", new Y.Array());
-root.get("todos").push([
-  { id: 1, title: "Welcome!", completed: false }
-]);
+root.get("todos").push([{ id: 1, title: "Welcome!", completed: false }]);
 
 // Provider handles syncing (y-websocket, y-partyserver, etc.)
 ```
@@ -281,23 +281,27 @@ root.get("todos").push([
 
 ```typescript
 // CLIENT
-import { WebsocketProvider } from 'y-websocket';
-import { createYjsProxy } from 'valtio-y';
+import { WebsocketProvider } from "y-websocket";
+import { createYjsProxy } from "valtio-y";
 
 const clientDoc = new Y.Doc();
-const provider = new WebsocketProvider('ws://localhost:1234', 'room', clientDoc);
+const provider = new WebsocketProvider(
+  "ws://localhost:1234",
+  "room",
+  clientDoc
+);
 
 const { proxy: state, bootstrap } = createYjsProxy(clientDoc, {
-  getRoot: (doc) => doc.getMap("root") // ⚠️ Must match server!
+  getRoot: (doc) => doc.getMap("root"), // ⚠️ Must match server!
 });
 
 // Wait for sync before initializing
-provider.on('synced', () => {
+provider.on("synced", () => {
   // Bootstrap is a no-op if data exists
   bootstrap({
     todos: [],
     users: [],
-    settings: {}
+    settings: {},
   });
 
   console.log(state.todos); // Shows server data if it exists
@@ -323,14 +327,14 @@ root.set("user", new Y.Map());
 
 // CLIENT
 const { proxy: state } = createYjsProxy(clientDoc, {
-  getRoot: (doc) => doc.getMap(ROOT_NAME)
+  getRoot: (doc) => doc.getMap(ROOT_NAME),
 });
 
-provider.on('synced', () => {
+provider.on("synced", () => {
   bootstrap({
     todos: [],
     filter: "all",
-    user: null
+    user: null,
   });
 
   // Use naturally
@@ -350,7 +354,7 @@ provider.on('synced', () => {
 serverDoc.getMap("state");
 
 // CLIENT
-getRoot: (doc) => doc.getMap("root") // ❌ Wrong! Won't sync!
+getRoot: (doc) => doc.getMap("root"); // ❌ Wrong! Won't sync!
 ```
 
 **Solution:** Use constants or shared schema definitions:
@@ -360,7 +364,7 @@ getRoot: (doc) => doc.getMap("root") // ❌ Wrong! Won't sync!
 export const APP_ROOT = "state";
 
 // Use everywhere
-getRoot: (doc) => doc.getMap(APP_ROOT)
+getRoot: (doc) => doc.getMap(APP_ROOT);
 ```
 
 ### ❌ Pitfall 2: Type Mismatch
@@ -370,7 +374,7 @@ getRoot: (doc) => doc.getMap(APP_ROOT)
 serverDoc.getArray("todos");
 
 // CLIENT
-getRoot: (doc) => doc.getMap("todos") // ❌ Type mismatch!
+getRoot: (doc) => doc.getMap("todos"); // ❌ Type mismatch!
 ```
 
 **Solution:** Ensure Map/Array types match across server and client.
@@ -380,15 +384,15 @@ getRoot: (doc) => doc.getMap("todos") // ❌ Type mismatch!
 ```typescript
 // ❌ Unnecessary complexity
 const { proxy: todos } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getArray("todos")
+  getRoot: (doc) => doc.getArray("todos"),
 });
 const { proxy: filter } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("filter")
+  getRoot: (doc) => doc.getMap("filter"),
 });
 
 // ✅ Simpler - one root
 const { proxy: state } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("root")
+  getRoot: (doc) => doc.getMap("root"),
 });
 state.todos = [];
 state.filter = "all";
@@ -400,14 +404,14 @@ Only use multiple roots when you have specific reasons (separate undo, selective
 
 ```typescript
 const { proxy: state, bootstrap } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("root")
+  getRoot: (doc) => doc.getMap("root"),
 });
 
 // ❌ Don't bootstrap immediately!
 bootstrap({ todos: [] }); // Might overwrite server data
 
 // ✅ Wait for sync
-provider.on('synced', () => {
+provider.on("synced", () => {
   bootstrap({ todos: [] }); // Safe - only writes if empty
 });
 ```
@@ -423,16 +427,16 @@ Use versioned root names for migrations:
 ```typescript
 // v1 schema
 const { proxy: stateV1 } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("state.v1")
+  getRoot: (doc) => doc.getMap("state.v1"),
 });
 
 // v2 schema (after migration)
 const { proxy: stateV2 } = createYjsProxy(doc, {
-  getRoot: (doc) => doc.getMap("state.v2")
+  getRoot: (doc) => doc.getMap("state.v2"),
 });
 
 // Migration logic
-provider.on('synced', () => {
+provider.on("synced", () => {
   const oldState = doc.getMap("state.v1");
   if (oldState.size > 0) {
     // Migrate data from v1 to v2
@@ -448,15 +452,15 @@ For large applications, consider namespacing:
 
 ```typescript
 // By feature
-getRoot: (doc) => doc.getMap("feature:canvas")
-getRoot: (doc) => doc.getMap("feature:chat")
+getRoot: (doc) => doc.getMap("feature:canvas");
+getRoot: (doc) => doc.getMap("feature:chat");
 
 // By environment
-getRoot: (doc) => doc.getMap("prod:state")
-getRoot: (doc) => doc.getMap("dev:state")
+getRoot: (doc) => doc.getMap("prod:state");
+getRoot: (doc) => doc.getMap("dev:state");
 
 // By version
-getRoot: (doc) => doc.getMap("app:v2:state")
+getRoot: (doc) => doc.getMap("app:v2:state");
 ```
 
 ---
