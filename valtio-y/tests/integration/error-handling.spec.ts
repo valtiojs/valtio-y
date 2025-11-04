@@ -401,6 +401,44 @@ describe("Integration: Error Handling", () => {
         proxy.splice(1, 1, () => {});
       }).toThrow(/Unable to convert function/);
     });
+
+    it("restores array contents after validation failure during push", async () => {
+      const doc = new Y.Doc();
+      const { proxy } = createYjsProxy<unknown[]>(doc, {
+        getRoot: (d) => d.getArray("arr"),
+      });
+      const yArr = doc.getArray<unknown>("arr");
+
+      proxy.push("ok");
+      await waitMicrotask();
+
+      expect(() => {
+        proxy.push({ bad: undefined });
+      }).toThrow(/undefined is not allowed/);
+
+      expect(proxy).toHaveLength(1);
+      expect(proxy[0]).toBe("ok");
+      expect(yArr.toJSON()).toEqual(["ok"]);
+    });
+
+    it("restores array contents after validation failure during unshift", async () => {
+      const doc = new Y.Doc();
+      const { proxy } = createYjsProxy<unknown[]>(doc, {
+        getRoot: (d) => d.getArray("arr"),
+      });
+      const yArr = doc.getArray<unknown>("arr");
+
+      proxy.push("initial");
+      await waitMicrotask();
+
+      expect(() => {
+        proxy.unshift(Symbol("bad"));
+      }).toThrow(/Unable to convert symbol/);
+
+      expect(proxy).toHaveLength(1);
+      expect(proxy[0]).toBe("initial");
+      expect(yArr.toJSON()).toEqual(["initial"]);
+    });
   });
 
   describe("Edge Case Error Scenarios", () => {

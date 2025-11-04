@@ -17,12 +17,10 @@ import { planMapOps } from "../planning/map-ops-planner";
 import { planArrayOps } from "../planning/array-ops-planner";
 import { validateDeepForSharedState } from "../core/converter";
 import { safeStringify } from "../utils/logging";
-import { normalizeIndex } from "../utils/index-utils";
 import {
   getContainerValue,
   setContainerValue,
   isRawSetMapOp,
-  isRawSetArrayOp,
   type RawValtioOperation,
 } from "../core/types";
 
@@ -72,18 +70,18 @@ function filterMapOperations(ops: unknown[]): unknown[] {
 // Helper: Rollback array proxy to previous state on validation failure
 function rollbackArrayChanges(
   coordinator: ValtioYjsCoordinator,
+  yArray: Y.Array<unknown>,
   arrProxy: unknown[],
-  ops: RawValtioOperation[],
+  doc: Y.Doc,
 ): void {
   coordinator.withReconcilingLock(() => {
-    for (const op of ops) {
-      if (isRawSetArrayOp(op)) {
-        const idx = op[1][0];
-        const index = normalizeIndex(idx);
-        const prev = op[3];
-        arrProxy[index] = prev;
+    const snapshot = yArray.toArray().map((item) => {
+      if (isYSharedContainer(item)) {
+        return getOrCreateValtioProxy(coordinator, item, doc);
       }
-    }
+      return item;
+    });
+    arrProxy.splice(0, arrProxy.length, ...snapshot);
   });
 }
 
@@ -123,7 +121,7 @@ function attachValtioArraySubscription(
   coordinator: ValtioYjsCoordinator,
   yArray: Y.Array<unknown>,
   arrProxy: unknown[],
-  _doc: Y.Doc,
+  doc: Y.Doc,
 ): () => void {
   const unsubscribe = subscribe(
     arrProxy,
@@ -162,7 +160,7 @@ function attachValtioArraySubscription(
             index,
             normalized, // Normalize undefined→null defensively
             (yValue: unknown) =>
-              upgradeChildIfNeeded(coordinator, arrProxy, index, yValue, _doc),
+              upgradeChildIfNeeded(coordinator, arrProxy, index, yValue, doc),
           );
         }
 
@@ -189,16 +187,12 @@ function attachValtioArraySubscription(
             index,
             normalized, // Normalize undefined→null defensively
             (yValue: unknown) =>
-              upgradeChildIfNeeded(coordinator, arrProxy, index, yValue, _doc),
+              upgradeChildIfNeeded(coordinator, arrProxy, index, yValue, doc),
           );
         }
       } catch (err) {
         // Rollback local proxy to previous values using ops metadata
-        rollbackArrayChanges(
-          coordinator,
-          arrProxy,
-          ops as RawValtioOperation[],
-        );
+        rollbackArrayChanges(coordinator, yArray, arrProxy, doc);
         throw err;
       }
     },

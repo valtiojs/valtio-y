@@ -70,6 +70,22 @@ describe("Integration 2B: Valtio → Yjs (Local Change Simulation)", () => {
     expect(yArr.toJSON()).toEqual([99]);
   });
 
+  it("handles splice with negative start index", async () => {
+    const doc = new Y.Doc();
+    const { proxy } = createYjsProxy<number[]>(doc, {
+      getRoot: (d) => d.getArray("arr"),
+    });
+    const yArr = doc.getArray<number>("arr");
+
+    proxy.push(10, 20, 30);
+    await waitMicrotask();
+
+    proxy.splice(-1, 1, 99);
+    await waitMicrotask();
+
+    expect(yArr.toJSON()).toEqual([10, 20, 99]);
+  });
+
   it("undefined removes key; null persists as null in Y.Map", async () => {
     const doc = new Y.Doc();
     const { proxy } = createYjsProxy<MapRootState>(doc, {

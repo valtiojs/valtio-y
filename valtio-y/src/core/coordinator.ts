@@ -133,6 +133,10 @@ export class ValtioYjsCoordinator {
     this.state.registerSubscription(yType, unsubscribe);
   }
 
+  unregisterSubscription(yType: AnySharedType): void {
+    this.state.unregisterSubscription(yType);
+  }
+
   registerDisposable(dispose: () => void): void {
     this.state.registerDisposable(dispose);
   }

@@ -47,6 +47,18 @@ export class SynchronizationState {
     this.allUnsubscribers.add(unsubscribe);
   }
 
+  unregisterSubscription(yType: AnySharedType): void {
+    const unsubscribe = this.yTypeToUnsubscribe.get(yType);
+    if (!unsubscribe) return;
+    this.yTypeToUnsubscribe.delete(yType);
+    this.allUnsubscribers.delete(unsubscribe);
+    try {
+      unsubscribe();
+    } catch {
+      // ignore errors during best-effort cleanup
+    }
+  }
+
   /**
    * Register a generic disposable callback (e.g., for leaf node observers).
    * Used for cleanup tasks that don't map directly to Y types.

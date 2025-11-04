@@ -204,6 +204,28 @@ describe("ValtioYjsCoordinator", () => {
       expect(coordinator.state.yTypeToUnsubscribe.get(yMap)).toBe(newUnsub);
     });
 
+    it("unregisterSubscription calls unsubscribe and removes entry", () => {
+      const doc = new Y.Doc();
+      const coordinator = new ValtioYjsCoordinator(doc);
+      const yMap = new Y.Map();
+      const unsub = vi.fn();
+
+      coordinator.registerSubscription(yMap, unsub);
+
+      coordinator.unregisterSubscription(yMap);
+
+      expect(unsub).toHaveBeenCalledOnce();
+      expect(coordinator.state.yTypeToUnsubscribe.has(yMap)).toBe(false);
+    });
+
+    it("unregisterSubscription is safe when subscription missing", () => {
+      const doc = new Y.Doc();
+      const coordinator = new ValtioYjsCoordinator(doc);
+      const yMap = new Y.Map();
+
+      expect(() => coordinator.unregisterSubscription(yMap)).not.toThrow();
+    });
+
     it("disposeAll calls all registered unsubscribers", () => {
       const doc = new Y.Doc();
       const coordinator = new ValtioYjsCoordinator(doc);

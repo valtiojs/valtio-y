@@ -1,6 +1,7 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import * as Y from "yjs";
 import { createYjsProxy } from "../index";
+import { getOrCreateValtioProxy } from "../bridge/valtio-bridge";
 import {
   reconcileValtioMap,
   reconcileValtioArray,
@@ -181,5 +182,82 @@ describe("Reconciler: map/array/delta", () => {
       coordinator.withReconcilingLock(fn),
     );
     expect(proxy).toEqual([1, 9, 2, 3]);
+  });
+
+  it("unsubscribes nested map controllers removed during map reconcile", () => {
+    const doc = new Y.Doc();
+    const yRoot = doc.getMap("root");
+    const nested = new Y.Map<unknown>();
+    yRoot.set("child", nested);
+
+    const coordinator = new ValtioYjsCoordinator(doc, true);
+    const unsubscribed = new Set<unknown>();
+    const originalRegister = coordinator.registerSubscription.bind(coordinator);
+    coordinator.registerSubscription = ((yType, unsubscribe) => {
+      const wrapped = () => {
+        unsubscribed.add(yType);
+        unsubscribe();
+      };
+      originalRegister(yType, wrapped);
+    }) as typeof coordinator.registerSubscription;
+
+    const rootProxy = getOrCreateValtioProxy(coordinator, yRoot, doc) as Record<
+      string,
+      unknown
+    >;
+    const childProxy = rootProxy.child as Record<string, unknown>;
+    expect(coordinator.state.yTypeToUnsubscribe.has(nested)).toBe(true);
+    expect(coordinator.state.valtioProxyToYType.get(childProxy)).toBe(nested);
+
+    yRoot.delete("child");
+    reconcileValtioMap(coordinator, yRoot, doc, (fn) =>
+      coordinator.withReconcilingLock(fn),
+    );
+
+    expect(rootProxy.child).toBeUndefined();
+    expect(unsubscribed.has(nested)).toBe(true);
+    expect(coordinator.state.yTypeToUnsubscribe.has(nested)).toBe(false);
+    expect(coordinator.state.valtioProxyToYType.has(childProxy as object)).toBe(
+      false,
+    );
+  });
+
+  it("unsubscribes removed nested controllers during array delta reconcile", () => {
+    const doc = new Y.Doc();
+    const yArr = doc.getArray<unknown>("arr");
+    const nested = new Y.Map<unknown>();
+    yArr.insert(0, [nested]);
+
+    const coordinator = new ValtioYjsCoordinator(doc, true);
+    const unsubscribed = new Set<unknown>();
+    const originalRegister = coordinator.registerSubscription.bind(coordinator);
+    coordinator.registerSubscription = ((yType, unsubscribe) => {
+      const wrapped = () => {
+        unsubscribed.add(yType);
+        unsubscribe();
+      };
+      originalRegister(yType, wrapped);
+    }) as typeof coordinator.registerSubscription;
+
+    const arrProxy = getOrCreateValtioProxy(
+      coordinator,
+      yArr,
+      doc,
+    ) as unknown[];
+    const nestedProxy = arrProxy[0] as Record<string, unknown>;
+    expect(coordinator.state.yTypeToUnsubscribe.has(nested)).toBe(true);
+    expect(coordinator.state.valtioProxyToYType.get(nestedProxy)).toBe(nested);
+
+    const delta = [{ delete: 1 }];
+    reconcileValtioArrayWithDelta(coordinator, yArr, doc, delta, (fn) =>
+      coordinator.withReconcilingLock(fn),
+    );
+
+    expect(arrProxy).toHaveLength(0);
+    expect(unsubscribed.has(nested)).toBe(true);
+    expect(coordinator.state.yTypeToUnsubscribe.has(nested)).toBe(false);
+    expect(
+      coordinator.state.valtioProxyToYType.has(nestedProxy as object),
+    ).toBe(false);
   });
 });

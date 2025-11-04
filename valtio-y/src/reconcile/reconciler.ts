@@ -7,6 +7,22 @@ import type { ValtioYjsCoordinator } from "../core/coordinator";
 import { isYSharedContainer, isYArray, isYMap } from "../core/guards";
 import { yTypeToJSON } from "../core/types";
 
+function cleanupNestedValue(
+  coordinator: ValtioYjsCoordinator,
+  value: unknown,
+): void {
+  if (!value || typeof value !== "object") {
+    return;
+  }
+  const yType = coordinator.state.valtioProxyToYType.get(value as object);
+  if (!yType) {
+    return;
+  }
+  coordinator.unregisterSubscription(yType);
+  coordinator.state.yTypeToValtioProxy.delete(yType);
+  coordinator.state.valtioProxyToYType.delete(value as object);
+}
+
 // Reconciler layer
 //
 // Responsibility:
@@ -85,6 +101,7 @@ export function reconcileValtioMap(
 
       if (!inY && inValtio) {
         coordinator.logger.debug("[DELETE] remove key", key);
+        cleanupNestedValue(coordinator, valtioProxy[key]);
         delete valtioProxy[key];
         continue;
       }
@@ -96,6 +113,7 @@ export function reconcileValtioMap(
           const desired = getOrCreateValtioProxy(coordinator, yValue, doc);
           if (current !== desired) {
             coordinator.logger.debug("[REPLACE] replace controller", key);
+            cleanupNestedValue(coordinator, current);
             valtioProxy[key] = desired;
           }
           if (isYMap(yValue)) {
@@ -116,6 +134,7 @@ export function reconcileValtioMap(
             );
           }
         } else {
+          cleanupNestedValue(coordinator, current);
           if (current !== yValue) {
             coordinator.logger.debug("[UPDATE] primitive", key);
             valtioProxy[key] = yValue;
@@ -166,8 +185,30 @@ export function reconcileValtioArray(
         return item;
       }
     });
+    const previousItems = valtioProxy.slice();
+    const retained = new Map<object, number>();
+    for (const item of newContent) {
+      if (item && typeof item === "object") {
+        const obj = item as object;
+        retained.set(obj, (retained.get(obj) ?? 0) + 1);
+      }
+    }
+    const removedControllers: object[] = [];
+    for (const item of previousItems) {
+      if (!item || typeof item !== "object") continue;
+      const obj = item as object;
+      const count = retained.get(obj);
+      if (count && count > 0) {
+        retained.set(obj, count - 1);
+        continue;
+      }
+      removedControllers.push(obj);
+    }
     coordinator.logger.debug("reconcile array splice", newContent.length);
     valtioProxy.splice(0, valtioProxy.length, ...newContent);
+    for (const removed of removedControllers) {
+      cleanupNestedValue(coordinator, removed);
+    }
     coordinator.logger.debug("reconcileValtioArray end", {
       valtioLength: valtioProxy.length,
     });
@@ -230,7 +271,14 @@ export function reconcileValtioArrayWithDelta(
       if (d.delete && d.delete > 0) {
         const deleteCount = d.delete;
         if (deleteCount > 0) {
+          const removedItems = valtioProxy.slice(
+            position,
+            position + deleteCount,
+          );
           valtioProxy.splice(position, deleteCount);
+          for (const item of removedItems) {
+            cleanupNestedValue(coordinator, item);
+          }
         }
         continue;
       }
