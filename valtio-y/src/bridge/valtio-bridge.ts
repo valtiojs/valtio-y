@@ -17,98 +17,15 @@ import { planMapOps } from "../planning/map-ops-planner";
 import { planArrayOps } from "../planning/array-ops-planner";
 import { validateDeepForSharedState } from "../core/converter";
 import { safeStringify } from "../utils/logging";
-import { normalizeIndex } from "../utils/index-utils";
+import type { RawValtioOperation } from "../core/types";
 import {
-  getContainerValue,
-  setContainerValue,
-  isRawSetMapOp,
-  isRawSetArrayOp,
-  type RawValtioOperation,
-} from "../core/types";
+  createUpgradeChildCallback,
+  filterMapOperations,
+  rollbackArrayChanges,
+  rollbackMapChanges,
+} from "./controller-helpers";
 
 // All caches are moved into SynchronizationContext
-
-// Helper: Upgrade a child value (container) in the parent proxy
-function upgradeChildIfNeeded(
-  coordinator: ValtioYjsCoordinator,
-  container: Record<string, unknown> | unknown[],
-  key: string | number,
-  yValue: unknown,
-  doc: Y.Doc,
-): void {
-  const current = getContainerValue(container, key);
-  // Optimize: single WeakMap lookup instead of .has() + potential .get()
-  const underlyingYType =
-    current && typeof current === "object"
-      ? coordinator.state.valtioProxyToYType.get(current as object)
-      : undefined;
-  const isAlreadyController = underlyingYType !== undefined;
-
-  if (!isAlreadyController && isYSharedContainer(yValue)) {
-    // Upgrade plain object/array to container controller
-    const newController = getOrCreateValtioProxy(coordinator, yValue, doc);
-    coordinator.withReconcilingLock(() => {
-      setContainerValue(container, key, newController);
-    });
-  }
-}
-
-// Helper: Filter out internal/nested operations from Valtio map operations
-function filterMapOperations(ops: unknown[]): unknown[] {
-  return ops.filter((op) => {
-    const rawOp = op as RawValtioOperation;
-    if (isRawSetMapOp(rawOp)) {
-      const path = rawOp[1] as (string | number)[];
-      // If path has more than 1 element, it's a nested property change
-      // Only allow top-level changes (path.length === 1)
-      if (path.length !== 1) {
-        return false;
-      }
-    }
-    return true; // Keep delete ops and other operations
-  });
-}
-
-// Helper: Rollback array proxy to previous state on validation failure
-function rollbackArrayChanges(
-  coordinator: ValtioYjsCoordinator,
-  arrProxy: unknown[],
-  ops: RawValtioOperation[],
-): void {
-  coordinator.withReconcilingLock(() => {
-    for (const op of ops) {
-      if (isRawSetArrayOp(op)) {
-        const idx = op[1][0];
-        const index = normalizeIndex(idx);
-        const prev = op[3];
-        arrProxy[index] = prev;
-      }
-    }
-  });
-}
-
-// Helper: Rollback map proxy to previous state on validation failure
-function rollbackMapChanges(
-  coordinator: ValtioYjsCoordinator,
-  objProxy: Record<string, unknown>,
-  ops: RawValtioOperation[],
-): void {
-  coordinator.withReconcilingLock(() => {
-    for (const op of ops) {
-      if (isRawSetMapOp(op)) {
-        const key = op[1][0];
-        const prev = op[3];
-        if (prev === undefined) {
-          // Key didn't exist before, delete it
-          delete objProxy[key];
-        } else {
-          // Restore previous value
-          objProxy[key] = prev;
-        }
-      }
-    }
-  });
-}
 
 // Subscribe to a Valtio array proxy and translate top-level index operations
 // into minimal Y.Array operations.
@@ -161,8 +78,13 @@ function attachValtioArraySubscription(
             yArray,
             index,
             normalized, // Normalize undefined→null defensively
-            (yValue: unknown) =>
-              upgradeChildIfNeeded(coordinator, arrProxy, index, yValue, _doc),
+            createUpgradeChildCallback(
+              coordinator,
+              arrProxy,
+              index,
+              _doc,
+              getOrCreateValtioProxy,
+            ),
           );
         }
 
@@ -188,16 +110,23 @@ function attachValtioArraySubscription(
             yArray,
             index,
             normalized, // Normalize undefined→null defensively
-            (yValue: unknown) =>
-              upgradeChildIfNeeded(coordinator, arrProxy, index, yValue, _doc),
+            createUpgradeChildCallback(
+              coordinator,
+              arrProxy,
+              index,
+              _doc,
+              getOrCreateValtioProxy,
+            ),
           );
         }
       } catch (err) {
-        // Rollback local proxy to previous values using ops metadata
+        // Rollback local proxy by resyncing from Y.Array source
         rollbackArrayChanges(
           coordinator,
+          yArray,
           arrProxy,
-          ops as RawValtioOperation[],
+          _doc,
+          getOrCreateValtioProxy,
         );
         throw err;
       }
@@ -254,8 +183,13 @@ function attachValtioMapSubscription(
             yMap,
             key,
             normalized, // Normalize undefined→null defensively
-            (yValue: unknown) =>
-              upgradeChildIfNeeded(coordinator, objProxy, key, yValue, doc),
+            createUpgradeChildCallback(
+              coordinator,
+              objProxy,
+              key,
+              doc,
+              getOrCreateValtioProxy,
+            ),
           );
         }
 

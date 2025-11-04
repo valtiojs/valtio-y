@@ -2,9 +2,8 @@ import * as Y from "yjs";
 import type { PendingArrayEntry } from "./batch-types";
 import type { ValtioYjsCoordinator } from "../core/coordinator";
 import { plainObjectToYType } from "../core/converter";
-import { reconcileValtioArray } from "../reconcile/reconciler";
 import type { PostTransactionQueue } from "./post-transaction-queue";
-import { getYItemId, getYDoc, yTypeToJSON, hasProperty } from "../core/types";
+import { getYItemId, yTypeToJSON, hasProperty } from "../core/types";
 import type { Logger } from "../core/logger";
 
 /**
@@ -39,7 +38,7 @@ export function applyArrayOperations(
       arrayReplaces.get(yArray) ?? new Map<number, PendingArrayEntry>();
 
     // DEBUG-TRACE: per-array batch snapshot
-    coordinator.logger.debug("Applying ops for Y.Array:", {
+    coordinator.trace.log("[arrayApply] batch", {
       targetId: getYItemId(yArray),
       replaces: Array.from(replacesForArray.keys()).sort((a, b) => a - b),
       deletes: Array.from(deletesForArray.values()).sort((a, b) => a - b),
@@ -49,14 +48,14 @@ export function applyArrayOperations(
 
     // 1) Handle Replaces first (canonical delete-then-insert at same index)
     handleReplaces(coordinator, yArray, replacesForArray, postQueue);
-    coordinator.logger.debug("after replaces", {
+    coordinator.trace.log("[arrayApply] after replaces", {
       len: yArray.length,
       json: toJSONSafe(yArray),
     });
 
     // 2) Handle Pure Deletes next (descending order to avoid index shifts)
     handleDeletes(coordinator.logger, yArray, deletesForArray);
-    coordinator.logger.debug("after deletes", {
+    coordinator.trace.log("[arrayApply] after deletes", {
       len: yArray.length,
       json: toJSONSafe(yArray),
     });
@@ -71,7 +70,7 @@ export function applyArrayOperations(
         lengthAtStart,
         postQueue,
       );
-      coordinator.logger.debug("after sets", {
+      coordinator.trace.log("[arrayApply] after sets", {
         len: yArray.length,
         json: toJSONSafe(yArray),
       });
@@ -79,20 +78,11 @@ export function applyArrayOperations(
 
     // Ensure the controller array proxy structure is fully reconciled after mixed operations
     // to materialize any deep children created during inserts/replaces.
-    const arrayDocNow = getYDoc(yArray);
-    if (arrayDocNow) {
-      coordinator.logger.debug("scheduling finalize reconcile for array", {
-        len: yArray.length,
-      });
-      postQueue.enqueue(() =>
-        reconcileValtioArray(
-          coordinator,
-          yArray,
-          arrayDocNow,
-          withReconcilingLock,
-        ),
-      );
-    }
+    coordinator.requestArrayStructuralFinalize(
+      yArray,
+      postQueue,
+      withReconcilingLock,
+    );
   }
 }
 

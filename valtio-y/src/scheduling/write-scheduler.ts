@@ -1,6 +1,7 @@
 import * as Y from "yjs";
 import type { PendingMapEntry, PendingArrayEntry } from "./batch-types";
 import type { Logger } from "../core/logger";
+import type { TraceSink } from "../core/trace-sink";
 import { VALTIO_YJS_ORIGIN } from "../core/constants";
 import { PostTransactionQueue } from "./post-transaction-queue";
 
@@ -53,7 +54,7 @@ function collectYSubtree(root: unknown): {
 export class WriteScheduler {
   private readonly doc: Y.Doc;
   private readonly log: Logger;
-  private readonly traceMode: boolean;
+  private readonly trace: TraceSink;
   private readonly applyFunctions: ApplyFunctions;
 
   // Write scheduler state
@@ -80,20 +81,20 @@ export class WriteScheduler {
    * No incomplete initialization possible - WriteScheduler is ready to use immediately.
    *
    * @param doc - Y.Doc instance for transactions
-   * @param log - Logger instance for debug/trace output
+   * @param log - Logger instance for debug output
+   * @param trace - Trace sink used for verbose instrumentation
    * @param applyFunctions - Callbacks for applying batched operations
-   * @param traceMode - Enable detailed trace logging (default: false)
    */
   constructor(
     doc: Y.Doc,
     log: Logger,
+    trace: TraceSink,
     applyFunctions: ApplyFunctions,
-    traceMode: boolean = false,
   ) {
     this.doc = doc;
     this.log = log;
+    this.trace = trace;
     this.applyFunctions = applyFunctions;
-    this.traceMode = traceMode;
   }
 
   // Enqueue operations
@@ -369,8 +370,8 @@ export class WriteScheduler {
     }
 
     // Trace mode: log planned intents for debugging
-    if (this.traceMode) {
-      this.log.debug("[scheduler] trace: planned intents for this flush", {
+    if (this.trace.enabled) {
+      this.trace.log("[scheduler] planned intents for this flush", {
         mapSets:
           mapSets.size > 0
             ? Array.from(mapSets.entries()).map(([yMap, keyMap]) => ({
@@ -412,7 +413,7 @@ export class WriteScheduler {
     // Sibling purge heuristic removed in favor of precise descendant-only purging
 
     // DEBUG-TRACE: dump the exact batch about to be applied
-    if (this.traceMode) {
+    if (this.trace.enabled) {
       const mapDeletesLog = Array.from(mapDeletes.entries()).map(
         ([yMap, keySet]) => ({
           targetId: (
@@ -453,7 +454,7 @@ export class WriteScheduler {
           indices: Array.from(idxMap.keys()).sort((a, b) => a - b),
         }),
       );
-      this.log.debug("Flushing transaction with operations:", {
+      this.trace.log("[scheduler] flushing transaction", {
         mapDeletes: mapDeletesLog,
         mapSets: mapSetsLog,
         arrayDeletes: arrayDeletesLog,

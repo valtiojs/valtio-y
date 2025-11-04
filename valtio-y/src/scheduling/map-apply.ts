@@ -3,8 +3,6 @@ import type { PendingMapEntry } from "./batch-types";
 import type { ValtioYjsCoordinator } from "../core/coordinator";
 import { plainObjectToYType } from "../core/converter";
 import type { PostTransactionQueue } from "./post-transaction-queue";
-import { reconcileValtioMap } from "../reconcile/reconciler";
-import { getYDoc } from "../core/types";
 import type { Logger } from "../core/logger";
 
 // Apply pending map deletes (keys) first for determinism
@@ -33,7 +31,7 @@ export function applyMapSets(
   withReconcilingLock: (fn: () => void) => void,
 ): void {
   for (const [yMap, keyToEntry] of mapSets) {
-    coordinator.logger.debug("Applying Map Sets:", {
+    coordinator.trace.log("[mapApply] batch", {
       targetId: (
         yMap as unknown as { _item?: { id?: { toString?: () => string } } }
       )._item?.id?.toString?.(),
@@ -48,7 +46,7 @@ export function applyMapSets(
         coordinator.state,
         coordinator.logger,
       );
-      coordinator.logger.debug("[mapApply] map.set", { key });
+      coordinator.trace.log("[mapApply] map.set", { key });
       yMap.set(key, yValue);
       if (entry.after) {
         postQueue.enqueue(() => entry.after!(yValue));
@@ -58,14 +56,10 @@ export function applyMapSets(
     // Ensure the Valtio proxy is reconciled after setting values in the Y.Map.
     // If future work reintroduces Y.js leaf instances (Y.Text, Y.Xml*),
     // this keeps the proxy aligned with the concrete Y type rather than a stale reference.
-    const mapDocNow = getYDoc(yMap);
-    if (mapDocNow) {
-      coordinator.logger.debug("scheduling finalize reconcile for map", {
-        keys: Array.from(keyToEntry.keys()),
-      });
-      postQueue.enqueue(() =>
-        reconcileValtioMap(coordinator, yMap, mapDocNow, withReconcilingLock),
-      );
-    }
+    coordinator.requestMapStructuralFinalize(
+      yMap,
+      postQueue,
+      withReconcilingLock,
+    );
   }
 }
