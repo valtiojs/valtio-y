@@ -6,6 +6,7 @@ import {
 import type { ValtioYjsCoordinator } from "../core/coordinator";
 import { isYSharedContainer, isYArray, isYMap } from "../core/guards";
 import { yTypeToJSON } from "../core/types";
+import { ValtioYReconciliationError } from "../core/errors";
 
 function cleanupNestedValue(
   coordinator: ValtioYjsCoordinator,
@@ -104,16 +105,17 @@ export function reconcileValtioMap(
   }
 
   withReconcilingLock(() => {
-    coordinator.logger.debug("reconcileValtioMap start", {
-      yKeys: Array.from(yMap.keys()),
-      valtioKeys: Object.keys(valtioProxy),
-      yJson: yTypeToJSON(yMap),
-    });
-    const yKeys = new Set(Array.from(yMap.keys()).map((k) => String(k)));
-    const valtioKeys = new Set(Object.keys(valtioProxy));
-    const allKeys = new Set<string>([...yKeys, ...valtioKeys]);
+    try {
+      coordinator.logger.debug("reconcileValtioMap start", {
+        yKeys: Array.from(yMap.keys()),
+        valtioKeys: Object.keys(valtioProxy),
+        yJson: yTypeToJSON(yMap),
+      });
+      const yKeys = new Set(Array.from(yMap.keys()).map((k) => String(k)));
+      const valtioKeys = new Set(Object.keys(valtioProxy));
+      const allKeys = new Set<string>([...yKeys, ...valtioKeys]);
 
-    for (const key of allKeys) {
+      for (const key of allKeys) {
       const inY = yKeys.has(key);
       const inValtio = valtioKeys.has(key);
 
@@ -188,10 +190,21 @@ export function reconcileValtioMap(
           }
         }
       }
+      }
+      coordinator.logger.debug("reconcileValtioMap end", {
+        valtioKeys: Object.keys(valtioProxy),
+      });
+    } catch (err) {
+      coordinator.logger.error("[reconcile] Failed to reconcile map", {
+        error: err,
+        yKeys: Array.from(yMap.keys()),
+      });
+      throw new ValtioYReconciliationError(
+        "Failed to reconcile map structure",
+        "map",
+        err,
+      );
     }
-    coordinator.logger.debug("reconcileValtioMap end", {
-      valtioKeys: Object.keys(valtioProxy),
-    });
   });
 }
 
@@ -209,18 +222,19 @@ export function reconcileValtioArray(
   if (!valtioProxy) return;
 
   withReconcilingLock(() => {
-    // Skip structural reconcile if this array has a delta in the current sync pass
-    if (coordinator.state.shouldSkipArrayStructuralReconcile(yArray)) {
-      coordinator.logger.debug(
-        "reconcileValtioArray skipped due to pending delta",
-        {
-          yLength: yArray.length,
-          valtioLength: valtioProxy.length,
-        },
-      );
-      return;
-    }
-    coordinator.logger.debug("reconcileValtioArray start", {
+    try {
+      // Skip structural reconcile if this array has a delta in the current sync pass
+      if (coordinator.state.shouldSkipArrayStructuralReconcile(yArray)) {
+        coordinator.logger.debug(
+          "reconcileValtioArray skipped due to pending delta",
+          {
+            yLength: yArray.length,
+            valtioLength: valtioProxy.length,
+          },
+        );
+        return;
+      }
+      coordinator.logger.debug("reconcileValtioArray start", {
       yLength: yArray.length,
       valtioLength: valtioProxy.length,
       yJson: yTypeToJSON(yArray),
@@ -266,11 +280,23 @@ export function reconcileValtioArray(
           );
         }
       }
-    }
+      }
 
-    coordinator.logger.debug("reconcileValtioArray end", {
-      valtioLength: valtioProxy.length,
-    });
+      coordinator.logger.debug("reconcileValtioArray end", {
+        valtioLength: valtioProxy.length,
+      });
+    } catch (err) {
+      coordinator.logger.error("[reconcile] Failed to reconcile array", {
+        error: err,
+        yLength: yArray.length,
+        valtioLength: valtioProxy.length,
+      });
+      throw new ValtioYReconciliationError(
+        "Failed to reconcile array structure",
+        "array",
+        err,
+      );
+    }
   });
 }
 

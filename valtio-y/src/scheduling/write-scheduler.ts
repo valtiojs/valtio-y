@@ -3,6 +3,7 @@ import type { PendingMapEntry, PendingArrayEntry } from "./batch-types";
 import type { Logger } from "../core/logger";
 import { VALTIO_Y_ORIGIN } from "../core/constants";
 import { PostTransactionQueue } from "./post-transaction-queue";
+import { ValtioYTransactionError } from "../core/errors";
 
 /**
  * Apply functions that WriteScheduler delegates to.
@@ -452,19 +453,60 @@ export class WriteScheduler {
     const postQueue = new PostTransactionQueue(this.log);
 
     doc.transact(() => {
-      this.applyFunctions.applyMapDeletes(mapDeletes);
-      this.applyFunctions.applyMapSets(
-        mapSets,
-        postQueue,
-        this.applyFunctions.withReconcilingLock,
-      );
-      this.applyFunctions.applyArrayOperations(
-        arraySets,
-        arrayDeletes,
-        arrayReplaces,
-        postQueue,
-        this.applyFunctions.withReconcilingLock,
-      );
+      // Apply operations with error context for debugging
+      try {
+        this.applyFunctions.applyMapDeletes(mapDeletes);
+      } catch (err) {
+        this.log.error("[scheduler] Error applying map deletes", {
+          error: err,
+          mapCount: mapDeletes.size,
+        });
+        throw new ValtioYTransactionError(
+          "Failed to apply map delete operations",
+          "map-deletes",
+          err,
+        );
+      }
+
+      try {
+        this.applyFunctions.applyMapSets(
+          mapSets,
+          postQueue,
+          this.applyFunctions.withReconcilingLock,
+        );
+      } catch (err) {
+        this.log.error("[scheduler] Error applying map sets", {
+          error: err,
+          mapCount: mapSets.size,
+        });
+        throw new ValtioYTransactionError(
+          "Failed to apply map set operations",
+          "map-sets",
+          err,
+        );
+      }
+
+      try {
+        this.applyFunctions.applyArrayOperations(
+          arraySets,
+          arrayDeletes,
+          arrayReplaces,
+          postQueue,
+          this.applyFunctions.withReconcilingLock,
+        );
+      } catch (err) {
+        this.log.error("[scheduler] Error applying array operations", {
+          error: err,
+          setSets: arraySets.size,
+          deletes: arrayDeletes.size,
+          replaces: arrayReplaces.size,
+        });
+        throw new ValtioYTransactionError(
+          "Failed to apply array operations",
+          "array-operations",
+          err,
+        );
+      }
     }, VALTIO_Y_ORIGIN);
 
     // Flush post-transaction callbacks with reconciling lock

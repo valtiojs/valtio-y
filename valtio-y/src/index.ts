@@ -11,6 +11,19 @@ export type { CreateYjsProxyOptions, YjsProxy } from "./create-yjs-proxy";
 // Constants
 export { VALTIO_Y_ORIGIN } from "./core/constants";
 
+// Error classes
+export {
+  ValtioYError,
+  ValtioYValidationError,
+  ValtioYTransactionError,
+  ValtioYReconciliationError,
+  isValtioYError,
+  isValtioYValidationError,
+  isValtioYTransactionError,
+  isValtioYReconciliationError,
+} from "./core/errors";
+export type { ValidationErrorType } from "./core/errors";
+
 // Type utilities for advanced users
 export type {
   ValtioProxy,
