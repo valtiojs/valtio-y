@@ -34,16 +34,16 @@ User B: ["Buy milk", "Walk dog"] + "Call mom"
 After sync: ["Buy milk", "Walk dog", "Read book", "Call mom"]
 ```
 
-Both users end up with the same state, even when making changes simultaneously. **Google Docs** uses CRDTs - that's how multiple people can edit simultaneously without conflicts. valtio-y brings this to React.
+Both users end up with the same state, even when making changes simultaneously. **Google Docs** uses CRDTs - that's how multiple people can edit simultaneously without conflicts. valtio-y brings this to any framework Valtio supports.
 
 ---
 
 ## How valtio-y Works
 
-valtio-y bridges **[Valtio](https://github.com/pmndrs/valtio)** (reactive React state) and **[Yjs](https://github.com/yjs/yjs)** (CRDT collaboration):
+valtio-y bridges **[Valtio](https://github.com/pmndrs/valtio)** (reactive state management) and **[Yjs](https://github.com/yjs/yjs)** (CRDT collaboration):
 
 ```text
-React Components → Valtio Proxy → valtio-y Bridge → Yjs CRDT → Network
+Framework Components → Valtio Proxy → valtio-y Bridge → Yjs CRDT → Network
 ```
 
 **When you mutate state:**
@@ -52,14 +52,14 @@ React Components → Valtio Proxy → valtio-y Bridge → Yjs CRDT → Network
 2. valtio-y translates it to a CRDT operation
 3. Changes are batched (same tick = one transaction)
 4. Syncs through provider to other users
-5. React components re-render (fine-grained - only affected components)
+5. Framework components update (fine-grained - only affected components)
 
 **When remote changes arrive:**
 
 1. Network update received
 2. Yjs merges with local CRDT (conflict-free)
 3. valtio-y reconciles Valtio proxy
-4. React re-renders affected components
+4. Framework re-renders affected components
 
 **You just write:**
 
@@ -68,7 +68,7 @@ state.todos.push({ text: "Buy milk" }); // Syncs automatically
 state.todos[0].done = true; // Syncs automatically
 ```
 
-**Key principle:** Read from snapshots (`useSnapshot`), write to proxies (`state`). Valtio tracks which properties each component accesses and only re-renders when those specific properties change.
+**Key principle:** Read from snapshots (`useSnapshot`), write to proxies (`state`). Valtio tracks which properties each component accesses and only re-renders when those specific properties change. Works with React, Vue, Svelte, Solid, and vanilla JavaScript.
 
 ---
 
@@ -128,7 +128,7 @@ Think of the proxy as a **live controller** for your CRDT state.
 
 ### Snapshots
 
-A **snapshot** is an immutable view of your state for React:
+A **snapshot** is an immutable view of your state for reactive frameworks:
 
 ```typescript
 function Component() {
@@ -146,7 +146,7 @@ state.count++; // Correct approach
 snap.count++; // This fails because snapshots are immutable
 ```
 
-Snapshots enable fine-grained reactivity. React knows exactly which components need to re-render based on which properties they accessed in their snapshot.
+Snapshots enable fine-grained reactivity. Your framework knows exactly which components need to re-render based on which properties they accessed in their snapshot.
 
 ### Providers
 
@@ -234,7 +234,7 @@ This is a performance optimization. Creating thousands of proxies upfront would 
 - **Server-authoritative apps** - Banking, e-commerce, auth (require single source of truth)
 - **Simple CRUD** - Blogs, news sites (REST/GraphQL is simpler)
 
-**Choose valtio-y when you need:** Real-time collaboration + offline support + React/Valtio + minimal API + local-first architecture
+**Choose valtio-y when you need:** Real-time collaboration + offline support + Valtio-compatible framework + minimal API + local-first architecture
 
 ---
 
@@ -243,7 +243,7 @@ This is a performance optimization. Creating thousands of proxies upfront would 
 **High-level flow:**
 
 ```text
-React Components
+Framework Components
       ↓ (useSnapshot)
   Valtio Proxy (state.todos)
       ↓ (valtio-y bridge)
@@ -254,7 +254,7 @@ React Components
 
 **Local changes:** You mutate state → Valtio proxy intercepts → valtio-y translates to CRDT → Batched in transaction → Syncs to network
 
-**Remote changes:** Network update arrives → Yjs merges (conflict-free) → valtio-y reconciles proxy → React re-renders affected components
+**Remote changes:** Network update arrives → Yjs merges (conflict-free) → valtio-y reconciles proxy → Framework re-renders affected components
 
 **Key insight:** Conflicts resolve automatically in the Yjs CRDT layer using mathematical properties. You never write conflict resolution code.
 
