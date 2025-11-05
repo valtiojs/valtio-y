@@ -138,12 +138,6 @@ export class WriteScheduler {
     const seq = this.operationSequence++;
     perArr.set(index, { value, after: postUpgrade, sequence: seq });
 
-    // Clear conflicting replace at same index (set wins over replace)
-    const replaces = this.pendingArrayReplaces.get(yArray);
-    if (replaces) {
-      replaces.delete(index);
-    }
-
     this.scheduleFlush();
   }
 
@@ -163,12 +157,6 @@ export class WriteScheduler {
       after: postUpgrade,
       sequence: this.operationSequence++,
     });
-
-    // Clear conflicting set at same index (replace wins over set)
-    const sets = this.pendingArraySets.get(yArray);
-    if (sets) {
-      sets.delete(index);
-    }
 
     this.scheduleFlush();
   }
@@ -191,43 +179,6 @@ export class WriteScheduler {
   }
 
   // Moves are not handled at the library level. Use app-level fractional indexing instead.
-
-  /**
-   * Get the effective length of an array, accounting for pending operations.
-   * This is used by the planner to make correct decisions about whether operations
-   * are in-bounds or out-of-bounds when operations are batched before flush.
-   *
-   * Algorithm:
-   * 1. Start with the current Y.Array length
-   * 2. Find the maximum index that will have a value after pending operations:
-   *    - Check all pending sets, deletes, and replaces
-   *    - Max index from sets/replaces indicates potential extensions
-   *    - Deletes don't reduce length in this calculation (conservative)
-   * 3. Return max(yArray.length, maxPendingIndex + 1)
-   */
-  getEffectiveArrayLength(yArray: Y.Array<unknown>): number {
-    const baseLength = yArray.length;
-    let maxIndex = baseLength - 1;
-
-    // Check sets - these might extend the array
-    const sets = this.pendingArraySets.get(yArray);
-    if (sets) {
-      for (const index of sets.keys()) {
-        maxIndex = Math.max(maxIndex, index);
-      }
-    }
-
-    // Check replaces - these don't extend, but we account for them
-    const replaces = this.pendingArrayReplaces.get(yArray);
-    if (replaces) {
-      for (const index of replaces.keys()) {
-        maxIndex = Math.max(maxIndex, index);
-      }
-    }
-
-    // Effective length is the max index + 1
-    return Math.max(baseLength, maxIndex + 1);
-  }
 
   /**
    * Merge array operations based on temporal ordering.
@@ -304,6 +255,48 @@ export class WriteScheduler {
       }
       if (deleteMap.size === 0) {
         arrayDeletes.delete(yArray);
+      }
+    }
+
+    // Handle SET + REPLACE conflicts at same index
+    // The later operation wins based on temporal ordering
+    for (const [yArray, setMap] of arraySets) {
+      const replaceMap = arrayReplaces.get(yArray);
+      if (replaceMap) {
+        for (const [index, setEntry] of Array.from(setMap.entries())) {
+          const replaceEntry = replaceMap.get(index);
+          if (replaceEntry) {
+            if (setEntry.sequence < replaceEntry.sequence) {
+              // Set came before replace: replace wins
+              this.log.debug("[merge] replace overrides earlier set", {
+                index,
+                setSeq: setEntry.sequence,
+                replaceSeq: replaceEntry.sequence,
+              });
+              setMap.delete(index);
+            } else {
+              // Replace came before set: set wins
+              this.log.debug("[merge] set overrides earlier replace", {
+                index,
+                replaceSeq: replaceEntry.sequence,
+                setSeq: setEntry.sequence,
+              });
+              replaceMap.delete(index);
+            }
+          }
+        }
+      }
+
+      // Clean up empty maps
+      if (setMap.size === 0) {
+        arraySets.delete(yArray);
+      }
+    }
+
+    // Clean up empty replace maps
+    for (const [yArray, replaceMap] of arrayReplaces) {
+      if (replaceMap.size === 0) {
+        arrayReplaces.delete(yArray);
       }
     }
   }
