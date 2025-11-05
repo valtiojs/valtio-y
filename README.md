@@ -2,7 +2,7 @@
 
 # valtio-y
 
-### Collaborative State Management for React
+### Collaborative State Management
 
 **Write normal JavaScript, get real-time sync free**
 
@@ -29,7 +29,7 @@ Building collaborative apps for **structured data** (not text documents, not sim
 - ❌ **Offline support** that merges changes correctly when reconnected
 - ❌ **Network protocols** (WebSocket, WebRTC, etc.)
 - ❌ **State consistency** across clients
-- ❌ **React re-renders** without performance issues
+- ❌ **Efficient re-renders** without performance issues
 
 **valtio-y handles all of this for you.** Just mutate your state like normal:
 
@@ -43,15 +43,15 @@ It automatically syncs across all connected users with **zero configuration**. N
 
 ### How It Compares
 
-|                     | valtio-y      | Plain Yjs  | Other CRDT libs |
-| ------------------- | ------------- | ---------- | --------------- |
-| React Integration   | ✅ Native     | ⚠️ Manual  | ⚠️ Manual       |
-| TypeScript Support  | ✅ Full       | ✅ Full    | ⚠️ Partial      |
-| Learning Curve      | ✅ Low        | ⚠️ Medium  | ❌ High         |
-| Nested Structures   | ✅ Natural    | ⚠️ Manual  | ⚠️ Manual       |
-| Array Operations    | ✅ All native | ⚠️ Y.Array | ⚠️ Limited      |
-| Fine-grained Render | ✅ Yes        | ❌ No      | ❌ No           |
-| Offline-First       | ✅ Yes        | ✅ Yes     | ⚠️ Varies       |
+|                      | valtio-y      | Plain Yjs  | Other CRDT libs |
+| -------------------- | ------------- | ---------- | --------------- |
+| Framework Integration| ✅ Native     | ⚠️ Manual  | ⚠️ Manual       |
+| TypeScript Support   | ✅ Full       | ✅ Full    | ⚠️ Partial      |
+| Learning Curve       | ✅ Low        | ⚠️ Medium  | ❌ High         |
+| Nested Structures    | ✅ Natural    | ⚠️ Manual  | ⚠️ Manual       |
+| Array Operations     | ✅ All native | ⚠️ Y.Array | ⚠️ Limited      |
+| Fine-grained Updates | ✅ Yes        | ❌ No      | ❌ No           |
+| Offline-First        | ✅ Yes        | ✅ Yes     | ⚠️ Varies       |
 
 Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), and battle-tested performance. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
 
@@ -123,41 +123,6 @@ state.todos[0].done = true;
 
 That's it! State is now synchronized via Yjs. Add a provider to sync across clients.
 
-## Use in React
-
-Bind your components with Valtio's `useSnapshot`. Components re-render only when their data changes.
-
-```jsx
-import { useSnapshot } from "valtio/react";
-
-function TodoList() {
-  const snap = useSnapshot(state);
-
-  return (
-    <ul>
-      {snap.todos.map((todo, i) => (
-        <li key={i}>
-          <input
-            type="checkbox"
-            checked={todo.done}
-            onChange={() => (state.todos[i].done = !state.todos[i].done)}
-          />
-          {todo.text}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function AddTodo() {
-  return (
-    <button onClick={() => state.todos.push({ text: "New task", done: false })}>
-      Add Todo
-    </button>
-  );
-}
-```
-
 ---
 
 ## ✨ Key Features
@@ -172,7 +137,7 @@ No special methods—just mutate objects like normal JavaScript
 
 **🎯 Fine-Grained Updates**
 
-React components re-render only when their specific data changes
+Components re-render only when their specific data changes
 
 **🔄 Offline-First**
 
@@ -196,6 +161,37 @@ Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
 </td>
 </tr>
 </table>
+
+---
+
+## Using with React
+
+Bind your components with Valtio's `useSnapshot` hook. Components re-render only when their data changes:
+
+```jsx
+import { useSnapshot } from "valtio/react";
+
+function TodoList() {
+  const snap = useSnapshot(state);
+
+  return (
+    <ul>
+      {snap.todos.map((todo, i) => (
+        <li key={i}>
+          <input
+            type="checkbox"
+            checked={todo.done}
+            onChange={() => (state.todos[i].done = !state.todos[i].done)}
+          />
+          {todo.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Solid, and vanilla JavaScript.
 
 ---
 
@@ -315,7 +311,7 @@ state.data.deeply.nested.value = 42;
 state.user.preferences = { ...newPreferences };
 ```
 
-### Accessing state outside React
+### Accessing state anywhere
 
 ```js
 // Read current state (non-reactive)
