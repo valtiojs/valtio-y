@@ -1,278 +1,518 @@
 # Core Concepts
 
-Understanding the fundamental concepts behind valtio-y will help you build better collaborative applications and reason about how your state synchronizes across users.
+valtio-y gives you local-first state that auto-syncs across users via Yjs CRDTs. You write normal JavaScript mutations, and the library handles all the complexity of sync, conflicts, and reactivity.
 
 ---
 
-## Table of Contents
+## What Problem Does This Solve?
 
-1. [What Are CRDTs?](#what-are-crdts)
-2. [How valtio-y Works](#how-valtio-y-works)
-3. [The valtio-y Mental Model](#the-valtio-y-mental-model)
-4. [Key Concepts](#key-concepts)
-5. [When to Use valtio-y](#when-to-use-valtio-y)
-6. [Architectural Overview](#architectural-overview)
+**The challenge:** Building collaborative apps for structured data (forms, dashboards, boards) where multiple users edit simultaneously.
 
----
+Traditional approaches require:
 
-## What Are CRDTs?
+- Central server to coordinate every change (slow, breaks offline)
+- Complex conflict resolution code (error-prone)
+- Locks or turn-taking (poor UX)
+- Network round-trips for every mutation (laggy)
 
-**The Problem:** When two users edit shared data simultaneously, traditional approaches require a central server, locks, complex conflict resolution, and network round-trips. This breaks down offline, with slow networks, or during server outages.
-
-**The Solution:** **CRDT** (Conflict-free Replicated Data Type) is a special data structure that:
-
-- Works offline - every user has a complete local copy
-- Merges automatically - changes combine deterministically
-- Converges - all users eventually see the same state
-- No coordination needed - no central server deciding conflicts
-
-Think of it like Git for your app state. CRDTs use mathematical properties to ensure merging always produces the same result, regardless of order:
-
-```text
-User A: ["Buy milk", "Walk dog"] + "Read book"
-User B: ["Buy milk", "Walk dog"] + "Call mom"
-After sync: ["Buy milk", "Walk dog", "Read book", "Call mom"]
-```
-
-Both users end up with the same state, even when making changes simultaneously. **Google Docs** uses CRDTs - that's how multiple people can edit simultaneously without conflicts. valtio-y brings this to any framework Valtio supports.
-
----
-
-## How valtio-y Works
-
-valtio-y bridges **[Valtio](https://github.com/pmndrs/valtio)** (reactive state management) and **[Yjs](https://github.com/yjs/yjs)** (CRDT collaboration):
-
-```text
-Framework Components → Valtio Proxy → valtio-y Bridge → Yjs CRDT → Network
-```
-
-**When you mutate state:**
-
-1. Valtio proxy intercepts your change
-2. valtio-y translates it to a CRDT operation
-3. Changes are batched (same tick = one transaction)
-4. Syncs through provider to other users
-5. Framework components update (fine-grained - only affected components)
-
-**When remote changes arrive:**
-
-1. Network update received
-2. Yjs merges with local CRDT (conflict-free)
-3. valtio-y reconciles Valtio proxy
-4. Framework re-renders affected components
-
-**You just write:**
+**valtio-y's solution:** Write normal JavaScript. Get automatic sync and conflict resolution free.
 
 ```typescript
-state.todos.push({ text: "Buy milk" }); // Syncs automatically
-state.todos[0].done = true; // Syncs automatically
+// This just works, even with 10 users editing simultaneously
+state.todos.push({ text: "Buy milk", done: false });
+state.todos[0].done = true;
+state.user.name = "Alice";
 ```
 
-**Key principle:** Read from snapshots (`useSnapshot`), write to proxies (`state`). Valtio tracks which properties each component accesses and only re-renders when those specific properties change. Works with React, Vue, Svelte, Solid, and vanilla JavaScript.
+No special APIs. No conflict handlers. No server coordination. Just mutate objects like you always have.
+
+---
+
+## What Are CRDTs and Yjs?
+
+### CRDTs: Conflict-Free Replicated Data Types
+
+A **CRDT** is a special data structure with a mathematical guarantee: **all replicas converge to the same state**, even when users make conflicting changes offline.
+
+Think of it like Git for your app state:
+
+```text
+User A offline: ["Buy milk", "Walk dog"] + adds "Read book"
+User B offline: ["Buy milk", "Walk dog"] + adds "Call mom"
+
+After both sync: ["Buy milk", "Walk dog", "Read book", "Call mom"]
+                 ↑ Both changes preserved, deterministic order
+```
+
+**Key properties:**
+
+- **No coordination needed** - Users edit independently, changes merge automatically
+- **Works offline** - Every user has a complete local copy
+- **Deterministic** - Same operations always produce the same result
+- **No data loss** - Concurrent changes are preserved, not overwritten
+
+**Real-world example:** Google Docs uses CRDTs. That's how multiple people can type simultaneously without conflicts. valtio-y brings this to any framework Valtio supports.
+
+### Yjs: A Production CRDT Library
+
+**[Yjs](https://github.com/yjs/yjs)** is a mature CRDT implementation that provides:
+
+- **Y.Map** - Like a JavaScript object/map
+- **Y.Array** - Like a JavaScript array
+- **Efficient sync** - Only sends deltas, not full state
+- **Undo/redo** - Built-in time travel
+- **Provider ecosystem** - WebSocket, WebRTC, IndexedDB, etc.
+
+valtio-y wraps Yjs types with Valtio proxies, giving you the best of both worlds:
+
+- Yjs handles sync and conflict resolution
+- Valtio provides reactive state and fine-grained updates
+- You write normal JavaScript
 
 ---
 
 ## The valtio-y Mental Model
 
-**Think:** Local-first database with automatic sync
+Think of valtio-y as a **live controller** for your CRDT state:
 
-- State is stored locally (instant reads/writes)
-- Changes persist to a CRDT (automatic conflict resolution)
-- Syncing happens in background (no network round-trips)
-- Works offline, syncs when online
+```text
+Your Code (mutations)
+      ↓
+Valtio Proxy (controller)
+      ↓
+valtio-y Bridge (scheduler + reconciler)
+      ↓
+Yjs Doc (CRDT)
+      ↓
+Provider (network)
+```
 
-**Your local state is the source of truth:**
+### Key Insight: The Proxy is a Controller, Not a Snapshot
+
+The Valtio proxy isn't a copy of your data—it's a **stateful controller** that directly operates on Yjs types:
 
 ```typescript
-state.todos.push({ text: "New task" }); // Instant UI update
+// When you mutate the proxy...
+state.count = 42;
+
+// ...it schedules a Yjs operation:
+yMap.set("count", 42);
+
+// When remote changes arrive...
+// Remote: yMap.set("count", 100)
+
+// ...the proxy reconciles automatically:
+state.count === 100; // ✓ Updated
+```
+
+### Read vs Write: Snapshots vs Proxies
+
+- **Read:** Use `useSnapshot(state)` in components for fine-grained reactivity
+- **Write:** Mutate `state` directly (the proxy controller)
+
+```typescript
+function TodoItem() {
+  const snap = useSnapshot(state); // Immutable snapshot for reading
+
+  return (
+    <div onClick={() => (state.todos[0].done = true)}>
+      {/*             ^^^^^ Write to proxy */}
+      {snap.todos[0].text}
+      {/* ^^^^^ Read from snapshot */}
+    </div>
+  );
+}
+```
+
+**Why this matters:**
+
+- Snapshots track which properties you access → fine-grained re-renders
+- Only components that read `todos[0].text` re-render when it changes
+- Components that read `todos[1]` don't re-render (Valtio magic!)
+
+### Local-First Behavior
+
+```typescript
+// Mutation is instant (no network wait)
+state.todos.push({ text: "New task" }); // ← UI updates immediately
+
 // Sync happens in background
-// Other users see it soon after
+// Other users see it soon after (milliseconds to seconds)
+
+// Works offline
+state.count++; // ← Still works!
+// Changes queue up, sync when reconnected
 ```
 
-**Conflicts resolve deterministically:**
-
-- Primitives: Last-write-wins (predictable)
-- Collections: CRDTs merge changes intelligently
-
-```typescript
-// Both users add to index 0 simultaneously
-// After sync: Both items exist, order is deterministic
-// ["B's task", "A's task", ...original]
-```
-
-**You never write sync code or handle conflicts** - CRDTs merge changes mathematically.
+**Mental model:** Your local state is the source of truth. Sync is opportunistic, not required.
 
 ---
 
-## Key Concepts
+## How Sync Works
 
-### Proxies
+### Example: Two Users Editing Simultaneously
 
-A **proxy** in Valtio is a special JavaScript object that intercepts operations:
+Let's walk through what happens when Alice and Bob both edit a todo list:
 
-```typescript
-const state = proxy({ count: 0 });
-
-// When you access or modify properties, the proxy knows about it
-state.count++; // Proxy intercepts this assignment
-```
-
-valtio-y creates proxies that:
-
-- **Mirror** the structure of your Yjs CRDT
-- **Intercept** mutations and translate them to CRDT operations
-- **Materialize lazily** - nested objects become proxies on access
-- **Update automatically** when remote changes arrive
-
-Think of the proxy as a **live controller** for your CRDT state.
-
-### Snapshots
-
-A **snapshot** is an immutable view of your state for reactive frameworks:
+#### Initial State (Both Users)
 
 ```typescript
-function Component() {
-  const snap = useSnapshot(state);
-  // 'snap' is immutable - you can't mutate it
-  // But it tracks which properties you accessed
-
-  return <div>{snap.count}</div>; // Tracks access to 'count'
-}
-
-// Mutate the original state, not the snapshot
-state.count++; // Correct approach
-
-// Never mutate the snapshot
-snap.count++; // This fails because snapshots are immutable
+state.todos = [
+  { text: "Buy milk", done: false },
+  { text: "Walk dog", done: false },
+];
 ```
 
-Snapshots enable fine-grained reactivity. Your framework knows exactly which components need to re-render based on which properties they accessed in their snapshot.
+#### Alice (Offline): Marks first todo as done
 
-### Providers
+```typescript
+state.todos[0].done = true;
+```
 
-A **provider** is your network connection:
+**What happens locally:**
+
+1. Proxy intercepts mutation
+2. Schedules Yjs operation: `yArray.get(0).set("done", true)`
+3. UI updates instantly (no network wait)
+4. Change queued for sync
+
+#### Bob (Offline): Adds a new todo
+
+```typescript
+state.todos.push({ text: "Read book", done: false });
+```
+
+**What happens locally:**
+
+1. Proxy intercepts mutation
+2. Schedules Yjs operation: `yArray.insert(2, [newTodo])`
+3. UI updates instantly
+4. Change queued for sync
+
+#### Both Come Online: Automatic Merge
+
+```typescript
+// Alice's state after sync:
+state.todos = [
+  { text: "Buy milk", done: true }, // ← Her change
+  { text: "Walk dog", done: false },
+  { text: "Read book", done: false }, // ← Bob's change merged in
+];
+
+// Bob's state after sync (identical):
+state.todos = [
+  { text: "Buy milk", done: true }, // ← Alice's change merged in
+  { text: "Walk dog", done: false },
+  { text: "Read book", done: false }, // ← His change
+];
+```
+
+**No conflicts. No data loss. Deterministic convergence.**
+
+### Lifecycle: Local Change → Remote Sync
+
+```typescript
+state.count++; // You mutate the proxy
+```
+
+**What happens under the hood:**
+
+1. **Interception** - Proxy trap catches the mutation
+2. **Scheduling** - Operation queued in write scheduler
+3. **Batching** - All mutations in same microtask batched together
+4. **Transaction** - Scheduler flushes: `doc.transact(() => yMap.set("count", 1))`
+5. **Provider** - Sends update to network
+6. **Remote peers** - Receive and merge (deterministic, conflict-free)
+
+```text
+You write:     state.count++
+               ↓
+Proxy:         Intercepts mutation
+               ↓
+Scheduler:     Batches operations (same microtask = one transaction)
+               ↓
+Yjs:           doc.transact(() => yMap.set("count", 1))
+               ↓
+Provider:      Broadcasts to network
+               ↓
+Other users:   Merge automatically
+```
+
+### Lifecycle: Remote Update → UI
+
+```typescript
+// Remote user: state.count = 100
+```
+
+**What happens on your machine:**
+
+1. **Provider** - Receives update from network
+2. **Yjs merge** - Deterministically merges into local CRDT
+3. **Event** - Yjs fires deep observer event
+4. **Reconciler** - valtio-y reconciles proxy structure to match Yjs
+5. **Valtio** - Notifies subscribed components
+6. **Framework** - Re-renders only affected components (fine-grained)
+
+```text
+Network:       Update arrives
+               ↓
+Yjs:           Merges into CRDT (conflict-free)
+               ↓
+Synchronizer:  Detects change via observeDeep
+               ↓
+Reconciler:    Updates proxy: state.count = 100
+               ↓
+Valtio:        Notifies subscribers
+               ↓
+React:         Re-renders components that read count
+```
+
+**Key machinery:**
+
+- **Synchronizer** (`synchronizer.ts`) - Listens to Yjs events
+- **Reconciler** (`reconcile/reconciler.ts`) - Ensures proxy matches Yjs structure
+- **Write Scheduler** (`scheduling/write-scheduler.ts`) - Batches local mutations
+
+---
+
+## Building Blocks
+
+### 1. Y.Doc + Root Type
+
+The **Y.Doc** is your CRDT container. It holds multiple named structures.
+
+```typescript
+const ydoc = new Y.Doc();
+
+// Choose which structure becomes your Valtio proxy
+const { proxy: state } = createYjsProxy(ydoc, {
+  getRoot: (doc) => doc.getMap("root"), // ← All clients must use same name
+});
+```
+
+**Think of it like a database:**
+
+- Y.Doc = database
+- `doc.getMap("root")` = table name
+- All clients must use the same "table name" to sync
+
+**Common patterns:**
+
+- **One root map** (recommended): `doc.getMap("root")` - structure everything inside
+- **Direct array root**: `doc.getArray("todos")` - when entire app state is a list
+- **Multiple roots** (advanced): Separate structures for specialized use cases
+
+See [Structuring Your App](./structuring-your-app.md) for details.
+
+### 2. Valtio Proxy (Controller)
+
+The proxy is your **live controller** for the Yjs structure:
+
+```typescript
+state.users = [{ name: "Alice" }]; // Enqueues operation
+const user = state.users[0]; // Materializes proxy for users[0]
+user.name = "Bob"; // Enqueues nested operation
+```
+
+**Key behaviors:**
+
+- **Lazy materialization** - Nested objects become proxies only when accessed (performance)
+- **Identity preservation** - Same Yjs object always maps to same proxy reference
+- **Automatic updates** - Reconciler ensures structure matches Yjs after remote changes
+
+```typescript
+// Large data loads fast (proxies created on-demand)
+state.users = Array(10000).fill({ name: "User", data: {...} });
+
+// Only accessed items become proxies
+const user = state.users[0]; // ← NOW this becomes a proxy
+user.name = "Alice";         // ← Mutations work
+```
+
+### 3. Providers (Network Adapters)
+
+Providers sync your Y.Doc across clients:
 
 ```typescript
 import { WebsocketProvider } from "y-websocket";
 
-const provider = new WebsocketProvider("ws://localhost:1234", "my-room", ydoc);
+const provider = new WebsocketProvider(
+  "ws://localhost:1234", // Server URL
+  "my-room", // Room name (clients in same room sync)
+  ydoc // Your Y.Doc
+);
 ```
 
-Providers:
+**Common providers:**
 
-- **Connect** your local CRDT to remote CRDTs
-- **Send** your changes to other users
-- **Receive** other users' changes
-- **Handle** network disconnects/reconnects
+- **y-websocket** - Client-server sync (most common)
+- **y-webrtc** - Peer-to-peer sync (no server needed)
+- **y-indexeddb** - Offline persistence (browser storage)
+- **y-partyserver** - Serverless real-time (PartyKit/Cloudflare)
 
-Common providers:
+### 4. Smart Operation Scheduling
 
-- **WebSocket** - Traditional client-server (y-websocket)
-- **WebRTC** - Peer-to-peer (y-webrtc)
-- **IndexedDB** - Offline persistence (y-indexeddb)
-- **PartyKit** - Serverless real-time (y-partyserver)
+This is where valtio-y's architecture really shines compared to simple proxy wrappers. The **write scheduler** is intelligent about how it translates your mutations into Yjs operations.
 
-You can use multiple providers simultaneously (e.g., WebSocket for sync + IndexedDB for persistence).
+#### Automatic Batching
 
-### Batching
-
-**Batching** combines multiple mutations into one transaction:
+All mutations in the same microtask become **one transaction**:
 
 ```typescript
 // These 100 mutations become ONE network update
 for (let i = 0; i < 100; i++) {
   state.count++;
 }
+// ↑ Batched automatically into single transaction
 ```
-
-valtio-y automatically batches all mutations in the same microtask. This is crucial for performance:
-
-- **Reduces** network traffic
-- **Minimizes** CRDT overhead
-- **Optimizes** React re-renders
-- **Improves** responsiveness
-
-You don't need to think about batching - it just works.
-
-### Lazy Materialization
-
-**Lazy materialization** means nested objects become proxies only when you access them:
-
-```typescript
-state.users = [{ name: "Alice" }, { name: "Bob" }];
-// At this point, users[0] is NOT yet a proxy
-
-const firstUser = state.users[0];
-// NOW users[0] is materialized as a proxy
-
-firstUser.name = "Alice Updated";
-// Mutations work because it's now a live proxy
-```
-
-This is a performance optimization. Creating thousands of proxies upfront would be slow. Instead, valtio-y creates them on-demand.
 
 **Why this matters:**
 
-- **Fast initialization** - Large data structures load quickly
-- **Low memory** - Only accessed objects become proxies
-- **Automatic** - You don't need to do anything special
+- **Reduces network traffic** - 100 mutations → 1 sync message
+- **Improves performance** - Fewer Yjs operations, fewer re-renders
+- **Atomic updates** - All changes apply together (no partial states)
 
----
+#### Intelligent Operation Merging
 
-## When to Use valtio-y
+The scheduler doesn't just batch—it **optimizes** operations:
 
-**Perfect for:**
+```typescript
+// You write:
+state.todos[0] = { text: "Old" };
+delete state.todos[0];
+state.todos[0] = { text: "New" };
 
-- **Collaborative tools** - Todo lists, dashboards, project management, design tools
-- **Multiplayer games** - Turn-based games, shared worlds (see Minecraft example)
-- **Offline-first apps** - Mobile apps, PWAs that sync when online
-- **Multi-device sync** - Note-taking, settings, bookmarks across devices
-
-**Not ideal for:**
-
-- **Text editors** - Use native Yjs integrations ([Lexical](https://lexical.dev/), [TipTap](https://tiptap.dev/), [ProseMirror](https://prosemirror.net/)) with specialized text CRDTs
-- **Server-authoritative apps** - Banking, e-commerce, auth (require single source of truth)
-- **Simple CRUD** - Blogs, news sites (REST/GraphQL is simpler)
-
-**Choose valtio-y when you need:** Real-time collaboration + offline support + Valtio-compatible framework + minimal API + local-first architecture
-
----
-
-## Architectural Overview
-
-**High-level flow:**
-
-```text
-Framework Components
-      ↓ (useSnapshot)
-  Valtio Proxy (state.todos)
-      ↓ (valtio-y bridge)
-  Yjs CRDT (Y.Array)
-      ↓ (provider)
-  Network → Other Users
+// Scheduler merges into: Replace at index 0 with "New"
+// Not: Set, Delete, Set (wasteful)
 ```
 
-**Local changes:** You mutate state → Valtio proxy intercepts → valtio-y translates to CRDT → Batched in transaction → Syncs to network
+**What the scheduler does:**
 
-**Remote changes:** Network update arrives → Yjs merges (conflict-free) → valtio-y reconciles proxy → Framework re-renders affected components
+- **Deduplicates** - Multiple writes to same key/index merge into one
+- **Cancels redundant ops** - Delete + Set at same index → Replace
+- **Purges stale ops** - If parent is deleted, child operations are cancelled
+- **Orders deterministically** - Deletes, then sets, then replaces (consistent across clients)
 
-**Key insight:** Conflicts resolve automatically in the Yjs CRDT layer using mathematical properties. You never write conflict resolution code.
+#### Handles Complex Scenarios
 
-**For deep dive:** See [Architecture Docs](../docs/architecture/architecture.md)
+**Array moves:**
+
+```typescript
+// Move item from index 2 to 0
+const [item] = state.todos.splice(2, 1); // Remove
+state.todos.splice(0, 0, item); // Insert
+
+// Scheduler intelligently handles the two operations
+// Ensures item reference is preserved
+```
+
+**Nested replacements:**
+
+```typescript
+// Replace entire nested structure
+state.users[0] = { name: "Alice", profile: { bio: "Developer" } };
+
+// Scheduler:
+// 1. Converts plain object to Y.Map
+// 2. Replaces at index 0
+// 3. Purges any pending operations on old nested structure
+// 4. After transaction: upgrades plain object to live proxy
+```
+
+**Concurrent edits to same location:**
+
+```typescript
+// Same microtask:
+state.todos[0].done = true;
+state.todos[0].text = "Updated";
+delete state.todos[0];
+state.todos[0] = { text: "New", done: false };
+
+// Scheduler intelligently merges:
+// Final operation: Replace index 0 with new object
+// Intermediate operations cancelled (no wasted work)
+```
+
+**This intelligence is what makes valtio-y production-ready.** You write imperative code, and the scheduler translates it into optimal CRDT operations.
 
 ---
 
-## Next Steps
+## Conflict Behavior & Guarantees
 
-Now that you understand the core concepts, you're ready to:
+### What Happens on Conflict?
 
-1. **[Basic Operations](./basic-operations.md)** - Learn common patterns for objects, arrays, and nested structures
-2. **[Performance Guide](./performance-guide.md)** - Optimize your collaborative apps
-3. **[Read the Architecture Docs](../docs/architecture/architecture.md)** - Deep dive into implementation details
-4. **[Try the Examples](../examples/)** - See real-world usage patterns
-5. **[Join Discord](https://discord.gg/MrQdmzd)** - Get help and share your projects
+#### Primitives: Last-Write-Wins
 
-**Questions or feedback?** [Open an issue](https://github.com/valtiojs/valtio-y/issues) or join the discussion!
+```typescript
+// Alice: state.count = 5  (timestamp: 100)
+// Bob:   state.count = 10 (timestamp: 101)
+
+// After sync (both users):
+state.count === 10; // ✓ Bob's write wins (later timestamp)
+```
+
+**Deterministic:** Same timestamps → same result on all clients.
+
+#### Objects: Structural Merge
+
+```typescript
+// Alice: state.user.name = "Alice"
+// Bob:   state.user.age = 30
+
+// After sync (both users):
+state.user === { name: "Alice", age: 30 };
+// ↑ Both changes preserved (different keys)
+```
+
+**No data loss:** Changes to different properties merge cleanly.
+
+#### Arrays: CRDT Merge
+
+```typescript
+// Initial: state.todos = ["Buy milk", "Walk dog"]
+
+// Alice: state.todos.unshift({ text: "A's task" })
+// Bob:   state.todos.unshift({ text: "B's task" })
+
+// After sync (both users):
+state.todos = [
+  { text: "B's task" }, // ← Both items preserved
+  { text: "A's task" }, // ← Deterministic order
+  { text: "Buy milk" },
+  { text: "Walk dog" },
+];
+```
+
+**Concurrent inserts:** Both preserved with stable ordering.
+
+### Guarantees
+
+✅ **Convergence** - All clients eventually see the same state (strong eventual consistency)
+
+✅ **Determinism** - Same operations in any order produce the same result
+
+✅ **Identity preservation** - Same Yjs object always maps to same proxy reference
+
+✅ **No data loss** - Remote changes never overwrite local changes (CRDT merge)
+
+✅ **Batching** - All mutations in same microtask become one transaction
+
+**Tested in:** `integration/yjs-to-valtio.spec.ts`, `integration/valtio-to-yjs.spec.ts`, `integration/array-operations-detailed.spec.ts`
+
+---
+
+## When valtio-y Fits
+
+valtio-y excels when you need **automatic conflict resolution** for **structured data**:
+
+- **Form builders** - Drag-and-drop interfaces, field configuration
+- **Kanban/project boards** - Task management, card reordering
+- **Dashboard configurators** - Widget placement, real-time layout adjustments
+- **Multiplayer game state** - Player positions, inventory, world state
+- **Data annotation tools** - Labeling, categorization, collaborative markup
+- **Configuration panels** - Settings that multiple users adjust simultaneously
+
+**Rule of thumb:** If conflicts must resolve automatically without user intervention, valtio-y is a good fit.
 
 ---
 
