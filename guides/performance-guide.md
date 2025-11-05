@@ -23,11 +23,11 @@ valtio-y includes several automatic performance features that work without confi
 Multiple mutations in the same JavaScript tick are automatically batched into a single Yjs transaction:
 
 ```typescript
-// These 100 operations become 1 network update
+// These 100 operations become one network update
 for (let i = 0; i < 100; i++) {
   state.count++;
 }
-// ✅ Single Yjs transaction, one sync event
+// Results in a single Yjs transaction and one sync event
 ```
 
 **How it works:** valtio-y queues mutations during the current tick and flushes them together at the end. This means:
@@ -39,12 +39,12 @@ for (let i = 0; i < 100; i++) {
 **Breaking the batch:** Using `await` between mutations splits them into separate transactions:
 
 ```typescript
-// ❌ Creates 2 separate transactions
+// Creates two separate transactions
 state.count = 1;
 await Promise.resolve();
 state.count = 2;
 
-// ✅ Single transaction
+// Single transaction
 state.count = 1;
 state.count = 2;
 ```
@@ -55,7 +55,7 @@ Nested objects create Valtio proxies only when accessed, not when the entire str
 
 ```typescript
 state.users = Array(10000).fill({ name: "User", data: {...} });
-// ✅ Fast initialization - no proxies created yet
+// Fast initialization - no proxies created yet
 
 const user = state.users[0]; // Materializes this user only
 user.name = "Alice";         // Now it's a proxy
@@ -72,7 +72,7 @@ user.name = "Alice";         // Now it's a proxy
 Array operations with multiple items are automatically optimized:
 
 ```typescript
-// ✅ Optimized: bulk operations with spread
+// Optimized: bulk operations with spread
 state.items.push(...Array(1000).fill({ data: "x" }));
 state.items.unshift(...newItems);
 
@@ -95,7 +95,7 @@ Understanding how batching works helps you write performant code.
 All mutations in a single tick are automatically batched:
 
 ```typescript
-// ✅ Batched automatically (1 transaction)
+// Batched automatically (one transaction)
 state.todos[0].done = true;
 state.todos[1].done = true;
 state.todos.push({ text: "New", done: false });
@@ -117,7 +117,7 @@ function handleBulkComplete() {
   state.stats.completed = state.todos.length;
   state.lastModified = Date.now();
 }
-// ✅ 1 network update, 1 React re-render
+// One network update and one React re-render
 ```
 
 ### Async Operations
@@ -130,7 +130,7 @@ async function fetchAndUpdate() {
 
   const data = await fetch("/api/data");
 
-  // ❌ Transaction 2 (after await)
+  // Transaction 2 (after await)
   state.loading = false;
   state.data = data;
 }
@@ -142,7 +142,7 @@ async function fetchAndUpdate() {
 async function fetchAndUpdate() {
   const data = await fetch("/api/data");
 
-  // ✅ Single transaction
+  // Single transaction
   state.loading = false;
   state.data = data;
   state.lastSync = Date.now();
@@ -154,12 +154,12 @@ async function fetchAndUpdate() {
 When updating many items, keep mutations in the same tick:
 
 ```typescript
-// ✅ Good: batched (1 transaction)
+// Batched (one transaction)
 for (let i = 0; i < 100; i++) {
   state.items[i].count++;
 }
 
-// ❌ Bad: 100 separate transactions
+// Results in 100 separate transactions
 for (let i = 0; i < 100; i++) {
   state.items[i].count++;
   await waitForAnimation(); // Breaks batch
@@ -183,7 +183,7 @@ type State = {
   items: Array<{ id: number; value: string }>;
 };
 
-// ✅ Fast initialization
+// Fast initialization
 const { proxy: state, bootstrap } = createYjsProxy<State>(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
 });
@@ -207,11 +207,11 @@ bootstrap({
 Use spread syntax for better performance:
 
 ```typescript
-// ✅ Recommended: bulk insert with spread
+// Recommended: bulk insert with spread
 const newItems = Array(100).fill({ data: "x" });
 state.items.push(...newItems);
 
-// ⚠️ Less efficient: individual inserts in loop
+// Less efficient: individual inserts in loop
 for (const item of newItems) {
   state.items.push(item);
 }
@@ -238,7 +238,7 @@ state.items[5] = newValue; // Replace by index
 // Batch multiple operations
 state.items.splice(0, 10); // Remove first 10
 state.items.push(...newItems); // Add many new items
-// ✅ Single transaction
+// Single transaction
 ```
 
 ### Iteration Performance
@@ -246,18 +246,18 @@ state.items.push(...newItems); // Add many new items
 Cache intermediate references to reduce property lookup overhead:
 
 ```typescript
-// ❌ Slower: repeated property lookups (~12ms for 1000 items)
+// Slower: repeated property lookups (~12ms for 1000 items)
 for (let i = 0; i < 1000; i++) {
   state.users[i].profile.settings.theme = "dark";
 }
 
-// ✅ Better: cache intermediate reference (~7.5ms for 1000 items)
+// Better: cache intermediate reference (~7.5ms for 1000 items)
 for (let i = 0; i < 1000; i++) {
   const settings = state.users[i].profile.settings;
   settings.theme = "dark";
 }
 
-// ✅ Best: cache array reference (~6ms for 1000 items)
+// Best: cache array reference (~6ms for 1000 items)
 const users = state.users;
 for (let i = 0; i < 1000; i++) {
   users[i].profile.settings.theme = "dark";
@@ -311,12 +311,12 @@ state.data.level1.level2.level3.value = "updated";
 When repeatedly accessing the same deep path, cache the reference to reduce property lookups:
 
 ```typescript
-// ❌ Repeated property lookups (~8ms for 1000 iterations)
+// Repeated property lookups (~8ms for 1000 iterations)
 for (let i = 0; i < 1000; i++) {
   state.app.data.user.settings.theme = `theme-${i}`;
 }
 
-// ✅ Cache the reference (~6.5ms for 1000 iterations)
+// Cache the reference (~6.5ms for 1000 iterations)
 const settings = state.app.data.user.settings;
 for (let i = 0; i < 1000; i++) {
   settings.theme = `theme-${i}`;
@@ -340,7 +340,7 @@ function TodoItem({ id }) {
   const snap = useSnapshot(state);
   const todo = snap.todos[id];
 
-  // ✅ Only re-renders when todos[id] changes
+  // Only re-renders when todos[id] changes
   return (
     <div>
       <input
@@ -361,7 +361,7 @@ function TodoItem({ id }) {
 Don't subscribe to entire arrays when you only need one item:
 
 ```typescript
-// ❌ Re-renders on any array change
+// Re-renders on any array change
 function TodoItem({ id }) {
   const snap = useSnapshot(state);
   const todos = snap.todos; // Subscribes to entire array
@@ -369,7 +369,7 @@ function TodoItem({ id }) {
   return <div>{todo.text}</div>;
 }
 
-// ✅ Only re-renders when this item changes
+// Only re-renders when this item changes
 function TodoItem({ id }) {
   const snap = useSnapshot(state);
   const todo = snap.todos[id]; // Subscribes to this item only
@@ -382,14 +382,14 @@ function TodoItem({ id }) {
 Spreading `snap` subscribes to all properties:
 
 ```typescript
-// ❌ Re-renders on any state change
+// Re-renders on any state change
 function App() {
   const { todos, users, settings } = useSnapshot(state);
   // Subscribes to todos, users, AND settings
   return <div>{todos.length} todos</div>;
 }
 
-// ✅ Only subscribes to todos
+// Only subscribes to todos
 function App() {
   const snap = useSnapshot(state);
   const todos = snap.todos; // Subscribes to todos only
@@ -402,7 +402,7 @@ function App() {
 Compute derived values outside the render:
 
 ```typescript
-// ✅ Derive data in snapshot
+// Derive data in snapshot
 function TodoList() {
   const snap = useSnapshot(state);
   const completed = snap.todos.filter((t) => t.done).length;
@@ -424,7 +424,7 @@ function TodoList() {
 For large lists, split into smaller components:
 
 ```typescript
-// ✅ Each item is independently subscribed
+// Each item is independently subscribed
 function TodoList() {
   const snap = useSnapshot(state);
 
@@ -535,7 +535,7 @@ Patterns to avoid for better performance.
 **Problem:**
 
 ```typescript
-// ❌ Slower: repeated property lookups from root
+// Slower: repeated property lookups from root
 for (let i = 0; i < 1000; i++) {
   state.app.data.users[i].profile.name = names[i];
 }
@@ -544,7 +544,7 @@ for (let i = 0; i < 1000; i++) {
 **Solution:**
 
 ```typescript
-// ✅ Faster: cache intermediate reference to reduce lookups
+// Faster: cache intermediate reference to reduce lookups
 const users = state.app.data.users;
 for (let i = 0; i < 1000; i++) {
   users[i].profile.name = names[i];
@@ -558,7 +558,7 @@ for (let i = 0; i < 1000; i++) {
 **Problem:**
 
 ```typescript
-// ❌ Creates 1000 separate transactions
+// Creates 1000 separate transactions
 for (let i = 0; i < 1000; i++) {
   state.items[i].processed = true;
   await processItem(state.items[i]); // Breaks batch
@@ -568,7 +568,7 @@ for (let i = 0; i < 1000; i++) {
 **Solution:**
 
 ```typescript
-// ✅ Single transaction
+// Single transaction
 const promises = state.items.map((item) => processItem(item));
 await Promise.all(promises);
 
@@ -583,7 +583,7 @@ for (let i = 0; i < 1000; i++) {
 **Problem:**
 
 ```typescript
-// ❌ Re-renders on ANY array change
+// Re-renders on any array change
 function TodoStats() {
   const snap = useSnapshot(state);
   const todos = snap.todos; // Subscribes to entire array
@@ -596,7 +596,7 @@ function TodoStats() {
 **Solution:**
 
 ```typescript
-// ✅ Only re-renders when length changes
+// Only re-renders when length changes
 function TodoStats() {
   const snap = useSnapshot(state);
   const count = snap.todos.length;
@@ -612,7 +612,7 @@ For more specific subscriptions, access only what you need.
 **Problem:**
 
 ```typescript
-// ❌ Slow: each push is separate
+// Slow: each push is separate
 for (const item of newItems) {
   state.items.push(item);
 }
@@ -621,7 +621,7 @@ for (const item of newItems) {
 **Solution:**
 
 ```typescript
-// ✅ Fast: bulk operation
+// Fast: bulk operation
 state.items.push(...newItems);
 ```
 
@@ -630,7 +630,7 @@ state.items.push(...newItems);
 **Problem:**
 
 ```typescript
-// ❌ Creates unnecessary copies
+// Creates unnecessary copies
 const newTodos = [...state.todos];
 newTodos.push(newTodo);
 state.todos = newTodos; // Replaces entire array
@@ -639,7 +639,7 @@ state.todos = newTodos; // Replaces entire array
 **Solution:**
 
 ```typescript
-// ✅ Direct mutation is faster
+// Direct mutation is faster
 state.todos.push(newTodo);
 ```
 
@@ -650,7 +650,7 @@ valtio-y is designed for mutation. Don't fight it with immutable patterns.
 **Problem:**
 
 ```typescript
-// ❌ Mixed proxy/snapshot access
+// Mixed proxy/snapshot access
 function addTodo() {
   const snap = useSnapshot(state);
   state.todos.push({ text: snap.newTodo, done: false });
@@ -660,7 +660,7 @@ function addTodo() {
 **Solution:**
 
 ```typescript
-// ✅ Use proxy for both reads and writes
+// Use the proxy for both reads and writes
 function addTodo() {
   state.todos.push({ text: state.newTodo, done: false });
 }
@@ -682,19 +682,19 @@ function addTodo() {
 
 Summary of typical performance numbers (from official benchmark suite):
 
-| Operation                     | Time        | Notes                                  |
-| ----------------------------- | ----------- | -------------------------------------- |
-| Bootstrap 1000 items          | ~8ms        | Fast initialization with lazy proxies  |
-| Bootstrap 5000 items          | ~43ms       | Scales linearly                        |
-| Small updates (1-10 items)    | ~1-3ms      | Typical UI interactions                |
-| Batch updates (100 items)     | ~9.5ms      | Updating items in large array          |
-| Batched mutations (1000 ops)  | ~5ms        | Same-tick batching is very effective   |
-| Deep nesting access (10 levels) | ~1.3ms    | First access with lazy materialization |
-| Deep nesting access (20 levels) | ~1.4ms    | Scales well with depth                 |
-| Deep mutation (10 levels)     | ~2.5ms      | Fast regardless of depth               |
-| Multi-client sync (local)     | ~2.4-3.5ms  | Local relay (same machine)             |
-| Multi-client sync (network)   | ~50-200ms   | Depends on network latency             |
-| React re-render               | ~1-5ms      | Fine-grained subscriptions             |
+| Operation                       | Time       | Notes                                  |
+| ------------------------------- | ---------- | -------------------------------------- |
+| Bootstrap 1000 items            | ~8ms       | Fast initialization with lazy proxies  |
+| Bootstrap 5000 items            | ~43ms      | Scales linearly                        |
+| Small updates (1-10 items)      | ~1-3ms     | Typical UI interactions                |
+| Batch updates (100 items)       | ~9.5ms     | Updating items in large array          |
+| Batched mutations (1000 ops)    | ~5ms       | Same-tick batching is very effective   |
+| Deep nesting access (10 levels) | ~1.3ms     | First access with lazy materialization |
+| Deep nesting access (20 levels) | ~1.4ms     | Scales well with depth                 |
+| Deep mutation (10 levels)       | ~2.5ms     | Fast regardless of depth               |
+| Multi-client sync (local)       | ~2.4-3.5ms | Local relay (same machine)             |
+| Multi-client sync (network)     | ~50-200ms  | Depends on network latency             |
+| React re-render                 | ~1-5ms     | Fine-grained subscriptions             |
 
 These numbers are from the benchmark suite running on modern hardware. Your mileage may vary based on:
 

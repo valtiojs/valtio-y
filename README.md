@@ -21,7 +21,7 @@ Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs
 
 ---
 
-## Why valtio-y?
+## 🤔 Why valtio-y?
 
 Building collaborative apps for **structured data** (not text documents, not simple CRUD) is **hard**. You need:
 
@@ -76,7 +76,7 @@ valtio-y excels in the **sweet spot between text editors and sync engines**: rea
 - **Apps like Linear/Notion** → Use sync engines (real-time updates without CRDT conflict resolution). Two users simultaneously editing the same Linear issue title or description doesn't need automatic merging—one user's change wins, and they can communicate to resolve it.
 - **Simple CRUD apps** → Plain REST/GraphQL is simpler if you don't need real-time collaboration.
 
-## Installation
+## 📦 Installation
 
 ```bash
 # npm
@@ -500,59 +500,17 @@ For more details, see the [architecture docs](./docs/architecture/)
 
 ## Examples
 
-Try these live collaborative demos showcasing valtio-y's sweet spot: **collaborative structured data** (task boards, game state, shared objects). Open each example in multiple browser tabs to see real-time sync in action!
+Live collaborative demos - open in multiple tabs to see real-time sync:
 
-### Learning Path
+1. **[Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple)** - Single-file example with detailed comments. Best for learning core concepts (CRUD, nested objects, reordering, offline/online simulation).
 
-**Start here** if you're new to valtio-y:
+2. **[Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Minimal object synchronization with WebSocket provider.
 
-#### 1. [Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple) - **Best for learning**
+3. **[Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Array operations (push, pop, splice) with WebSocket sync.
 
-Single-file example with detailed comments. Learn core concepts including CRUD operations, nested todos, reordering, and offline/online simulation.
+4. **[Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)** - Production-ready app with drag-and-drop, bulk operations, filtering (React, Tailwind, dnd-kit).
 
-**What you'll learn:** Basic setup, array operations, nested objects, state mutations
-
----
-
-#### 2. [Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)
-
-Minimal object synchronization with WebSocket provider. See how key-value pairs sync in real-time.
-
-**What you'll learn:** WebSocket provider setup, basic object mutations
-
----
-
-#### 3. [Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)
-
-Demonstrates array operations (push, pop, splice) with WebSocket sync.
-
-**What you'll learn:** Array manipulation, list operations
-
----
-
-### Advanced Examples
-
-#### 4. [Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)
-
-Production-ready todo app with drag-and-drop, bulk operations, filtering, and selection modes.
-
-**What you'll learn:** Advanced UI patterns, @dnd-kit integration, bulk operations, complex state management
-
-**Tech:** React, Tailwind CSS, dnd-kit, lucide-react
-
----
-
-#### 5. [Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft) - **Most impressive**
-
-Real-time multiplayer 3D game with WebRTC peer-to-peer sync. Move around a voxel world with other players!
-
-**What you'll learn:** High-frequency position updates, WebRTC P2P, multiplayer coordination, performance optimization
-
-**Tech:** Three.js, WebRTC (y-webrtc)
-
----
-
-All examples use `useSnapshot` from Valtio and work with any Yjs provider. Each example includes full source code you can explore and modify.
+5. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
 
 ---
 
