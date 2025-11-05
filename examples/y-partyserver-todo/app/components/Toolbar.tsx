@@ -147,9 +147,7 @@ export function Toolbar({
             onChange={onFillToggle}
             className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
           />
-          <span className="text-sm font-medium text-gray-700">
-            Fill shapes
-          </span>
+          <span className="text-sm font-medium text-gray-700">Fill shapes</span>
         </label>
       </div>
 

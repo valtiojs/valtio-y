@@ -46,7 +46,7 @@ export function LayersPanel({
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
-    })
+    }),
   );
 
   const handleDragEnd = (event: DragEndEvent) => {
@@ -54,7 +54,7 @@ export function LayersPanel({
 
     if (over && active.id !== over.id && proxy.shapes) {
       const oldIndex = proxy.shapes.findIndex(
-        (shape) => shape.id === active.id
+        (shape) => shape.id === active.id,
       );
       const newIndex = proxy.shapes.findIndex((shape) => shape.id === over.id);
 

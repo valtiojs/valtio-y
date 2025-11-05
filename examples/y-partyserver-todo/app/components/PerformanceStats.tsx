@@ -111,8 +111,8 @@ export function PerformanceStats() {
         </h4>
         <p className="text-xs text-blue-800 leading-relaxed">
           When you draw, valtio-y batches hundreds of point additions into
-          efficient sync operations. Watch the <strong>Batch Size</strong>{" "}
-          spike as you draw! This is a key advantage over other CRDT libraries.
+          efficient sync operations. Watch the <strong>Batch Size</strong> spike
+          as you draw! This is a key advantage over other CRDT libraries.
         </p>
       </div>
 

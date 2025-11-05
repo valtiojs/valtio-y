@@ -145,7 +145,11 @@ export const { proxy, bootstrap } = createYjsProxy<AppState>(yDoc, {
  * Initialize the state with default values.
  * This will sync to all connected clients automatically.
  */
-export function initializeState(userId: string, userName: string, userColor: string) {
+export function initializeState(
+  userId: string,
+  userName: string,
+  userColor: string,
+) {
   // Only initialize if the state is empty
   if (!proxy.shapes) {
     proxy.shapes = [];

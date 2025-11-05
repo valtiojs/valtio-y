@@ -34,8 +34,7 @@ const USER_COLORS = [
   "#F7DC6F",
   "#BB8FCE",
 ];
-const USER_COLOR =
-  USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
+const USER_COLOR = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
 
 export function meta({}: Route.MetaArgs) {
   return [
@@ -109,22 +108,18 @@ export default function Home() {
                 valtio-y Drawing Demo
               </h1>
               <p className="text-sm text-gray-600 mt-1">
-                Collaborative whiteboard powered by{" "}
-                <strong>valtio-y</strong> + <strong>Y-PartyServer</strong>
+                Collaborative whiteboard powered by <strong>valtio-y</strong> +{" "}
+                <strong>Y-PartyServer</strong>
               </p>
             </div>
             <div className="text-right">
-              <p className="text-sm font-medium text-gray-700">
-                {USER_NAME}
-              </p>
+              <p className="text-sm font-medium text-gray-700">{USER_NAME}</p>
               <div className="flex items-center gap-2 justify-end mt-1">
                 <div
                   className="w-4 h-4 rounded-full"
                   style={{ backgroundColor: USER_COLOR }}
                 />
-                <span className="text-xs text-gray-500">
-                  You
-                </span>
+                <span className="text-xs text-gray-500">You</span>
               </div>
             </div>
           </div>
@@ -225,8 +220,8 @@ export default function Home() {
               </h3>
               <p className="text-sm text-gray-700">
                 Open multiple browser windows to see live cursors and instant
-                synchronization. Changes sync automatically through Y-PartyServer
-                running on Cloudflare Durable Objects.
+                synchronization. Changes sync automatically through
+                Y-PartyServer running on Cloudflare Durable Objects.
               </p>
             </div>
           </div>

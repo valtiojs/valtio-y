@@ -32,8 +32,8 @@ export function Canvas({
   const snap = useSnapshot(proxy);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const [currentShape, setCurrentShape] = useState<Shape | null>(null);
-  const [currentPoints, setCurrentPoints] = useState<Point[]>([]);
+  const currentShapeIdRef = useRef<string | null>(null);
+  const pointsBatchRef = useRef<Point[]>([]);
   const animationFrameRef = useRef<number | undefined>(undefined);
 
   // Convert screen coordinates to canvas coordinates
@@ -48,7 +48,7 @@ export function Canvas({
         y: e.clientY - rect.top,
       };
     },
-    []
+    [],
   );
 
   // Handle mouse down - start drawing
@@ -58,12 +58,18 @@ export function Canvas({
 
       const point = getCanvasPoint(e.nativeEvent);
       setIsDrawing(true);
-      setCurrentPoints([point]);
 
       const shapeId = `${userId}-${Date.now()}`;
       const timestamp = Date.now();
+      currentShapeIdRef.current = shapeId;
+
+      // Initialize the proxy shapes array if needed
+      if (!proxy.shapes) {
+        proxy.shapes = [];
+      }
 
       if (tool === "pen") {
+        // Create the path shape in the proxy immediately - visible to all users!
         const newShape: PathShape = {
           id: shapeId,
           type: "path",
@@ -71,9 +77,11 @@ export function Canvas({
           style: { color, strokeWidth },
           timestamp,
         };
-        setCurrentShape(newShape);
+        proxy.shapes.push(newShape);
+        pointsBatchRef.current = [];
       } else if (tool === "rect" || tool === "circle") {
-        setCurrentShape({
+        // Create rect/circle in proxy immediately
+        const newShape = {
           id: shapeId,
           type: tool,
           x: point.x,
@@ -85,10 +93,11 @@ export function Canvas({
             fillColor: fillEnabled ? color : undefined,
           },
           timestamp,
-        } as Shape);
+        } as Shape;
+        proxy.shapes.push(newShape);
       }
     },
-    [tool, color, strokeWidth, fillEnabled, userId, getCanvasPoint]
+    [tool, color, strokeWidth, fillEnabled, userId, getCanvasPoint],
   );
 
   // Handle mouse move - continue drawing
@@ -100,91 +109,86 @@ export function Canvas({
         proxy.users[userId].cursor = point;
       }
 
-      if (!isDrawing || !currentShape) return;
+      if (!isDrawing || !currentShapeIdRef.current || !proxy.shapes) return;
 
-      const newPoint = point;
+      const shapeIndex = proxy.shapes.findIndex(
+        (s) => s.id === currentShapeIdRef.current
+      );
+      if (shapeIndex === -1) return;
 
-      if (tool === "pen" && currentShape.type === "path") {
-        // For pen tool, accumulate points - this showcases BATCHING!
-        const newPoints = [...currentPoints, newPoint];
-        setCurrentPoints(newPoints);
+      const shape = proxy.shapes[shapeIndex];
 
-        // Update the current shape for preview
-        setCurrentShape({
-          ...currentShape,
-          points: newPoints,
-        });
+      if (tool === "pen" && shape.type === "path") {
+        // Batch points for real-time drawing with batching!
+        pointsBatchRef.current.push(point);
 
-        // Track this as a batch operation
-        trackOperation(1);
-      } else if (tool === "rect" || tool === "circle") {
-        // For shapes, update dimensions based on drag
-        const startPoint = currentPoints[0];
-        const dx = newPoint.x - startPoint.x;
-        const dy = newPoint.y - startPoint.y;
-
-        if (tool === "rect") {
-          setCurrentShape({
-            ...currentShape,
-            width: dx,
-            height: dy,
-          } as Shape);
-        } else if (tool === "circle") {
-          const radius = Math.sqrt(dx * dx + dy * dy);
-          setCurrentShape({
-            ...currentShape,
-            radius,
-          } as Shape);
+        // Flush batch every 5 points or immediately for responsiveness
+        if (pointsBatchRef.current.length >= 5) {
+          const batch = [...pointsBatchRef.current];
+          shape.points.push(...batch);
+          trackOperation(batch.length);
+          pointsBatchRef.current = [];
+        } else {
+          // Still add immediately for smooth drawing, but track for stats
+          shape.points.push(point);
+          trackOperation(1);
         }
+      } else if (tool === "rect" && shape.type === "rect") {
+        // Update rect dimensions in real-time
+        const startX = shape.x;
+        const startY = shape.y;
+        shape.width = point.x - startX;
+        shape.height = point.y - startY;
+      } else if (tool === "circle" && shape.type === "circle") {
+        // Update circle radius in real-time
+        const dx = point.x - shape.x;
+        const dy = point.y - shape.y;
+        shape.radius = Math.sqrt(dx * dx + dy * dy);
       }
     },
-    [
-      isDrawing,
-      currentShape,
-      currentPoints,
-      tool,
-      userId,
-      getCanvasPoint,
-    ]
+    [isDrawing, tool, userId, getCanvasPoint],
   );
 
   // Handle mouse up - finish drawing
   const handlePointerUp = useCallback(() => {
-    if (!isDrawing || !currentShape) return;
+    if (!isDrawing || !currentShapeIdRef.current || !proxy.shapes) return;
 
-    // Only add the shape if it has meaningful content
-    if (tool === "pen" && currentPoints.length > 2) {
-      // Add the path shape with all accumulated points
-      if (!proxy.shapes) {
-        proxy.shapes = [];
-      }
-      proxy.shapes.push(currentShape as PathShape);
+    const shapeIndex = proxy.shapes.findIndex(
+      (s) => s.id === currentShapeIdRef.current
+    );
 
-      // Track the final batch size
-      trackOperation(currentPoints.length);
-    } else if (
-      (tool === "rect" || tool === "circle") &&
-      currentPoints.length > 0
-    ) {
-      // Add rectangle or circle if it has size
-      const hasSize =
-        tool === "rect"
-          ? Math.abs((currentShape as any).width) > 5 &&
-            Math.abs((currentShape as any).height) > 5
-          : (currentShape as any).radius > 5;
+    if (shapeIndex !== -1) {
+      const shape = proxy.shapes[shapeIndex];
 
-      if (hasSize) {
-        if (!proxy.shapes) {
-          proxy.shapes = [];
+      // Remove shapes that are too small
+      if (tool === "pen" && shape.type === "path") {
+        if (shape.points.length < 3) {
+          proxy.shapes.splice(shapeIndex, 1);
+        } else {
+          // Flush any remaining batched points
+          if (pointsBatchRef.current.length > 0) {
+            shape.points.push(...pointsBatchRef.current);
+            trackOperation(pointsBatchRef.current.length);
+            pointsBatchRef.current = [];
+          }
         }
-        proxy.shapes.push(currentShape);
+      } else if (tool === "rect" && shape.type === "rect") {
+        const hasSize =
+          Math.abs(shape.width) > 5 && Math.abs(shape.height) > 5;
+        if (!hasSize) {
+          proxy.shapes.splice(shapeIndex, 1);
+        }
+      } else if (tool === "circle" && shape.type === "circle") {
+        if (shape.radius < 5) {
+          proxy.shapes.splice(shapeIndex, 1);
+        }
       }
     }
 
     setIsDrawing(false);
-    setCurrentShape(null);
-    setCurrentPoints([]);
-  }, [isDrawing, currentShape, currentPoints, tool]);
+    currentShapeIdRef.current = null;
+    pointsBatchRef.current = [];
+  }, [isDrawing, tool]);
 
   // Render the canvas
   useEffect(() => {
@@ -197,15 +201,10 @@ export function Canvas({
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Render all shapes from state
+    // Render all shapes from state (including the one being drawn!)
     snap.shapes?.forEach((shape) => {
       renderShape(ctx, shape);
     });
-
-    // Render current shape being drawn
-    if (currentShape) {
-      renderShape(ctx, currentShape);
-    }
 
     // Render multiplayer cursors
     if (snap.users) {
@@ -215,7 +214,7 @@ export function Canvas({
         }
       });
     }
-  }, [snap.shapes, snap.users, currentShape, userId]);
+  }, [snap.shapes, snap.users, userId]);
 
   return (
     <canvas
@@ -306,7 +305,7 @@ function renderCursor(
   ctx: CanvasRenderingContext2D,
   point: Point,
   color: string,
-  name: string
+  name: string,
 ) {
   // Draw cursor circle
   ctx.fillStyle = color;
