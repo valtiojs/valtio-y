@@ -1,6 +1,6 @@
 <div align="center">
 
-# valtio-y
+# valtio-y ⚡
 
 ### Collaborative State Management
 
@@ -21,7 +21,7 @@ Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs
 
 ---
 
-## 🤔 Why valtio-y?
+## Why valtio-y?
 
 Building collaborative apps for **structured data** (not text documents, not simple CRUD) is **hard**. You need:
 
@@ -76,7 +76,7 @@ valtio-y excels in the **sweet spot between text editors and sync engines**: rea
 - **Apps like Linear/Notion** → Use sync engines (real-time updates without CRDT conflict resolution). Two users simultaneously editing the same Linear issue title or description doesn't need automatic merging—one user's change wins, and they can communicate to resolve it.
 - **Simple CRUD apps** → Plain REST/GraphQL is simpler if you don't need real-time collaboration.
 
-## 📦 Installation
+## Installation
 
 ```bash
 # npm
