@@ -15,6 +15,10 @@
     },
     "typecheck": {
       "dependsOn": ["^build"]
+    },
+    "publish": {
+      "dependsOn": ["^build"],
+      "cache": false
     }
   }
 }

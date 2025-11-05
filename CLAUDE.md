@@ -19,6 +19,7 @@
 | Test all packages             | `bun run test` (uses turbo)      |
 | Type check all packages       | `bun run typecheck` (uses turbo) |
 | Dev mode all packages         | `bun run dev` (uses turbo)       |
+| Create a changeset            | `bun changeset`                  |
 
 Keep these commands nearby—most tasks you perform will be a combination of them.
 
@@ -239,37 +240,137 @@ Closes #42
 
 ### Release Workflow
 
-This project uses **release-please** to automate versioning and releases based on conventional commits.
+This project uses **Changesets** with **Turbo** to manage versioning and releases, providing explicit control over changelogs.
 
 **How it works:**
 
-1. **Push to main** - When commits are merged to main, release-please analyzes them
-2. **Release PR created** - A "Release PR" is automatically created/updated with:
-   - Version bump (based on commit types: feat = minor, fix = patch)
-   - Auto-generated changelog
-   - Updated package.json version
-3. **Merge to release** - When you merge the Release PR:
-   - A GitHub release is created
-   - The publish workflow automatically publishes to npm with provenance
+1. **Create a changeset** - When making changes, run `bun changeset` to create a changeset file:
+   ```bash
+   bun changeset
+   ```
+   This prompts you to:
+   - Select the packages to version (usually `valtio-y`)
+   - Choose the version bump type (major, minor, patch)
+   - Write a user-focused description for the changelog
 
-**For maintainers:**
+2. **Commit the changeset** - The changeset file (`.changeset/*.md`) should be committed with your changes:
+   ```bash
+   git add .changeset/
+   git commit -m "feat(core): add new feature"
+   ```
 
-- Just merge PRs normally with conventional commit titles
-- Release-please tracks all unreleased changes in a single Release PR
-- Merge the Release PR when ready to publish
-- Publishing happens automatically on release creation
+3. **Version PR created** - When merged to main, the Release workflow automatically creates/updates a "Version Packages" PR with:
+   - Runs: `bun run version` → `changeset version && bun update`
+   - Updates package.json versions and CHANGELOG.md files
+   - **Bun workaround**: `bun update` fixes the lockfile to resolve `workspace:*` references
+   - Version PR is ready for review
+
+4. **Merge to publish** - When you merge the Version Packages PR:
+   - The workflow runs all quality checks (typecheck, lint, test, build)
+   - Runs: `bun run release` → `turbo run publish --filter='valtio-*' && changeset tag`
+   - Turbo runs the `publish` script in each `valtio-*` package
+   - Each package publishes with: `npm publish --access public --provenance`
+   - Git tags are created for published versions
+
+**For AI agents:**
+
+**When to create a changeset:**
+
+Create a changeset ONLY for changes that affect the published npm package:
+
+✅ **Need a changeset:**
+- `feat(core)` - New features, APIs, exports
+- `fix(core)` - Bug fixes users will notice
+- `perf(core)` - Performance improvements
+- Breaking changes to published APIs
+
+❌ **NO changeset needed:**
+- `chore(ci)` - CI/CD, workflows, build config
+- `chore(repo)` - Dev tooling, linting, formatting
+- `feat(examples)` - Examples don't get published
+- `docs(repo)` - CLAUDE.md, CONTRIBUTING.md, etc.
+- `test(core)` - Test files and utilities
+- `refactor(core)` - Internal changes with no API impact
+
+**Rule of thumb:** Ask "Does this affect someone using `valtio-y` from npm?" If yes → changeset. If no → skip.
+
+**Workflow:**
+
+1. Make the code changes
+2. **IF user-facing:** Create a changeset using `bun changeset`
+3. Commit both the code changes and the changeset file together
+4. The changeset description should be user-focused, not code-focused
+
+**Examples:**
+
+```bash
+# feat(core) - NEEDS changeset
+# Changes: src/index.ts exports new function
+bun changeset  # Select valtio-y, minor, describe feature
+git commit -m "feat(core): add useYjsProxy hook"
+
+# chore(ci) - NO changeset
+# Changes: .github/workflows/
+git commit -m "chore(ci): optimize test workflow"
+# Skip bun changeset!
+
+# fix(core) - NEEDS changeset
+# Changes: src/synchronizer.ts fixes bug
+bun changeset  # Select valtio-y, patch, describe fix
+git commit -m "fix(core): resolve array sync race condition"
+```
+
+**Adding new packages:**
+
+To make a new package publishable:
+
+1. Add a `publish` script to the package's `package.json`:
+   ```json
+   {
+     "scripts": {
+       "publish": "npm publish --access public --provenance"
+     }
+   }
+   ```
+
+2. Ensure the package name matches `valtio-*` pattern
+3. Turbo will automatically discover and publish it in the correct order
+
+**Technical details:**
+
+- **Root scripts**:
+  - `version`: `changeset version && bun update` (updates versions + fixes Bun lockfile)
+  - `release`: `turbo run publish --filter='valtio-*' && changeset tag` (publishes packages + creates tags)
+- **Bun workaround**: `bun update` after `changeset version` is required because changesets doesn't natively support Bun workspaces. This resolves `workspace:*` references in the lockfile.
+- **Turbo filter**: `--filter='valtio-*'` ensures only `valtio-y` and future `valtio-*` packages are published, never examples
 
 **Version bumping rules:**
 
-- `feat(scope):` → Minor version bump (1.0.0 → 1.1.0)
-- `fix(scope):` → Patch version bump (1.0.0 → 1.0.1)
-- `feat(scope)!:` or `BREAKING CHANGE:` → Major version bump (1.0.0 → 2.0.0)
+- `major` → Breaking changes (1.0.0 → 2.0.0)
+- `minor` → New features (1.0.0 → 1.1.0)
+- `patch` → Bug fixes (1.0.0 → 1.0.1)
+
+**Example changeset file (`.changeset/cool-feature.md`):**
+
+```md
+---
+"valtio-y": minor
+---
+
+Add custom message support for providers. You can now send custom string messages over the same WebSocket connection used for Yjs sync, enabling chat features and function calling patterns.
+```
 
 **Related workflows:**
 
-- `.github/workflows/release-please.yml` - Creates/updates release PRs
-- `.github/workflows/publish.yml` - Publishes to npm on release creation
+- `.github/workflows/release.yml` - Creates version PRs and publishes to npm
 - `.github/workflows/pr-title.yml` - Enforces conventional commit format for PR titles
+
+**Why changesets over release-please?**
+
+- **Explicit control**: Changelog entries are written intentionally, not inferred from commits
+- **Better quality**: Changeset descriptions can be detailed and user-focused
+- **Reviewable**: Changelog entries are reviewed as part of the PR
+- **Easy to fix**: Mistakes in changesets can be fixed by editing the `.changeset/*.md` file
 
 ---
 

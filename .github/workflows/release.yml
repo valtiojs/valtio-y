@@ -1,0 +1,64 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+concurrency: ${{ github.workflow }}-${{ github.ref }}
+
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write  # Required for npm provenance
+
+jobs:
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    steps:
+      # --- 1. Checkout -------------------------------------------------------
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      # --- 2. Setup Bun ------------------------------------------------------
+      - name: Setup Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.1
+
+      # --- 3. Install dependencies -------------------------------------------
+      - name: Install dependencies
+        run: bun install --frozen-lockfile --ignore-scripts
+
+      # --- 4. Type check -----------------------------------------------------
+      - name: Typecheck
+        run: bun run typecheck
+
+      # --- 5. Lint -----------------------------------------------------------
+      - name: Lint
+        run: bun run lint
+
+      # --- 6. Test -----------------------------------------------------------
+      - name: Test
+        timeout-minutes: 3
+        run: bun run test
+
+      # --- 7. Build all packages ---------------------------------------------
+      - name: Build
+        run: bun run build
+
+      # --- 8. Create Release Pull Request or Publish -------------------------
+      - name: Create Release Pull Request or Publish
+        id: changesets
+        uses: changesets/action@v1
+        with:
+          # This script runs changeset version with bun update to fix workspace:* refs
+          version: bun run version
+          # This script publishes packages to npm
+          publish: bun run release
+          title: "chore(release): version packages"
+          commit: "chore(release): version packages"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
