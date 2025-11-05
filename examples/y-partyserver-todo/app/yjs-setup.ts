@@ -57,6 +57,21 @@ export function initProvider(): YProvider {
   return provider;
 }
 
+// ============================================================================
+// YJS AWARENESS - Ephemeral cursor/presence data
+// ============================================================================
+
+/**
+ * Get the Awareness instance for ephemeral data (cursors, presence)
+ * Awareness data is NOT persisted in the CRDT - perfect for cursors!
+ */
+export function getAwareness(): any {
+  if (!provider) {
+    throw new Error("[valtio-y] Provider not initialized");
+  }
+  return provider.awareness;
+}
+
 /**
  * Get the current provider instance
  */
@@ -154,33 +169,53 @@ export function initializeState(
   if (!proxy.shapes) {
     proxy.shapes = [];
   }
-  if (!proxy.users) {
-    proxy.users = {};
-  }
 
-  // Add current user
-  if (!proxy.users[userId]) {
-    proxy.users[userId] = {
-      id: userId,
-      name: userName,
-      color: userColor,
-      selection: [],
-    };
-  }
+  // Set local awareness state (ephemeral, not persisted)
+  const awareness = getAwareness();
+  awareness.setLocalState({
+    id: userId,
+    name: userName,
+    color: userColor,
+    cursor: null,
+  });
 
   console.log("[valtio-y] State initialized:", {
     shapes: proxy.shapes?.length || 0,
-    users: Object.keys(proxy.users || {}).length,
+    clientId: awareness.clientID,
   });
 }
 
 /**
  * Clean up user on disconnect
  */
-export function cleanupUser(userId: string) {
-  if (proxy.users?.[userId]) {
-    delete proxy.users[userId];
+export function cleanupUser() {
+  const awareness = getAwareness();
+  awareness.setLocalState(null);
+}
+
+/**
+ * Update local cursor position in awareness
+ */
+export function updateCursor(x: number, y: number) {
+  const awareness = getAwareness();
+  const currentState = awareness.getLocalState();
+  if (currentState) {
+    awareness.setLocalStateField("cursor", { x, y });
   }
+}
+
+/**
+ * Get all connected users from awareness
+ */
+export function getAwarenessUsers(): any[] {
+  const awareness = getAwareness();
+  const users: any[] = [];
+  awareness.getStates().forEach((state: any, clientId: number) => {
+    if (state && clientId !== awareness.clientID) {
+      users.push({ ...state, clientId });
+    }
+  });
+  return users;
 }
 
 // ============================================================================

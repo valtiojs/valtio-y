@@ -1,31 +1,89 @@
 /**
  * Performance Stats Panel
  *
- * Showcases valtio-y's performance optimizations:
- * - Operations per second
- * - Batch sizes during drawing
- * - Total operations count
- * - Connection status
- *
- * This component helps users understand the batching behavior
- * that makes valtio-y performant for real-time collaboration.
+ * Showcases the edge-native architecture:
+ * - Cloudflare datacenter (colo) location
+ * - Round-trip time (RTT) to the edge
+ * - Snapshot size showing CRDT compression
+ * - Operations per second and batching stats
  */
 
 import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
-import { Activity, Zap, Hash, Wifi, WifiOff } from "lucide-react";
-import { proxy, getSyncStatus, subscribeSyncStatus } from "../yjs-setup";
+import {
+  Activity,
+  Zap,
+  Hash,
+  Wifi,
+  WifiOff,
+  Globe,
+  Clock,
+  Database,
+} from "lucide-react";
+import { proxy, getSyncStatus, subscribeSyncStatus, yDoc } from "../yjs-setup";
 import type { SyncStatus } from "../types";
+import * as Y from "yjs";
 
 export function PerformanceStats() {
   const snap = useSnapshot(proxy);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("offline");
+  const [colo, setColo] = useState<string>("--");
+  const [rtt, setRtt] = useState<number>(0);
+  const [snapshotSize, setSnapshotSize] = useState<number>(0);
 
+  // Fetch Cloudflare colo (datacenter location)
   useEffect(() => {
-    // Initial status
+    fetch("/cdn-cgi/trace")
+      .then((res) => res.text())
+      .then((text) => {
+        const coloMatch = text.match(/colo=([A-Z]+)/);
+        if (coloMatch) {
+          setColo(coloMatch[1]);
+        }
+      })
+      .catch(() => {
+        // Fallback for dev - not on Cloudflare
+        setColo("DEV");
+      });
+  }, []);
+
+  // Measure RTT periodically
+  useEffect(() => {
+    const measureRTT = () => {
+      const start = Date.now();
+      fetch("/cdn-cgi/trace", { method: "HEAD" })
+        .then(() => {
+          const end = Date.now();
+          setRtt(end - start);
+        })
+        .catch(() => {
+          setRtt(0);
+        });
+    };
+
+    measureRTT(); // Initial measurement
+    const interval = setInterval(measureRTT, 5000); // Every 5s
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Calculate snapshot size
+  useEffect(() => {
+    const updateSnapshotSize = () => {
+      const state = Y.encodeStateAsUpdate(yDoc);
+      setSnapshotSize(state.byteLength);
+    };
+
+    updateSnapshotSize(); // Initial
+    const interval = setInterval(updateSnapshotSize, 2000); // Every 2s
+
+    return () => clearInterval(interval);
+  }, []);
+
+  // Subscribe to sync status
+  useEffect(() => {
     setSyncStatus(getSyncStatus());
 
-    // Subscribe to status changes
     const unsubscribe = subscribeSyncStatus(() => {
       setSyncStatus(getSyncStatus());
     });
@@ -35,16 +93,15 @@ export function PerformanceStats() {
 
   const stats = snap.stats;
   const shapes = snap.shapes || [];
-  const users = snap.users ? Object.keys(snap.users).length : 0;
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-lg">
       <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
         <Activity size={20} />
-        Performance Stats
+        Edge Metrics
       </h3>
 
-      <div className="space-y-4">
+      <div className="space-y-3">
         {/* Connection Status */}
         <StatItem
           icon={syncStatus === "connected" ? Wifi : WifiOff}
@@ -58,6 +115,37 @@ export function PerformanceStats() {
                 : "text-red-600"
           }
         />
+
+        {/* Cloudflare Colo */}
+        <StatItem
+          icon={Globe}
+          label="Datacenter"
+          value={colo}
+          suffix=""
+          color="text-purple-600"
+          highlight={colo !== "DEV" && colo !== "--"}
+        />
+
+        {/* Round-Trip Time */}
+        <StatItem
+          icon={Clock}
+          label="RTT"
+          value={rtt}
+          suffix=" ms"
+          color="text-blue-600"
+          highlight={rtt > 0 && rtt < 100}
+        />
+
+        {/* Snapshot Size */}
+        <StatItem
+          icon={Database}
+          label="Snapshot"
+          value={formatBytes(snapshotSize)}
+          suffix=""
+          color="text-orange-600"
+        />
+
+        <div className="border-t border-gray-200 my-2" />
 
         {/* Operations Per Second */}
         <StatItem
@@ -74,17 +162,9 @@ export function PerformanceStats() {
           icon={Hash}
           label="Batch Size"
           value={stats?.batchSize || 0}
-          suffix=" points"
+          suffix=" pts"
           color="text-purple-600"
           highlight={stats && stats.batchSize > 10}
-        />
-
-        {/* Total Operations */}
-        <StatItem
-          icon={Activity}
-          label="Total Ops"
-          value={stats?.totalOps || 0}
-          color="text-gray-600"
         />
 
         {/* Shape Count */}
@@ -94,42 +174,40 @@ export function PerformanceStats() {
           value={shapes.length}
           color="text-indigo-600"
         />
-
-        {/* User Count */}
-        <StatItem
-          icon={Activity}
-          label="Users"
-          value={users}
-          color="text-teal-600"
-        />
       </div>
 
-      {/* Info Box */}
-      <div className="mt-6 p-3 bg-blue-50 border border-blue-200 rounded-md">
-        <h4 className="text-sm font-semibold text-blue-900 mb-2">
-          💡 About Batching
+      {/* Info Box - Edge Architecture */}
+      <div className="mt-4 p-3 bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-md">
+        <h4 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-1">
+          <Zap size={14} />
+          Running on the Edge
         </h4>
-        <p className="text-xs text-blue-800 leading-relaxed">
-          When you draw, valtio-y batches hundreds of point additions into
-          efficient sync operations. Watch the <strong>Batch Size</strong> spike
-          as you draw! This is a key advantage over other CRDT libraries.
-        </p>
-      </div>
-
-      {/* USPs List */}
-      <div className="mt-4 p-3 bg-green-50 border border-green-200 rounded-md">
-        <h4 className="text-sm font-semibold text-green-900 mb-2">
-          ✨ valtio-y USPs
-        </h4>
-        <ul className="text-xs text-green-800 space-y-1">
-          <li>✓ Automatic batching for rapid updates</li>
-          <li>✓ Array moves without fractional indexes</li>
-          <li>✓ Native JavaScript API (no CRDT primitives)</li>
-          <li>✓ Reactive with Valtio's useSnapshot</li>
+        <ul className="text-xs text-blue-800 space-y-1 leading-relaxed">
+          <li>
+            <strong>Colo:</strong> Cloudflare datacenter serving this session
+          </li>
+          <li>
+            <strong>RTT:</strong> Sub-50ms latency to nearest edge location
+          </li>
+          <li>
+            <strong>Snapshot:</strong> CRDT state compressed for fast sync
+          </li>
         </ul>
       </div>
     </div>
   );
+}
+
+// ============================================================================
+// HELPERS
+// ============================================================================
+
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${Math.round(bytes / Math.pow(k, i))} ${sizes[i]}`;
 }
 
 // ============================================================================
@@ -160,10 +238,10 @@ function StatItem({
       }`}
     >
       <div className="flex items-center gap-2">
-        <Icon size={16} className={color} />
-        <span className="text-sm font-medium text-gray-700">{label}</span>
+        <Icon size={14} className={color} />
+        <span className="text-xs font-medium text-gray-700">{label}</span>
       </div>
-      <span className={`text-sm font-bold ${color}`}>
+      <span className={`text-xs font-bold ${color}`}>
         {value}
         {suffix}
       </span>

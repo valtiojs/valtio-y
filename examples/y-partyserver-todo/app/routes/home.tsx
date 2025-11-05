@@ -18,6 +18,7 @@ import {
   initProvider,
   setupSyncListeners,
   initializeState,
+  cleanupUser,
   proxy,
 } from "../yjs-setup";
 import type { Tool } from "../types";
@@ -73,10 +74,8 @@ export default function Home() {
 
     // Cleanup on unmount
     return () => {
-      // Remove user from state when disconnecting
-      if (proxy.users?.[USER_ID]) {
-        delete proxy.users[USER_ID];
-      }
+      // Remove user from awareness when disconnecting
+      cleanupUser();
     };
   }, []);
 
@@ -178,52 +177,74 @@ export default function Home() {
         {/* Educational Footer */}
         <div className="mt-8 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
           <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            What Makes This Demo Special?
+            🎨 Figma-Like Architecture on the Edge
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div>
               <h3 className="text-lg font-semibold text-blue-600 mb-2">
-                ⚡ Batching in Action
+                👻 Two-Layer Rendering
               </h3>
               <p className="text-sm text-gray-700">
-                Use the <strong>pen tool</strong> to draw. As you draw, hundreds
-                of points are added to the array. valtio-y batches these
-                operations for efficient syncing. Watch the{" "}
-                <strong>Batch Size</strong> in the Performance Stats panel!
+                Draw with the <strong>pen tool</strong>. Your stroke appears
+                instantly in a "ghost" layer (ephemeral, not synced). Every
+                200ms or on release, it commits to the CRDT layer (persisted).
+                This Figma-style approach delivers 60fps drawing with
+                bulletproof sync.
               </p>
             </div>
             <div>
               <h3 className="text-lg font-semibold text-purple-600 mb-2">
-                🔄 Array Moves Without Fractional Indexes
+                📡 Awareness for Cursors
               </h3>
               <p className="text-sm text-gray-700">
-                Drag layers in the <strong>Layers Panel</strong> to reorder
-                them. Unlike other CRDT libraries, valtio-y doesn't need
-                fractional indexes - it handles array reordering natively!
+                Live cursors use <strong>Yjs Awareness</strong> - ephemeral
+                presence data that's never persisted. Open two windows to see
+                collaborators' cursors in real-time, without bloating the CRDT.
               </p>
             </div>
             <div>
               <h3 className="text-lg font-semibold text-green-600 mb-2">
-                🎯 Native JavaScript API
+                🌍 Edge-Native CRDTs
               </h3>
               <p className="text-sm text-gray-700">
-                No CRDT primitives needed! Just write normal JavaScript:{" "}
-                <code className="bg-gray-100 px-2 py-1 rounded text-xs">
-                  proxy.shapes.push(newShape)
-                </code>
-                . valtio-y handles the CRDT magic behind the scenes.
+                Every room = one <strong>Cloudflare Durable Object</strong>{" "}
+                holding a Y.Doc. Snapshots save every ~10s. New clients sync by
+                sending a state vector and getting only the diff. No backend
+                servers - just self-replicating edge state.
               </p>
             </div>
             <div>
               <h3 className="text-lg font-semibold text-orange-600 mb-2">
-                👥 Real-time Collaboration
+                ⚡ Sub-50ms Latency
               </h3>
               <p className="text-sm text-gray-700">
-                Open multiple browser windows to see live cursors and instant
-                synchronization. Changes sync automatically through
-                Y-PartyServer running on Cloudflare Durable Objects.
+                Check the <strong>Edge Metrics</strong> panel for your colo
+                (datacenter) and RTT. Drawing operations reach the nearest edge
+                in ~20-50ms, then fan out to peers globally. Feels local, works
+                global.
               </p>
             </div>
+          </div>
+
+          <div className="mt-6 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-md">
+            <h3 className="text-base font-semibold text-indigo-900 mb-2">
+              💡 Try This
+            </h3>
+            <ul className="text-sm text-indigo-800 space-y-1">
+              <li>
+                • Open this page in 2+ windows - see cursors and strokes sync
+                instantly
+              </li>
+              <li>
+                • Draw fast with the pen - watch ghost → committed transition
+              </li>
+              <li>
+                • Drag layers in the panel - no fractional indexes needed!
+              </li>
+              <li>
+                • Turn off Wi-Fi, draw offline, reconnect - automatic merge
+              </li>
+            </ul>
           </div>
         </div>
       </div>

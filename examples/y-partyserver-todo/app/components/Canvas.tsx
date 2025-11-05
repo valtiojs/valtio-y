@@ -1,17 +1,22 @@
 /**
  * Canvas Component - The main drawing surface
  *
- * Handles:
- * - Drawing with different tools (pen, rect, circle)
- * - Rendering all shapes
- * - Mouse/touch interaction
- * - Multiplayer cursor tracking
+ * Features Figma-like two-layer rendering:
+ * - Ghost layer: In-progress strokes (via Awareness - ephemeral)
+ * - Committed layer: Finished shapes (via Yjs CRDT - persisted)
+ * - Automatic commitment every 200ms or on mouseup
  */
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSnapshot } from "valtio";
 import getStroke from "perfect-freehand";
-import { proxy, trackOperation } from "../yjs-setup";
+import {
+  proxy,
+  trackOperation,
+  updateCursor,
+  getAwareness,
+  getAwarenessUsers,
+} from "../yjs-setup";
 import type { Point, Tool, Shape, PathShape } from "../types";
 
 interface CanvasProps {
@@ -21,6 +26,9 @@ interface CanvasProps {
   userId: string;
   fillEnabled: boolean;
 }
+
+// Type for ghost shape (in-progress drawing)
+type GhostShape = PathShape | RectShape | CircleShape;
 
 export function Canvas({
   tool,
@@ -32,9 +40,25 @@ export function Canvas({
   const snap = useSnapshot(proxy);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
-  const currentShapeIdRef = useRef<string | null>(null);
-  const pointsBatchRef = useRef<Point[]>([]);
-  const animationFrameRef = useRef<number | undefined>(undefined);
+  const [ghostShape, setGhostShape] = useState<GhostShape | null>(null);
+  const [awarenessUsers, setAwarenessUsers] = useState<any[]>([]);
+  const commitTimerRef = useRef<number | null>(null);
+
+  // Update awareness users on change
+  useEffect(() => {
+    const awareness = getAwareness();
+
+    const updateUsers = () => {
+      setAwarenessUsers(getAwarenessUsers());
+    };
+
+    awareness.on("change", updateUsers);
+    updateUsers(); // Initial update
+
+    return () => {
+      awareness.off("change", updateUsers);
+    };
+  }, []);
 
   // Convert screen coordinates to canvas coordinates
   const getCanvasPoint = useCallback(
@@ -51,6 +75,43 @@ export function Canvas({
     [],
   );
 
+  // Commit the current ghost shape to the CRDT
+  const commitShape = useCallback(() => {
+    if (!ghostShape) return;
+
+    // Validate shape before committing
+    if (ghostShape.type === "path" && ghostShape.points.length < 3) {
+      // Too small, discard
+      setGhostShape(null);
+      return;
+    }
+
+    if (ghostShape.type === "rect") {
+      const hasSize =
+        Math.abs(ghostShape.width) > 5 && Math.abs(ghostShape.height) > 5;
+      if (!hasSize) {
+        setGhostShape(null);
+        return;
+      }
+    }
+
+    if (ghostShape.type === "circle" && ghostShape.radius < 5) {
+      setGhostShape(null);
+      return;
+    }
+
+    // Commit to CRDT (persisted layer)
+    if (!proxy.shapes) {
+      proxy.shapes = [];
+    }
+
+    proxy.shapes.push(ghostShape as Shape);
+    trackOperation(1);
+
+    // Clear ghost
+    setGhostShape(null);
+  }, [ghostShape]);
+
   // Handle mouse down - start drawing
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -61,135 +122,126 @@ export function Canvas({
 
       const shapeId = `${userId}-${Date.now()}`;
       const timestamp = Date.now();
-      currentShapeIdRef.current = shapeId;
-
-      // Initialize the proxy shapes array if needed
-      if (!proxy.shapes) {
-        proxy.shapes = [];
-      }
 
       if (tool === "pen") {
-        // Create the path shape in the proxy immediately - visible to all users!
-        const newShape: PathShape = {
+        // Start a new path in the ghost layer
+        setGhostShape({
           id: shapeId,
           type: "path",
           points: [point],
           style: { color, strokeWidth },
           timestamp,
-        };
-        proxy.shapes.push(newShape);
-        pointsBatchRef.current = [];
-      } else if (tool === "rect" || tool === "circle") {
-        // Create rect/circle in proxy immediately
-        const newShape = {
+        });
+      } else if (tool === "rect") {
+        setGhostShape({
           id: shapeId,
-          type: tool,
+          type: "rect",
           x: point.x,
           y: point.y,
-          ...(tool === "rect" ? { width: 0, height: 0 } : { radius: 0 }),
+          width: 0,
+          height: 0,
           style: {
             color,
             strokeWidth,
             fillColor: fillEnabled ? color : undefined,
           },
           timestamp,
-        } as Shape;
-        proxy.shapes.push(newShape);
+        });
+      } else if (tool === "circle") {
+        setGhostShape({
+          id: shapeId,
+          type: "circle",
+          x: point.x,
+          y: point.y,
+          radius: 0,
+          style: {
+            color,
+            strokeWidth,
+            fillColor: fillEnabled ? color : undefined,
+          },
+          timestamp,
+        });
+      }
+
+      // Start 200ms auto-commit timer for pen strokes
+      if (tool === "pen") {
+        commitTimerRef.current = setInterval(() => {
+          // Commit current ghost if it has enough points
+          if (
+            ghostShape &&
+            ghostShape.type === "path" &&
+            ghostShape.points.length >= 10
+          ) {
+            commitShape();
+          }
+        }, 200);
       }
     },
-    [tool, color, strokeWidth, fillEnabled, userId, getCanvasPoint],
+    [
+      tool,
+      color,
+      strokeWidth,
+      fillEnabled,
+      userId,
+      getCanvasPoint,
+      ghostShape,
+      commitShape,
+    ],
   );
 
   // Handle mouse move - continue drawing
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
-      // Update cursor position for multiplayer
       const point = getCanvasPoint(e.nativeEvent);
-      if (proxy.users?.[userId]) {
-        proxy.users[userId].cursor = point;
-      }
 
-      if (!isDrawing || !currentShapeIdRef.current || !proxy.shapes) return;
+      // Update cursor position in awareness (ephemeral)
+      updateCursor(point.x, point.y);
 
-      const shapeIndex = proxy.shapes.findIndex(
-        (s) => s.id === currentShapeIdRef.current,
-      );
-      if (shapeIndex === -1) return;
+      if (!isDrawing || !ghostShape) return;
 
-      const shape = proxy.shapes[shapeIndex];
-
-      if (tool === "pen" && shape.type === "path") {
-        // Batch points for real-time drawing with batching!
-        pointsBatchRef.current.push(point);
-
-        // Flush batch every 5 points or immediately for responsiveness
-        if (pointsBatchRef.current.length >= 5) {
-          const batch = [...pointsBatchRef.current];
-          shape.points.push(...batch);
-          trackOperation(batch.length);
-          pointsBatchRef.current = [];
-        } else {
-          // Still add immediately for smooth drawing, but track for stats
-          shape.points.push(point);
-          trackOperation(1);
-        }
-      } else if (tool === "rect" && shape.type === "rect") {
-        // Update rect dimensions in real-time
-        const startX = shape.x;
-        const startY = shape.y;
-        shape.width = point.x - startX;
-        shape.height = point.y - startY;
-      } else if (tool === "circle" && shape.type === "circle") {
-        // Update circle radius in real-time
-        const dx = point.x - shape.x;
-        const dy = point.y - shape.y;
-        shape.radius = Math.sqrt(dx * dx + dy * dy);
+      if (tool === "pen" && ghostShape.type === "path") {
+        // Add point to ghost layer
+        setGhostShape({
+          ...ghostShape,
+          points: [...ghostShape.points, point],
+        });
+      } else if (tool === "rect" && ghostShape.type === "rect") {
+        // Update rect dimensions in ghost layer
+        setGhostShape({
+          ...ghostShape,
+          width: point.x - ghostShape.x,
+          height: point.y - ghostShape.y,
+        });
+      } else if (tool === "circle" && ghostShape.type === "circle") {
+        // Update circle radius in ghost layer
+        const dx = point.x - ghostShape.x;
+        const dy = point.y - ghostShape.y;
+        setGhostShape({
+          ...ghostShape,
+          radius: Math.sqrt(dx * dx + dy * dy),
+        });
       }
     },
-    [isDrawing, tool, userId, getCanvasPoint],
+    [isDrawing, ghostShape, tool, getCanvasPoint],
   );
 
   // Handle mouse up - finish drawing
   const handlePointerUp = useCallback(() => {
-    if (!isDrawing || !currentShapeIdRef.current || !proxy.shapes) return;
+    if (!isDrawing) return;
 
-    const shapeIndex = proxy.shapes.findIndex(
-      (s) => s.id === currentShapeIdRef.current,
-    );
-
-    if (shapeIndex !== -1) {
-      const shape = proxy.shapes[shapeIndex];
-
-      // Remove shapes that are too small
-      if (tool === "pen" && shape.type === "path") {
-        if (shape.points.length < 3) {
-          proxy.shapes.splice(shapeIndex, 1);
-        } else {
-          // Flush any remaining batched points
-          if (pointsBatchRef.current.length > 0) {
-            shape.points.push(...pointsBatchRef.current);
-            trackOperation(pointsBatchRef.current.length);
-            pointsBatchRef.current = [];
-          }
-        }
-      } else if (tool === "rect" && shape.type === "rect") {
-        const hasSize = Math.abs(shape.width) > 5 && Math.abs(shape.height) > 5;
-        if (!hasSize) {
-          proxy.shapes.splice(shapeIndex, 1);
-        }
-      } else if (tool === "circle" && shape.type === "circle") {
-        if (shape.radius < 5) {
-          proxy.shapes.splice(shapeIndex, 1);
-        }
-      }
+    // Clear auto-commit timer
+    if (commitTimerRef.current) {
+      clearInterval(commitTimerRef.current);
+      commitTimerRef.current = null;
     }
 
-    setIsDrawing(false);
-    currentShapeIdRef.current = null;
-    pointsBatchRef.current = [];
-  }, [isDrawing, tool]);
+    // Commit final shape
+    commitShape();
 
-  // Render the canvas
+    setIsDrawing(false);
+  }, [isDrawing, commitShape]);
+
+  // Render the canvas (two-layer architecture)
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -200,20 +252,26 @@ export function Canvas({
     // Clear canvas
     ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-    // Render all shapes from state (including the one being drawn!)
+    // Layer 1: Committed shapes (from CRDT)
     snap.shapes?.forEach((shape) => {
       renderShape(ctx, shape);
     });
 
-    // Render multiplayer cursors
-    if (snap.users) {
-      Object.values(snap.users).forEach((user) => {
-        if (user.id !== userId && user.cursor) {
-          renderCursor(ctx, user.cursor, user.color, user.name);
-        }
-      });
+    // Layer 2: Ghost shape (in-progress, ephemeral)
+    if (ghostShape) {
+      ctx.save();
+      ctx.globalAlpha = 0.7; // Slightly transparent to indicate it's uncommitted
+      renderShape(ctx, ghostShape);
+      ctx.restore();
     }
-  }, [snap.shapes, snap.users, userId]);
+
+    // Layer 3: Cursors from awareness (ephemeral)
+    awarenessUsers.forEach((user) => {
+      if (user.cursor) {
+        renderCursor(ctx, user.cursor, user.color, user.name);
+      }
+    });
+  }, [snap.shapes, ghostShape, awarenessUsers]);
 
   return (
     <canvas
@@ -251,7 +309,6 @@ function renderPath(ctx: CanvasRenderingContext2D, shape: any) {
   if (shape.points.length < 2) return;
 
   // Use perfect-freehand to get a smooth stroke
-  // Convert readonly points to mutable array for getStroke
   const stroke = getStroke([...shape.points] as Point[], {
     size: shape.style.strokeWidth * 2,
     thinning: 0.5,
@@ -317,3 +374,25 @@ function renderCursor(
   ctx.font = "12px sans-serif";
   ctx.fillText(name, point.x + 10, point.y - 10);
 }
+
+// Type definitions for ghost shapes
+type RectShape = {
+  id: string;
+  type: "rect";
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  style: { color: string; strokeWidth: number; fillColor?: string };
+  timestamp: number;
+};
+
+type CircleShape = {
+  id: string;
+  type: "circle";
+  x: number;
+  y: number;
+  radius: number;
+  style: { color: string; strokeWidth: number; fillColor?: string };
+  timestamp: number;
+};

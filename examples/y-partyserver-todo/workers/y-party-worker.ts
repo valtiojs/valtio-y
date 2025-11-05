@@ -11,26 +11,35 @@ import { YServer } from "y-partyserver";
  * YServer handles all routing, WebSocket upgrades, and synchronization automatically.
  */
 export class YDocServer extends YServer {
-  // Optional: Configure callback options for persistence
-  // static callbackOptions = {
-  //   debounceWait: 2000,
-  //   debounceMaxWait: 10000,
-  //   timeout: 5000
-  // };
-  // Optional: Load document state from storage
-  // async onLoad() {
-  //   const stored = await this.ctx.storage.get<Uint8Array>("document");
-  //   if (stored) {
-  //     const Y = await import("yjs");
-  //     Y.applyUpdate(this.document, stored);
-  //   }
-  // }
-  // Optional: Save document state to storage
-  // async onSave() {
-  //   const Y = await import("yjs");
-  //   const state = Y.encodeStateAsUpdate(this.document);
-  //   await this.ctx.storage.put("document", state);
-  // }
+  // Configure periodic snapshots - saves every 2s or after 10s max
+  static callbackOptions = {
+    debounceWait: 2000, // Wait 2s after last update
+    debounceMaxWait: 10000, // Force save after 10s max
+    timeout: 5000,
+  };
+
+  // Load document state from Durable Object storage on initialization
+  async onLoad() {
+    const stored = await this.ctx.storage.get<Uint8Array>("document");
+    if (stored) {
+      const Y = await import("yjs");
+      Y.applyUpdate(this.document, stored);
+      console.log(`[YDocServer] Loaded snapshot: ${stored.byteLength} bytes`);
+    }
+  }
+
+  // Save document state to Durable Object storage (called automatically)
+  async onSave() {
+    const Y = await import("yjs");
+    const state = Y.encodeStateAsUpdate(this.document);
+    await this.ctx.storage.put("document", state);
+
+    // Store metadata for metrics
+    await this.ctx.storage.put("snapshot_size", state.byteLength);
+    await this.ctx.storage.put("snapshot_timestamp", Date.now());
+
+    console.log(`[YDocServer] Saved snapshot: ${state.byteLength} bytes`);
+  }
 }
 
 interface YPartyEnv extends Record<string, unknown> {
