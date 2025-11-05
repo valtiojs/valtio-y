@@ -69,7 +69,10 @@ export class WriteScheduler {
     Y.Array<unknown>,
     Map<number, PendingArrayEntry>
   >();
-  private pendingArrayDeletes = new Map<Y.Array<unknown>, Map<number, number>>();
+  private pendingArrayDeletes = new Map<
+    Y.Array<unknown>,
+    Map<number, number>
+  >();
   private pendingArrayReplaces = new Map<
     Y.Array<unknown>,
     Map<number, PendingArrayEntry>
@@ -155,7 +158,11 @@ export class WriteScheduler {
       perArr = new Map();
       this.pendingArrayReplaces.set(yArray, perArr);
     }
-    perArr.set(index, { value, after: postUpgrade, sequence: this.operationSequence++ });
+    perArr.set(index, {
+      value,
+      after: postUpgrade,
+      sequence: this.operationSequence++,
+    });
 
     // Clear conflicting set at same index (replace wins over set)
     const sets = this.pendingArraySets.get(yArray);
@@ -243,18 +250,20 @@ export class WriteScheduler {
           if (setEntry) {
             if (setEntry.sequence < deleteSeq) {
               // Set came before delete: push+pop pattern → cancel both
-              this.log.debug(
-                "[merge] cancelling push+pop pattern",
-                { index, setSeq: setEntry.sequence, deleteSeq },
-              );
+              this.log.debug("[merge] cancelling push+pop pattern", {
+                index,
+                setSeq: setEntry.sequence,
+                deleteSeq,
+              });
               setMap.delete(index);
               deleteMap.delete(index);
             } else {
               // Delete came before set: splice pattern → merge to replace
-              this.log.debug(
-                "[merge] merging splice pattern to replace",
-                { index, deleteSeq, setSeq: setEntry.sequence },
-              );
+              this.log.debug("[merge] merging splice pattern to replace", {
+                index,
+                deleteSeq,
+                setSeq: setEntry.sequence,
+              });
               const replaceMap = arrayReplaces.get(yArray);
               if (!replaceMap) {
                 const newReplaceMap = new Map<number, PendingArrayEntry>();
@@ -332,10 +341,10 @@ export class WriteScheduler {
       for (const [index, entry] of Array.from(replaceMap.entries())) {
         if (index >= yArray.length) {
           // Out of bounds - demote to set
-          this.log.debug(
-            "[demotion] out-of-bounds replace demoted to set",
-            { index, yArrayLength: yArray.length },
-          );
+          this.log.debug("[demotion] out-of-bounds replace demoted to set", {
+            index,
+            yArrayLength: yArray.length,
+          });
           let setMap = arraySets.get(yArray);
           if (!setMap) {
             setMap = new Map();

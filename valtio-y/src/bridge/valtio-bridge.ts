@@ -57,13 +57,11 @@ function attachValtioArraySubscription(
         // at flush time, not based on pending operations that haven't been applied yet.
         const yLength = yArray.length;
 
-
         const { sets, deletes, replaces } = planArrayOps(
           ops,
           yLength,
           coordinator,
         );
-
 
         coordinator.logger.debug("Controller plan (array):", {
           replaces: Array.from(replaces.keys()).sort((a, b) => a - b),

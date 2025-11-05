@@ -462,9 +462,7 @@ describe("Stress Tests", () => {
       });
 
       // Start with 10 items
-      proxy.push(
-        ...Array.from({ length: 10 }, (_, i) => ({ id: i })),
-      );
+      proxy.push(...Array.from({ length: 10 }, (_, i) => ({ id: i })));
       await waitMicrotask();
 
       // Perform 500 splice cycles
@@ -529,7 +527,11 @@ describe("Stress Tests", () => {
     it("should handle mixed operations on large dataset", async () => {
       const doc = new Y.Doc();
       const { proxy } = createYjsProxy<{
-        users: Array<{ id: number; name: string; posts: Array<{ text: string }> }>;
+        users: Array<{
+          id: number;
+          name: string;
+          posts: Array<{ text: string }>;
+        }>;
         stats: { userCount: number; postCount: number };
       }>(doc, {
         getRoot: (d) => d.getMap("root"),

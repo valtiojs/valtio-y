@@ -33,7 +33,8 @@ export function applyArrayOperations(
     const lengthAtStart = yArray.length;
     const setsForArray =
       arraySets.get(yArray) ?? new Map<number, PendingArrayEntry>();
-    const deletesForArray = arrayDeletes.get(yArray) ?? new Map<number, number>();
+    const deletesForArray =
+      arrayDeletes.get(yArray) ?? new Map<number, number>();
     const replacesForArray =
       arrayReplaces.get(yArray) ?? new Map<number, PendingArrayEntry>();
 
@@ -225,7 +226,6 @@ function handleSets(
     const targetIndex = shouldAppend
       ? tailCursor
       : Math.min(Math.max(index, 0), yArray.length);
-
 
     coordinator.logger.debug("[arrayApply] insert (tail-cursor strategy)", {
       requestedIndex: index,
