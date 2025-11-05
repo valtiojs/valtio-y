@@ -294,7 +294,9 @@ export function ClientView({
                   ? "bg-red-100 text-red-700 hover:bg-red-200"
                   : "bg-green-100 text-green-700 hover:bg-green-200"
               }`}
-              title={isConnected ? "Disconnect from server" : "Connect to server"}
+              title={
+                isConnected ? "Disconnect from server" : "Connect to server"
+              }
             >
               {isConnected ? (
                 <>

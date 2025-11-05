@@ -44,8 +44,9 @@ const App = () => {
             Collaborative Todo List
           </h1>
           <p className="text-slate-600 text-base mb-2">
-            Powered by <strong>valtio-y</strong> + <strong>Y-PartyServer</strong>{" "}
-            · Real-time synchronization over WebSockets
+            Powered by <strong>valtio-y</strong> +{" "}
+            <strong>Y-PartyServer</strong> · Real-time synchronization over
+            WebSockets
           </p>
           <p className="text-sm text-slate-500 max-w-2xl mx-auto mb-4">
             This example showcases how valtio-y handles complex state including
