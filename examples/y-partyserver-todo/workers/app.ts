@@ -16,6 +16,7 @@ const requestHandler = createRequestHandler(
 
 export default {
   async fetch(request, env, ctx) {
+    // All requests go to React Router
     return requestHandler(request, {
       cloudflare: { env, ctx },
     });

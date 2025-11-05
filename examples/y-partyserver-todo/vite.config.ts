@@ -6,7 +6,15 @@ import tsconfigPaths from "vite-tsconfig-paths";
 
 export default defineConfig({
   plugins: [
-    cloudflare({ viteEnvironment: { name: "ssr" } }),
+    cloudflare({
+      viteEnvironment: { name: "ssr" },
+      // Enable local persistence for Durable Objects
+      persistState: {
+        path: ".wrangler/state/v3",
+      },
+      // Point to wrangler config
+      configPath: "./wrangler.jsonc",
+    }),
     tailwindcss(),
     reactRouter(),
     tsconfigPaths(),

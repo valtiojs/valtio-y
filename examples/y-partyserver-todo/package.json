@@ -7,16 +7,23 @@
 		"build": "react-router build",
 		"cf-typegen": "wrangler types",
 		"deploy": "bun run build && wrangler deploy",
-		"dev": "react-router dev",
+		"dev": "bun run dev:y-party & bun run dev:app",
+		"dev:app": "react-router dev",
+		"dev:y-party": "wrangler dev --config wrangler.y-party.jsonc --port 8788",
 		"postinstall": "bun run cf-typegen",
 		"preview": "bun run build && vite preview",
 		"typecheck": "bun run cf-typegen && react-router typegen && tsc -b"
 	},
 	"dependencies": {
 		"isbot": "^5.1.31",
+		"partyserver": "^0.0.75",
 		"react": "^19.1.1",
 		"react-dom": "^19.1.1",
-		"react-router": "^7.9.2"
+		"react-router": "^7.9.2",
+		"valtio": "^2.2.0",
+		"valtio-y": "workspace:*",
+		"y-partyserver": "^0.0.51",
+		"yjs": "^13.6.27"
 	},
 	"devDependencies": {
 		"@cloudflare/vite-plugin": "^1.13.5",
