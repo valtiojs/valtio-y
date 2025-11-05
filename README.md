@@ -175,9 +175,10 @@ valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Soli
 
 Core documentation for understanding and using valtio-y effectively:
 
-- **[Structuring Your App](./guides/structuring-your-app.md)** - How to organize state with `getRoot`
+- **[Getting Started](./guides/getting-started.md)** - Complete setup guide with server, client, and bootstrap
 - **[Core Concepts](./guides/concepts.md)** - Understand CRDTs and the valtio-y mental model
 - **[Basic Operations](./guides/basic-operations.md)** - Objects, arrays, and nested structures
+- **[Structuring Your App](./guides/structuring-your-app.md)** - How to organize state with `getRoot`
 - **[Undo/Redo](./guides/undo-redo.md)** - Implement undo/redo with Yjs UndoManager
 - **[Performance Guide](./guides/performance-guide.md)** - Batching, bulk operations, and optimization
 
