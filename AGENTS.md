@@ -19,6 +19,7 @@
 | Test all packages             | `bun run test` (uses turbo)      |
 | Type check all packages       | `bun run typecheck` (uses turbo) |
 | Dev mode all packages         | `bun run dev` (uses turbo)       |
+| Create a changeset            | `bun changeset`                  |
 
 Keep these commands nearby—most tasks you perform will be a combination of them.
 
@@ -137,6 +138,8 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 [optional footer]
 ```
 
+**⚠️ IMPORTANT: Scope is REQUIRED. All commits and PR titles must include a scope.**
+
 **Type:**
 
 - `feat` - New feature
@@ -148,7 +151,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 - `perf` - Performance improvements
 - `ci` - CI/CD changes
 
-**Scope** (indicates what part of the codebase):
+**Scope** (REQUIRED - indicates what part of the codebase):
 
 - `core` - Main valtio-y package
 - `docs` - Documentation
@@ -156,6 +159,7 @@ We follow [Conventional Commits](https://www.conventionalcommits.org/) format:
 - `ci` - CI/CD pipeline
 - `deps` - Dependency updates
 - `tests` - Test infrastructure
+- `repo` - Repository-wide changes (tooling, configuration, etc.)
 
 **Examples:**
 
@@ -168,10 +172,12 @@ feat(examples): add PartyKit todo example
 fix(ci): update Node version in GitHub Actions
 chore(deps): upgrade Valtio to 2.1.8
 test(core): add benchmarks for bulk operations
+chore(repo): update release-please configuration
 ```
 
 **Guidelines:**
 
+- **Scope is mandatory** - PR titles without a scope will be rejected by CI
 - Keep the description concise (≤72 characters)
 - Use present tense ("add" not "added")
 - Don't capitalize the first letter of description
@@ -223,12 +229,157 @@ Closes #42
    # Create PR on GitHub
    ```
 
-5. **PR Title** should also follow conventional commits:
+5. **PR Title** must follow conventional commits with scope (enforced by CI):
+
    ```
    feat(core): add PartyKit provider support
    fix(docs): correct installation instructions
    chore(ci): update deployment workflow
    ```
+
+   **Note:** PR titles without a scope will be rejected. See `.github/workflows/pr-title.yml` for enforcement details.
+
+### Release Workflow
+
+This project uses **Changesets** with **Turbo** to manage versioning and releases, providing explicit control over changelogs.
+
+**How it works:**
+
+1. **Create a changeset** - When making changes, run `bun changeset` to create a changeset file:
+
+   ```bash
+   bun changeset
+   ```
+
+   This prompts you to:
+
+   - Select the packages to version (usually `valtio-y`)
+   - Choose the version bump type (major, minor, patch)
+   - Write a user-focused description for the changelog
+
+2. **Commit the changeset** - The changeset file (`.changeset/*.md`) should be committed with your changes:
+
+   ```bash
+   git add .changeset/
+   git commit -m "feat(core): add new feature"
+   ```
+
+3. **Version PR created** - When merged to main, the Release workflow automatically creates/updates a "Version Packages" PR with:
+
+   - Runs: `bun run version` → `changeset version && bun update`
+   - Updates package.json versions and CHANGELOG.md files
+   - **Bun workaround**: `bun update` fixes the lockfile to resolve `workspace:*` references
+   - Version PR is ready for review
+
+4. **Merge to publish** - When you merge the Version Packages PR:
+   - The workflow runs all quality checks (typecheck, lint, test, build)
+   - Runs: `bun run release` → `turbo run publish --filter='valtio-*' && changeset tag`
+   - Turbo runs the `publish` script in each `valtio-*` package
+   - Each package publishes with: `npm publish --access public --provenance`
+   - Git tags are created for published versions
+
+**For AI agents:**
+
+**When to create a changeset:**
+
+Create a changeset ONLY for changes that affect the published npm package:
+
+✅ **Need a changeset:**
+
+- `feat(core)` - New features, APIs, exports
+- `fix(core)` - Bug fixes users will notice
+- `perf(core)` - Performance improvements
+- Breaking changes to published APIs
+
+❌ **NO changeset needed:**
+
+- `chore(ci)` - CI/CD, workflows, build config
+- `chore(repo)` - Dev tooling, linting, formatting
+- `feat(examples)` - Examples don't get published
+- `docs(repo)` - CLAUDE.md, CONTRIBUTING.md, etc.
+- `test(core)` - Test files and utilities
+- `refactor(core)` - Internal changes with no API impact
+
+**Rule of thumb:** Ask "Does this affect someone using `valtio-y` from npm?" If yes → changeset. If no → skip.
+
+**Workflow:**
+
+1. Make the code changes
+2. **IF user-facing:** Create a changeset using `bun changeset`
+3. Commit both the code changes and the changeset file together
+4. The changeset description should be user-focused, not code-focused
+
+**Examples:**
+
+```bash
+# feat(core) - NEEDS changeset
+# Changes: src/index.ts exports new function
+bun changeset  # Select valtio-y, minor, describe feature
+git commit -m "feat(core): add useYjsProxy hook"
+
+# chore(ci) - NO changeset
+# Changes: .github/workflows/
+git commit -m "chore(ci): optimize test workflow"
+# Skip bun changeset!
+
+# fix(core) - NEEDS changeset
+# Changes: src/synchronizer.ts fixes bug
+bun changeset  # Select valtio-y, patch, describe fix
+git commit -m "fix(core): resolve array sync race condition"
+```
+
+**Adding new packages:**
+
+To make a new package publishable:
+
+1. Add a `publish` script to the package's `package.json`:
+
+   ```json
+   {
+     "scripts": {
+       "publish": "npm publish --access public --provenance"
+     }
+   }
+   ```
+
+2. Ensure the package name matches `valtio-*` pattern
+3. Turbo will automatically discover and publish it in the correct order
+
+**Technical details:**
+
+- **Root scripts**:
+  - `version`: `changeset version && bun update` (updates versions + fixes Bun lockfile)
+  - `release`: `turbo run publish --filter='valtio-*' && changeset tag` (publishes packages + creates tags)
+- **Bun workaround**: `bun update` after `changeset version` is required because changesets doesn't natively support Bun workspaces. This resolves `workspace:*` references in the lockfile.
+- **Turbo filter**: `--filter='valtio-*'` ensures only `valtio-y` and future `valtio-*` packages are published, never examples
+
+**Version bumping rules:**
+
+- `major` → Breaking changes (1.0.0 → 2.0.0)
+- `minor` → New features (1.0.0 → 1.1.0)
+- `patch` → Bug fixes (1.0.0 → 1.0.1)
+
+**Example changeset file (`.changeset/cool-feature.md`):**
+
+```md
+---
+"valtio-y": minor
+---
+
+Add custom message support for providers. You can now send custom string messages over the same WebSocket connection used for Yjs sync, enabling chat features and function calling patterns.
+```
+
+**Related workflows:**
+
+- `.github/workflows/release.yml` - Creates version PRs and publishes to npm
+- `.github/workflows/pr-title.yml` - Enforces conventional commit format for PR titles
+
+**Why changesets over release-please?**
+
+- **Explicit control**: Changelog entries are written intentionally, not inferred from commits
+- **Better quality**: Changeset descriptions can be detailed and user-focused
+- **Reviewable**: Changelog entries are reviewed as part of the PR
+- **Easy to fix**: Mistakes in changesets can be fixed by editing the `.changeset/*.md` file
 
 ---
 
