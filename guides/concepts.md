@@ -17,266 +17,90 @@ Understanding the fundamental concepts behind valtio-y will help you build bette
 
 ## What Are CRDTs?
 
-### The Problem
+**The Problem:** When two users edit shared data simultaneously, traditional approaches require a central server, locks, complex conflict resolution, and network round-trips. This breaks down offline, with slow networks, or during server outages.
 
-Imagine two users editing a shared todo list at the same time:
+**The Solution:** **CRDT** (Conflict-free Replicated Data Type) is a special data structure that:
 
-```
-Initial state: ["Buy milk", "Walk dog"]
+- Works offline - every user has a complete local copy
+- Merges automatically - changes combine deterministically
+- Converges - all users eventually see the same state
+- No coordination needed - no central server deciding conflicts
 
-User A adds: "Read book" → ["Buy milk", "Walk dog", "Read book"]
-User B adds: "Call mom"  → ["Buy milk", "Walk dog", "Call mom"]
-```
+Think of it like Git for your app state. CRDTs use mathematical properties to ensure merging always produces the same result, regardless of order:
 
-**What should the final state be?** Traditional approaches require:
-
-- A central server to decide the order
-- Locks to prevent simultaneous edits
-- Complex conflict resolution logic
-- Network round-trips for every change
-
-This breaks down in real-world scenarios:
-
-- What if users are offline?
-- What if the network is slow?
-- What if the server goes down?
-- How do you handle merge conflicts?
-
-### The Solution: CRDTs
-
-**CRDT** stands for **Conflict-free Replicated Data Type**. It's a special data structure that:
-
-1. **Works offline** - Every user has a complete local copy
-2. **Merges automatically** - Changes from different users combine deterministically
-3. **Converges** - All users eventually see the same state
-4. **No coordination needed** - No central server deciding conflicts
-
-Think of it like Git for your application state. Just as Git can merge code changes from multiple developers, CRDTs can merge state changes from multiple users.
-
-### How CRDTs Solve the Problem
-
-CRDTs use mathematical properties to ensure that merging operations always produces the same result, regardless of order:
-
-```
+```text
 User A: ["Buy milk", "Walk dog"] + "Read book"
 User B: ["Buy milk", "Walk dog"] + "Call mom"
-
 After sync: ["Buy milk", "Walk dog", "Read book", "Call mom"]
 ```
 
-Both users end up with the same state, even though they made changes simultaneously. No conflicts, no lost data.
-
-### Real-World Example
-
-**Google Docs** is built on CRDTs. That's how multiple people can edit the same document simultaneously without conflicts. valtio-y brings this same technology to your React applications.
+Both users end up with the same state, even when making changes simultaneously. **Google Docs** uses CRDTs - that's how multiple people can edit simultaneously without conflicts. valtio-y brings this to React.
 
 ---
 
 ## How valtio-y Works
 
-valtio-y bridges two powerful libraries:
+valtio-y bridges **[Valtio](https://github.com/pmndrs/valtio)** (reactive React state) and **[Yjs](https://github.com/yjs/yjs)** (CRDT collaboration):
 
-- **[Valtio](https://github.com/pmndrs/valtio)** - Reactive state management for React
-- **[Yjs](https://github.com/yjs/yjs)** - CRDT implementation for collaborative editing
-
-### The Bridge
-
-```
-Your React Components
-        ↓
-    Valtio Proxy (state.todos)
-        ↓
-    valtio-y Bridge
-        ↓
-    Yjs CRDT (Y.Array)
-        ↓
-    Provider (WebSocket/WebRTC)
-        ↓
-    Network → Other Users
+```text
+React Components → Valtio Proxy → valtio-y Bridge → Yjs CRDT → Network
 ```
 
-When you mutate state, valtio-y:
+**When you mutate state:**
 
-1. **Intercepts** your change via Valtio's proxy
-2. **Translates** it to a Yjs CRDT operation
-3. **Batches** multiple changes into one transaction
-4. **Syncs** the change through your provider to other users
-5. **Updates** React components that depend on that state
+1. Valtio proxy intercepts your change
+2. valtio-y translates it to a CRDT operation
+3. Changes are batched (same tick = one transaction)
+4. Syncs through provider to other users
+5. React components re-render (fine-grained - only affected components)
 
-When another user makes a change:
+**When remote changes arrive:**
 
-1. **Receives** the update from the network
-2. **Merges** it with the local CRDT state (conflict-free!)
-3. **Reconciles** the Valtio proxy to match
-4. **Triggers** React re-renders for affected components
+1. Network update received
+2. Yjs merges with local CRDT (conflict-free)
+3. valtio-y reconciles Valtio proxy
+4. React re-renders affected components
 
-### Bidirectional Sync
-
-The magic of valtio-y is **bidirectional sync**:
-
-```
-Local Mutation → Valtio Proxy → Yjs CRDT → Network
-                      ↑             ↓
-Network → Yjs CRDT → Reconcile → Valtio Proxy → React
-```
-
-You never think about the sync layer. Just mutate state naturally:
+**You just write:**
 
 ```typescript
-// This automatically syncs to all users
-state.todos.push({ text: "Buy milk", done: false });
-
-// This too
-state.todos[0].done = true;
-
-// Even nested objects
-state.user.preferences.theme = "dark";
+state.todos.push({ text: "Buy milk" }); // Syncs automatically
+state.todos[0].done = true; // Syncs automatically
 ```
 
-### What Happens When You Mutate State
-
-Let's trace a single mutation through the system:
-
-```typescript
-state.count = 42;
-```
-
-**Step-by-step:**
-
-1. **Proxy intercepts** - Valtio detects the property assignment
-2. **Operation enqueued** - valtio-y queues `set('count', 42)` for the next microtask
-3. **Batching window** - Any other changes in the same tick are collected
-4. **Transaction** - On next microtask, all changes flush in one Yjs transaction
-5. **Local state updated** - Yjs updates its internal CRDT state
-6. **Provider syncs** - The update is sent over the network
-7. **React notified** - Components using `useSnapshot(state)` re-render
-
-All of this happens in milliseconds. From your perspective, it's instant.
-
-### How React Components Update
-
-valtio-y uses Valtio's fine-grained reactivity. Components only re-render when the specific properties they access actually change:
-
-```typescript
-function TodoList() {
-  const snap = useSnapshot(state);
-
-  // This component re-renders when state.todos array changes
-  // (items added/removed) or when properties of items change
-  return snap.todos.map((todo, index) => (
-    <TodoItem
-      key={todo.id}
-      todo={todo} // Pass snapshot data for reading
-      stateProxy={state} // Pass proxy for mutations
-      index={index} // Pass index for mutations
-    />
-  ));
-}
-
-interface TodoItemProps {
-  todo: { id: string; text: string; done: boolean }; // From snapshot
-  stateProxy: typeof state; // Mutable proxy
-  index: number;
-}
-
-function TodoItem({ todo, stateProxy, index }: TodoItemProps) {
-  // Component re-renders when properties it accesses change
-
-  function toggleDone() {
-    // Mutate the proxy, not the snapshot
-    stateProxy.todos[index].done = !stateProxy.todos[index].done;
-  }
-
-  return (
-    <input
-      checked={todo.done} // ✅ Read from snapshot
-      onChange={toggleDone} // ✅ Write to proxy
-    />
-  );
-}
-```
-
-**Key principle:** Read from snapshots, write to proxies.
-
-- **Snapshots** (from `useSnapshot`) are immutable and track property access for fine-grained re-renders
-- **Proxies** (the original `state` object) are mutable and trigger Yjs sync when changed
-- Valtio tracks exactly which properties each component uses and only re-renders when those specific properties change
-
-Unlike typical React state management where changes trigger re-renders of all subscribers, Valtio's proxy-based tracking ensures minimal re-renders.
+**Key principle:** Read from snapshots (`useSnapshot`), write to proxies (`state`). Valtio tracks which properties each component accesses and only re-renders when those specific properties change.
 
 ---
 
 ## The valtio-y Mental Model
 
-### Think of It Like: "Local-First Database with Automatic Sync"
+**Think:** Local-first database with automatic sync
 
-The best mental model for valtio-y is a **local database that automatically syncs**:
+- State is stored locally (instant reads/writes)
+- Changes persist to a CRDT (automatic conflict resolution)
+- Syncing happens in background (no network round-trips)
+- Works offline, syncs when online
 
-- Your state is stored locally (fast reads, instant writes)
-- Changes are persisted to a CRDT (automatic conflict resolution)
-- Syncing happens in the background (no network round-trips)
-- Other users' changes merge automatically (no conflicts to resolve)
-
-This is called **local-first software** - your app works offline and syncs when online.
-
-### Your State Is the Source of Truth
-
-Unlike traditional apps where the server is the source of truth, with valtio-y:
-
-- **Your local state** is authoritative
-- You don't wait for server confirmation
-- The UI updates instantly
-- Conflicts resolve themselves deterministically
+**Your local state is the source of truth:**
 
 ```typescript
-// This happens IMMEDIATELY - no waiting for server
-state.todos.push({ text: "New task", done: false });
-
-// UI updates instantly
+state.todos.push({ text: "New task" }); // Instant UI update
 // Sync happens in background
 // Other users see it soon after
 ```
 
-### Mutations Are Automatically Persisted and Synced
+**Conflicts resolve deterministically:**
 
-Every mutation you make:
-
-1. **Persists locally** (via CRDT)
-2. **Syncs automatically** (via provider)
-3. **Merges correctly** (via CRDT math)
-
-You never write sync code. You never handle conflicts. You just mutate state.
-
-### Conflicts Resolve Themselves Deterministically
-
-When two users edit simultaneously, CRDTs ensure a **deterministic outcome**:
+- Primitives: Last-write-wins (predictable)
+- Collections: CRDTs merge changes intelligently
 
 ```typescript
-// User A (offline)
-state.count = 10;
-
-// User B (offline)
-state.count = 20;
-
-// After sync: count is either 10 or 20 (deterministic)
-// Last-write-wins for primitive values
+// Both users add to index 0 simultaneously
+// After sync: Both items exist, order is deterministic
+// ["B's task", "A's task", ...original]
 ```
 
-For collections (arrays, objects), CRDTs are smarter:
-
-```typescript
-// User A adds item at index 0
-state.todos.splice(0, 0, { text: "A's task" });
-
-// User B adds item at index 0
-state.todos.splice(0, 0, { text: "B's task" });
-
-// After sync: Both items exist!
-// ["B's task", "A's task", ...originalItems]
-// Order is deterministic based on CRDT algorithm
-```
-
-This is the power of CRDTs: **changes merge, they don't conflict**.
+**You never write sync code or handle conflicts** - CRDTs merge changes mathematically.
 
 ---
 
@@ -316,10 +140,10 @@ function Component() {
 }
 
 // Mutate the original state, not the snapshot
-state.count++; // ✅ Correct
+state.count++; // Correct approach
 
 // Never mutate the snapshot
-snap.count++; // ❌ Won't work (it's immutable)
+snap.count++; // This fails because snapshots are immutable
 ```
 
 Snapshots enable fine-grained reactivity. React knows exactly which components need to re-render based on which properties they accessed in their snapshot.
@@ -397,279 +221,44 @@ This is a performance optimization. Creating thousands of proxies upfront would 
 
 ## When to Use valtio-y
 
-### Perfect Use Cases
+**Perfect for:**
 
-valtio-y excels at applications with **shared mutable state**:
+- **Collaborative tools** - Todo lists, dashboards, project management, design tools
+- **Multiplayer games** - Turn-based games, shared worlds (see Minecraft example)
+- **Offline-first apps** - Mobile apps, PWAs that sync when online
+- **Multi-device sync** - Note-taking, settings, bookmarks across devices
 
-#### 1. Collaborative Tools
+**Not ideal for:**
 
-- **Todo lists** - Multiple users managing tasks
-- **Dashboards** - Real-time analytics
-- **Project management** - Shared boards and timelines
-- **Design tools** - Collaborative canvas editing
-- **Forms** - Multi-user form filling
+- **Text editors** - Use native Yjs integrations ([Lexical](https://lexical.dev/), [TipTap](https://tiptap.dev/), [ProseMirror](https://prosemirror.net/)) with specialized text CRDTs
+- **Server-authoritative apps** - Banking, e-commerce, auth (require single source of truth)
+- **Simple CRUD** - Blogs, news sites (REST/GraphQL is simpler)
 
-**Why?** CRDTs handle concurrent edits to shared data structures naturally.
-
-#### 2. Multiplayer Games
-
-- **Turn-based games** - Chess, card games
-- **Real-time coordination** - Multiplayer puzzle games
-- **Shared worlds** - Minecraft-style building games
-
-**Why?** Low-latency local state + automatic sync = smooth multiplayer experience.
-
-#### 3. Offline-First Apps
-
-- **Mobile apps** - Work offline, sync when online
-- **PWAs** - Progressive web apps with offline support
-- **Desktop apps** - Sync across devices
-
-**Why?** CRDTs merge offline changes automatically when reconnected.
-
-#### 4. Multi-Device Sync
-
-- **Note-taking** - Sync across phone, tablet, desktop
-- **Settings** - User preferences across devices
-- **Bookmarks** - Shared collections
-
-**Why?** Each device has a local copy, syncing happens seamlessly.
-
-### Not Ideal Use Cases
-
-Some applications are better served by other approaches:
-
-#### 1. Text Editors
-
-**Use native Yjs integrations instead:**
-
-- [Lexical](https://lexical.dev/) with `@lexical/yjs`
-- [TipTap](https://tiptap.dev/) with Yjs extension
-- [ProseMirror](https://prosemirror.net/) with `y-prosemirror`
-
-**Why?** Text editing requires specialized collaborative text CRDTs with cursor tracking, formatting, and undo/redo. These editors have battle-tested integrations.
-
-valtio-y is for **shared application state** (objects, arrays, primitives), not building text editors.
-
-#### 2. Server-Authoritative Apps
-
-**Use traditional client-server architecture:**
-
-- **Banking** - Server must validate all transactions
-- **E-commerce** - Inventory must be centrally managed
-- **Authentication** - Server controls access
-
-**Why?** These apps require a single source of truth. CRDTs distribute authority.
-
-#### 3. Simple CRUD Apps
-
-**Use REST/GraphQL:**
-
-- **Blogs** - Simple create/read/update/delete
-- **News sites** - Content consumption
-- **Static dashboards** - Read-only data
-
-**Why?** If you don't need real-time collaboration, simpler approaches work fine.
-
-### Comparison with Other Approaches
-
-| Approach                  | Real-time | Offline | Conflicts | Complexity |
-| ------------------------- | --------- | ------- | --------- | ---------- |
-| **valtio-y**              | ✅ Yes    | ✅ Yes  | ✅ Auto   | Low        |
-| **REST API**              | ❌ No     | ❌ No   | ❌ Manual | Low        |
-| **WebSockets**            | ✅ Yes    | ❌ No   | ❌ Manual | Medium     |
-| **GraphQL Subscriptions** | ✅ Yes    | ❌ No   | ❌ Manual | Medium     |
-| **Operational Transform** | ✅ Yes    | ⚠️ Hard | ⚠️ Hard   | High       |
-| **Plain Yjs**             | ✅ Yes    | ✅ Yes  | ✅ Auto   | Medium     |
-
-**When to choose valtio-y:**
-
-- You need real-time collaboration
-- You want offline support
-- You're using React and Valtio
-- You want minimal API surface
-- You prefer local-first architecture
+**Choose valtio-y when you need:** Real-time collaboration + offline support + React/Valtio + minimal API + local-first architecture
 
 ---
 
 ## Architectural Overview
 
-### The Big Picture
+**High-level flow:**
 
-```
-┌─────────────────────────────────────────────────────────────┐
-│                     Your React Components                    │
-│                    (UI Layer - View Logic)                   │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                    useSnapshot(state)
-                            │
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                      Valtio Proxy                            │
-│              (Reactive State - Fine-grained)                 │
-│                                                              │
-│  state.todos[0].done = true  ← Your mutations               │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                    valtio-y Bridge
-                    (Bidirectional Sync)
-                            │
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                       Yjs CRDT Layer                         │
-│              (Conflict-free Data Structures)                 │
-│                                                              │
-│  Y.Array, Y.Map ← CRDT operations                           │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                      Provider Layer
-                (Network Abstraction)
-                            │
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│                    Network Transport                         │
-│         (WebSocket / WebRTC / IndexedDB / etc.)             │
-└───────────────────────────┬─────────────────────────────────┘
-                            │
-                    Other Users / Devices
-                            │
-                            ↓
-┌─────────────────────────────────────────────────────────────┐
-│              Remote Clients (Same Architecture)              │
-└─────────────────────────────────────────────────────────────┘
+```text
+React Components
+      ↓ (useSnapshot)
+  Valtio Proxy (state.todos)
+      ↓ (valtio-y bridge)
+  Yjs CRDT (Y.Array)
+      ↓ (provider)
+  Network → Other Users
 ```
 
-### How Changes Flow
+**Local changes:** You mutate state → Valtio proxy intercepts → valtio-y translates to CRDT → Batched in transaction → Syncs to network
 
-#### Local Change (You → Network)
+**Remote changes:** Network update arrives → Yjs merges (conflict-free) → valtio-y reconciles proxy → React re-renders affected components
 
-```
-1. User clicks button
-        ↓
-2. Event handler mutates state
-   state.todos.push({ text: "Buy milk" })
-        ↓
-3. Valtio proxy intercepts
-        ↓
-4. valtio-y translates to CRDT operation
-   yArray.push([{ text: "Buy milk" }])
-        ↓
-5. Batched into transaction (next microtask)
-        ↓
-6. Yjs updates internal CRDT state
-        ↓
-7. Provider sends update to network
-        ↓
-8. Other users receive update
-```
+**Key insight:** Conflicts resolve automatically in the Yjs CRDT layer using mathematical properties. You never write conflict resolution code.
 
-#### Remote Change (Network → You)
-
-```
-1. Provider receives update from network
-        ↓
-2. Yjs applies update to CRDT
-   (merges with local state)
-        ↓
-3. Yjs fires observeDeep event
-        ↓
-4. valtio-y reconciles Valtio proxy
-   (updates proxy to match CRDT)
-        ↓
-5. Valtio notifies subscribers
-        ↓
-6. React components re-render
-   (only components using changed data)
-```
-
-### Where Conflict Resolution Happens
-
-**Conflict resolution occurs in the Yjs layer**, not in valtio-y or Valtio:
-
-```
-User A (offline)          User B (offline)
-     │                         │
-     │  state.count = 10       │  state.count = 20
-     │         ↓                │         ↓
-     │  Y.Map.set('count',10)  │  Y.Map.set('count',20)
-     │                          │
-     └──────────┬───────────────┘
-                │
-         Network sync
-                │
-                ↓
-        ┌───────────────┐
-        │  Yjs merges   │
-        │  changes      │
-        │  (CRDT math)  │
-        └───────┬───────┘
-                │
-                ↓
-        Deterministic result
-        (e.g., count = 20)
-                │
-     ┌──────────┴──────────┐
-     │                     │
-User A sees 20        User B sees 20
-```
-
-**Key insight:** You never write conflict resolution code. Yjs handles it mathematically based on CRDT properties.
-
-### The Controller Proxy Model
-
-valtio-y uses a "live controller" architecture:
-
-```
-Traditional approach:
-  Valtio State → Serialize → Send to Yjs → Sync
-
-valtio-y approach:
-  Valtio Proxy = Controller for Yjs Type
-         │
-         │ Direct commands
-         ↓
-      Yjs CRDT → Sync
-```
-
-Each Valtio proxy is a **live controller** that directly manipulates its corresponding Yjs type:
-
-- **Y.Map** is controlled by an object proxy
-- **Y.Array** is controlled by an array proxy
-- **Nested structures** create nested controllers
-
-This eliminates the "impedance mismatch" between Valtio's reactive model and Yjs's operational model.
-
-### Performance Optimizations
-
-valtio-y includes several automatic optimizations:
-
-#### 1. Batching
-
-All mutations in the same microtask are batched into one transaction:
-
-```typescript
-// These become ONE transaction
-state.todos.push({ text: "Task 1" });
-state.todos.push({ text: "Task 2" });
-state.todos.push({ text: "Task 3" });
-```
-
-#### 2. Lazy Materialization
-
-Proxies are created on-demand when you access properties:
-
-```typescript
-state.users = Array(10000).fill({ name: "User" });
-// Fast: Only the array is proxied initially
-
-const user = state.users[0];
-// Now users[0] becomes a proxy
-```
-
-#### 3. Granular Updates
-
-Only arrays with recorded deltas are updated granularly. Maps and new arrays are reconciled structurally for correctness.
+**For deep dive:** See [Architecture Docs](../docs/architecture/architecture.md)
 
 ---
 

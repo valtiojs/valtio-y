@@ -79,85 +79,24 @@ undoManager.on("stack-cleared", () => {
 
 ## React Integration
 
-Create a hook to use undo/redo in your React components:
-
-```typescript
-import { useEffect, useState } from "react";
-import { useSnapshot } from "valtio/react";
-import type { UndoManager } from "yjs";
-
-function useUndoRedo(undoManager: UndoManager) {
-  const [canUndo, setCanUndo] = useState(undoManager.canUndo());
-  const [canRedo, setCanRedo] = useState(undoManager.canRedo());
-
-  useEffect(() => {
-    const updateState = () => {
-      setCanUndo(undoManager.canUndo());
-      setCanRedo(undoManager.canRedo());
-    };
-
-    // Update state when undo/redo stacks change
-    undoManager.on("stack-item-added", updateState);
-    undoManager.on("stack-item-popped", updateState);
-    undoManager.on("stack-cleared", updateState);
-
-    return () => {
-      undoManager.off("stack-item-added", updateState);
-      undoManager.off("stack-item-popped", updateState);
-      undoManager.off("stack-cleared", updateState);
-    };
-  }, [undoManager]);
-
-  return {
-    undo: () => undoManager.undo(),
-    redo: () => undoManager.redo(),
-    clear: () => undoManager.clear(),
-    canUndo,
-    canRedo,
-  };
-}
-```
-
-### Usage in Components
+In React, you can call undo/redo directly from event handlers:
 
 ```tsx
 function TodoApp() {
   const snap = useSnapshot(state);
-  const { undo, redo, canUndo, canRedo } = useUndoRedo(undoManager);
 
   return (
     <div>
-      <div>
-        <button onClick={undo} disabled={!canUndo}>
-          Undo
-        </button>
-        <button onClick={redo} disabled={!canRedo}>
-          Redo
-        </button>
-      </div>
+      <button onClick={() => undoManager.undo()}>Undo</button>
+      <button onClick={() => undoManager.redo()}>Redo</button>
 
-      <ul>
-        {snap.todos.map((todo, i) => (
-          <li key={i}>
-            <input
-              type="checkbox"
-              checked={todo.done}
-              onChange={() => (state.todos[i].done = !state.todos[i].done)}
-            />
-            {todo.text}
-          </li>
-        ))}
-      </ul>
-
-      <button
-        onClick={() => state.todos.push({ text: "New task", done: false })}
-      >
-        Add Todo
-      </button>
+      {/* Your app UI */}
     </div>
   );
 }
 ```
+
+**For reactive button states** (`canUndo`/`canRedo`), subscribe to UndoManager events in `useEffect` and update local state when the stacks change. See [Yjs UndoManager docs](https://docs.yjs.dev/api/undo-manager) for event details.
 
 ## Scoping Undo/Redo
 
@@ -246,124 +185,53 @@ setTimeout(() => (state.count = 4), 600);
 ### Keyboard Shortcuts
 
 ```typescript
-useEffect(() => {
-  const handleKeyDown = (e: KeyboardEvent) => {
-    // Ctrl+Z or Cmd+Z for undo
-    if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
-      e.preventDefault();
-      undoManager.undo();
-    }
-
-    // Ctrl+Shift+Z or Cmd+Shift+Z for redo
-    if ((e.ctrlKey || e.metaKey) && e.key === "z" && e.shiftKey) {
-      e.preventDefault();
-      undoManager.redo();
-    }
-
-    // Ctrl+Y or Cmd+Y for redo (Windows style)
-    if ((e.ctrlKey || e.metaKey) && e.key === "y") {
-      e.preventDefault();
-      undoManager.redo();
-    }
-  };
-
-  window.addEventListener("keydown", handleKeyDown);
-  return () => window.removeEventListener("keydown", handleKeyDown);
-}, []);
+window.addEventListener("keydown", (e) => {
+  if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+    e.preventDefault();
+    undoManager.undo();
+  }
+  if ((e.ctrlKey || e.metaKey) && (e.key === "Z" || e.key === "y")) {
+    e.preventDefault();
+    undoManager.redo();
+  }
+});
 ```
 
-### Stack Size Limit
+### Track Only Local Changes (Multi-User)
 
 ```typescript
-// Keep only the last 50 undo steps
-const undoManager = new UndoManager(ydoc.getMap("state"), {
-  trackedOrigins: new Set([null]), // Track all origins
-  captureTimeout: 500,
-});
+import { VALTIO_YJS_ORIGIN } from "valtio-y";
 
-// Manually limit stack size
+// Track only this client's changes (ignore remote users)
+const undoManager = new UndoManager(ydoc.getMap("state"), {
+  trackedOrigins: new Set([VALTIO_YJS_ORIGIN]),
+});
+```
+
+### Limit Stack Size
+
+```typescript
 undoManager.on("stack-item-added", () => {
-  const maxSize = 50;
-  while (undoManager.undoStack.length > maxSize) {
+  while (undoManager.undoStack.length > 50) {
     undoManager.undoStack.shift();
   }
 });
 ```
 
-### Exclude Specific Changes
-
-```typescript
-import { VALTIO_YJS_ORIGIN } from "valtio-y";
-
-// Only track changes from specific origins
-const undoManager = new UndoManager(ydoc.getMap("state"), {
-  trackedOrigins: new Set([VALTIO_YJS_ORIGIN]),
-});
-
-// Or exclude remote changes (track only local changes)
-const localOnlyUndoManager = new UndoManager(ydoc.getMap("state"), {
-  trackedOrigins: new Set([VALTIO_YJS_ORIGIN]),
-});
-```
-
-### Multi-User Undo
-
-Each client can have its own `UndoManager` that only tracks their local changes:
-
-```typescript
-// Track only this client's changes (not remote users)
-const undoManager = new UndoManager(ydoc.getMap("state"), {
-  trackedOrigins: new Set([VALTIO_YJS_ORIGIN]),
-});
-
-// Now undo/redo only affects this user's changes
-// Remote users' changes remain untouched
-```
-
 ## Limitations
 
-### What Can Be Undone
+**What works:**
 
-- ✅ Object property changes (`state.name = "Alice"`)
-- ✅ Array operations (`state.todos.push(...)`)
-- ✅ Nested updates (`state.user.profile.bio = "..."`)
-- ✅ Deletions (`delete state.property`)
+- Object properties, arrays, nested updates, deletions
 
-### What Cannot Be Undone
+**What doesn't:**
 
-- ❌ **Changes outside UndoManager's tracked types** - Only the Yjs types you pass to `UndoManager` are tracked
-- ❌ **Direct Yjs operations** - Changes made directly via Yjs APIs (without going through the proxy) may not track correctly
-- ❌ **Changes before UndoManager creation** - Only changes after creating the `UndoManager` are tracked
+- Changes outside tracked Yjs types
+- Direct Yjs operations (bypass the proxy)
+- Changes before the UndoManager is created
+- Bootstrap operations (not tracked by default)
 
-### Edge Cases
-
-**1. Bootstrap operations:**
-
-```typescript
-// Bootstrap is NOT tracked by default
-const { proxy: state, bootstrap } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("state"),
-});
-
-const undoManager = new UndoManager(ydoc.getMap("state"));
-
-bootstrap({ count: 0 }); // Not in undo history
-state.count = 1; // This IS tracked
-undoManager.undo(); // Goes back to 0 (bootstrap state)
-```
-
-**2. Concurrent edits:**
-
-When multiple users edit simultaneously, undo only affects the tracked origins (usually your local changes). Remote users' changes are preserved.
-
-**3. Deep nested changes:**
-
-All nested changes are tracked as long as they go through the proxy:
-
-```typescript
-state.user.profile.settings.theme = "dark"; // ✅ Tracked
-undoManager.undo(); // Reverts the theme change
-```
+**Multi-user:** Undo only affects tracked origins (usually your local changes). Remote changes are preserved.
 
 ## Further Reading
 

@@ -16,163 +16,72 @@ A practical guide to working with valtio-y state. This covers the most common op
 
 ## Object Operations
 
-### Setting Properties
-
 ```typescript
-// Simple assignment
+// Set properties
 state.user = { name: "Alice", age: 30 };
 state.count = 42;
-state.message = "Hello";
 
-// Update existing properties
+// Update properties
 state.user.name = "Bob";
 state.user.age = 31;
 
-// Add new properties dynamically
-state.settings = { theme: "dark" };
-state.settings.fontSize = 14;
-state.settings.autoSave = true;
-```
-
-### Nested Objects
-
-```typescript
-// Deep nesting works naturally
+// Nested objects
 state.app = {
   ui: {
-    sidebar: {
-      collapsed: false,
-      width: 240,
-    },
+    sidebar: { collapsed: false, width: 240 },
   },
 };
-
-// Update nested values
 state.app.ui.sidebar.collapsed = true;
-state.app.ui.sidebar.width = 200;
-```
 
-### Deleting Properties
-
-```typescript
-// Use delete operator
+// Delete properties
 delete state.user.temporaryFlag;
-delete state.settings.deprecated;
-
-// Or set to null if you need to preserve the key
+// Or use null to preserve key
 state.user.avatar = null;
-```
 
-### Replacing Entire Objects
-
-```typescript
-// Replace entire nested object
+// Replace entire object
 state.user.preferences = {
   theme: "light",
   notifications: true,
-  language: "en",
 };
 
-// Merge pattern using spread
-state.settings = {
-  ...state.settings,
-  newOption: true,
-};
+// Merge pattern
+state.settings = { ...state.settings, newOption: true };
 ```
 
 ---
 
 ## Array Operations
 
-### Adding Items
-
 ```typescript
-// Add to end
+// Add items
 state.todos.push({ text: "New task", done: false });
+state.todos.push({ text: "Task 1" }, { text: "Task 2" }); // Multiple
+state.todos.unshift({ text: "First task" }); // Add to beginning
+state.todos.splice(2, 0, { text: "Inserted" }); // Insert at index
 
-// Add multiple items
-state.todos.push(
-  { text: "Task 1", done: false },
-  { text: "Task 2", done: false }
-);
+// Remove items
+state.todos.pop(); // Remove from end
+state.todos.shift(); // Remove from beginning
+state.todos.splice(1, 1); // Remove at index 1
+state.todos.splice(0); // Clears the array
 
-// Add to beginning
-state.todos.unshift({ text: "First task", done: false });
-
-// Insert at specific index using splice
-state.todos.splice(2, 0, { text: "Inserted", done: false });
-```
-
-### Removing Items
-
-```typescript
-// Remove from end
-state.todos.pop();
-
-// Remove from beginning
-state.todos.shift();
-
-// Remove at specific index
-state.todos.splice(1, 1); // Remove 1 item at index 1
-
-// Remove multiple items
-state.todos.splice(2, 3); // Remove 3 items starting at index 2
-
-// ✅ Clear array (recommended)
-state.todos.splice(0);
-
-// ❌ Don't use direct length manipulation
-state.todos.length = 0; // Doesn't work with valtio-y
-```
-
-### Updating by Index
-
-```typescript
-// Update entire item
+// Update by index
 state.todos[0] = { text: "Updated", done: true };
-
-// Update properties of item
 state.todos[0].text = "New text";
-state.todos[0].done = !state.todos[0].done;
+delete state.todos[2]; // Delete item (no sparse arrays)
 
-// Delete item (creates no sparse arrays - items shift up)
-delete state.todos[2];
-```
+// Move items
+const [item] = state.todos.splice(2, 1);
+state.todos.splice(0, 0, item);
 
-### Moving Items
-
-```typescript
-// Move item from index 2 to index 0
-const [item] = state.todos.splice(2, 1); // Remove from index 2
-state.todos.splice(0, 0, item); // Insert at index 0
-
-// Move item down (from index 1 to index 2)
-const [movedItem] = state.todos.splice(1, 1);
-state.todos.splice(2, 0, movedItem);
-```
-
-### What Doesn't Work
-
-```typescript
-// ❌ Direct length manipulation
-state.items.length = 5; // Doesn't sync properly
-
-// ✅ Use splice instead
-state.items.splice(5); // Truncate to 5 items
-state.items.splice(0); // Clear array
-
-// ❌ Sparse arrays
-state.items[10] = "value"; // When array length is 3
-
-// ✅ Use push or splice
-state.items.push("value");
+// Not supported patterns
+state.items.length = 0; // Don't manipulate length directly
+state.items[10] = "value"; // Don't create sparse arrays
 ```
 
 ---
 
 ## Nested Structures
-
-### Deep Nesting Patterns
 
 ```typescript
 // Nested objects in arrays
@@ -182,14 +91,10 @@ state.users = [
     name: "Alice",
     profile: {
       bio: "Developer",
-      settings: {
-        notifications: true,
-      },
+      settings: { notifications: true },
     },
   },
 ];
-
-// Access and modify deeply nested values
 state.users[0].profile.settings.notifications = false;
 
 // Arrays of arrays
@@ -200,50 +105,24 @@ state.grid = [
 state.grid[0][1] = 99;
 ```
 
-### Lazy Proxy Materialization
+**Lazy materialization:** Proxies are created on-demand when you access nested structures. This makes large datasets fast to initialize.
 
-Proxies are created on-demand when you access nested structures:
+**Performance tip for loops:**
 
 ```typescript
-// Large dataset initialization
-state.users = Array(10000).fill({ name: "User", data: {...} });
-// ✅ Fast - proxies not created yet
-
-// First access materializes the proxy
-const user = state.users[0];
-// ✅ Only this user's proxy is created
-
-// Access in loop
+// Repeated property lookups (avoid)
 for (let i = 0; i < 100; i++) {
-  // ⚠️ Less efficient - repeated property lookups
   state.data.items[i].nested.value = i;
 }
 
-// ✅ Better - cache the reference to reduce lookups
+// Cache the reference
 const items = state.data.items;
 for (let i = 0; i < 100; i++) {
   items[i].nested.value = i;
 }
 ```
 
-**Note:** Proxies are automatically cached in WeakMaps after creation. Caching references reduces the number of property lookups (`state.data.items` → `items`), not proxy creation overhead.
-
-### Performance Tips for Deep Structures
-
-```typescript
-// ⚠️ Less efficient: repeated property traversal
-for (const item of items) {
-  state.app.data.list.items[item.id].value = item.newValue;
-}
-
-// ✅ Better: cache the parent reference
-const listItems = state.app.data.list.items;
-for (const item of items) {
-  listItems[item.id].value = item.newValue;
-}
-```
-
-**Why this helps:** Reduces property traversal from 4 lookups (`state.app.data.list.items`) per iteration to just 1 lookup (`listItems`). The benefit comes from fewer property accesses, not from avoiding proxy creation (proxies are cached internally).
+This reduces property traversal overhead. See [Performance Guide](./performance-guide.md) for details.
 
 ---
 
@@ -268,20 +147,20 @@ state.isDone = false;
 // Null
 state.optional = null;
 
-// ❌ Undefined is NOT supported
+// Undefined is not supported
 state.value = undefined; // Don't do this
 
-// ✅ Use null instead
+// Use null instead
 state.value = null;
 ```
 
 ### Why undefined Doesn't Work
 
 ```typescript
-// ❌ This won't sync
+// This will not sync
 state.user.middleName = undefined;
 
-// ✅ Use null or delete the property
+// Use null or delete the property
 state.user.middleName = null;
 // or
 delete state.user.middleName;
@@ -293,213 +172,71 @@ The Yjs CRDT protocol doesn't support `undefined` values, so valtio-y can't sync
 
 ## Common Patterns
 
-### Toggling Booleans
+### Basic Operations
 
 ```typescript
-// Simple toggle
+// Toggle booleans
 state.isOpen = !state.isOpen;
-
-// Toggle item property
 state.todos[0].done = !state.todos[0].done;
 
-// Toggle in event handler
-<button onClick={() => (state.sidebar.collapsed = !state.sidebar.collapsed)}>
-  Toggle
-</button>;
-```
-
-### Incrementing Counters
-
-```typescript
-// Increment
+// Increment/decrement
 state.count++;
-
-// Decrement
-state.count--;
-
-// Add specific amount
 state.score += 10;
 
-// Multiple updates in same tick are batched
-for (let i = 0; i < 100; i++) {
-  state.count++;
-}
-// ✅ Becomes a single Yjs transaction
-```
-
-### Filtering Arrays
-
-```typescript
-// Remove completed todos
+// Filter arrays
 state.todos = state.todos.filter((todo) => !todo.done);
 
-// Remove item by id
-state.users = state.users.filter((user) => user.id !== deleteId);
-
-// Remove null/undefined items
-state.items = state.items.filter((item) => item != null);
-```
-
-### Mapping Over Data
-
-```typescript
-// Transform all items
-state.todos = state.todos.map((todo) => ({
-  ...todo,
-  text: todo.text.trim(),
-}));
-
-// Update specific property across all items
-state.todos = state.todos.map((todo) => ({
-  ...todo,
-  archived: true,
-}));
-```
-
-### Bulk Updates
-
-```typescript
-// Multiple related changes (automatically batched)
+// Bulk updates (automatically batched)
 function addTodo(text: string) {
-  const todo = { id: generateId(), text, done: false };
-  state.todos.push(todo);
+  state.todos.push({ id: generateId(), text, done: false });
   state.lastModified = Date.now();
   state.totalCount++;
-  // ✅ All three mutations become one Yjs transaction
-}
-
-// Bulk array operations (more efficient than loops)
-const newItems = Array(1000).fill({ data: "x" });
-state.items.push(...newItems);
-// ✅ Single optimized operation
+} // All three mutations run within one transaction
 ```
 
-### Conditional Updates
+### Replacing vs Updating Objects
 
 ```typescript
-// Initialize if not exists
-if (!state.todos) {
-  state.todos = [];
-}
-
-// Update only if condition met
-if (state.count > 0) {
-  state.count--;
-}
-
-// Conditional object assignment
-if (!state.user) {
-  state.user = { name: "Guest", role: "viewer" };
-}
-```
-
-### Replacing vs Updating
-
-```typescript
-// ❌ Updating many properties individually
+// Avoid multiple individual updates
 state.user.name = "Alice";
 state.user.age = 30;
 state.user.email = "alice@example.com";
-state.user.role = "admin";
-// Creates 4 separate mutations (though batched into 1 transaction)
 
-// ✅ Better: replace the entire object
+// Replace the entire object
 state.user = {
   name: "Alice",
   age: 30,
   email: "alice@example.com",
   role: "admin",
 };
-// Single mutation
 
-// ✅ Merge pattern preserving existing fields
-state.user = {
-  ...state.user,
-  name: "Alice",
-  age: 30,
-};
+// Merge with the existing object
+state.user = { ...state.user, name: "Alice", age: 30 };
 ```
 
 ### Safe Deep Access
 
 ```typescript
-// ✅ Optional chaining in reads (from snapshot)
+// Use optional chaining in reads
 const snap = useSnapshot(state);
 const userName = snap.user?.profile?.name ?? "Guest";
 
-// ✅ Initialize parent before assigning nested value
-if (!state.user) {
-  state.user = { profile: {} };
-}
+// Initialize the parent before assigning
+if (!state.user) state.user = { profile: {} };
 state.user.profile.bio = "Developer";
-
-// ❌ Don't assign to undefined parent
-state.user.profile.bio = "Developer"; // Error if user.profile doesn't exist
 ```
 
-### Array Reordering Strategies
-
-For most apps, standard splice is perfect:
+### Array Reordering
 
 ```typescript
-// Standard approach (works for most cases)
+// Standard splice (works for most apps)
 function moveItem(from: number, to: number) {
   const [item] = state.tasks.splice(from, 1);
   state.tasks.splice(to, 0, item);
 }
 ```
 
-For high-frequency concurrent reordering with multiple users (e.g., collaborative Kanban boards):
-
-```typescript
-// Fractional indexing (advanced use case)
-// Use libraries like 'fractional-indexing' for string-based ordering
-import { generateKeyBetween } from "fractional-indexing";
-
-type Task = {
-  id: string;
-  title: string;
-  order: string; // String-based fractional index (scales infinitely)
-};
-
-function moveTask(taskIndex: number, newPosition: number) {
-  const prevOrder = state.tasks[newPosition - 1]?.order ?? null;
-  const nextOrder = state.tasks[newPosition + 1]?.order ?? null;
-
-  state.tasks[taskIndex].order = generateKeyBetween(prevOrder, nextOrder);
-}
-
-// Render sorted
-const sortedTasks = [...state.tasks].sort((a, b) =>
-  a.order.localeCompare(b.order)
-);
-```
-
-**When to use fractional indexing:**
-
-- Lists with >100 items AND multiple users frequently reordering
-- Use **string-based** fractional indexing (scales infinitely)
-- Number-based approaches hit floating-point precision limits
-- Otherwise, standard splice works great
-
-### Clearing vs Resetting
-
-```typescript
-// Clear array (keep reference)
-state.todos.splice(0);
-
-// Reset to new array (breaks existing references)
-state.todos = [];
-
-// Clear specific items
-state.todos = state.todos.filter((todo) => !todo.done);
-
-// Reset entire state branch
-state.app = {
-  todos: [],
-  settings: { theme: "light" },
-};
-```
+**For high-frequency concurrent reordering** (e.g., collaborative Kanban): Use fractional indexing libraries like `fractional-indexing` with string-based order fields. See [Performance Guide](./performance-guide.md) for details.
 
 ---
 
