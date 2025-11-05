@@ -1,7 +1,7 @@
 {
   "name": "valtio-y",
   "description": "Collaborative Valtio state",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "type": "module",
   "author": "Alex Gogl",
   "repository": {
