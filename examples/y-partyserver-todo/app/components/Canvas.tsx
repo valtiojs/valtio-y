@@ -112,7 +112,7 @@ export function Canvas({
       if (!isDrawing || !currentShapeIdRef.current || !proxy.shapes) return;
 
       const shapeIndex = proxy.shapes.findIndex(
-        (s) => s.id === currentShapeIdRef.current
+        (s) => s.id === currentShapeIdRef.current,
       );
       if (shapeIndex === -1) return;
 
@@ -154,7 +154,7 @@ export function Canvas({
     if (!isDrawing || !currentShapeIdRef.current || !proxy.shapes) return;
 
     const shapeIndex = proxy.shapes.findIndex(
-      (s) => s.id === currentShapeIdRef.current
+      (s) => s.id === currentShapeIdRef.current,
     );
 
     if (shapeIndex !== -1) {
@@ -173,8 +173,7 @@ export function Canvas({
           }
         }
       } else if (tool === "rect" && shape.type === "rect") {
-        const hasSize =
-          Math.abs(shape.width) > 5 && Math.abs(shape.height) > 5;
+        const hasSize = Math.abs(shape.width) > 5 && Math.abs(shape.height) > 5;
         if (!hasSize) {
           proxy.shapes.splice(shapeIndex, 1);
         }
