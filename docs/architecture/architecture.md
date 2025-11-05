@@ -28,7 +28,7 @@ Public API (bridge)  Controller Proxy Layer (how)   Synchronization Layer       
 ```
 
 - Public API Layer (the bridge entrypoint): `createYjsProxy(doc, { getRoot })` creates the root controller proxy (the Valtio proxy for the chosen Y root), instantiates a coordinator to orchestrate all components, sets up sync, and returns `{ proxy, dispose, bootstrap }`.
-- Controller Layer: A tree of Valtio proxies mirrors `Y.Map`/`Y.Array`. Local mutations enqueue direct-child ops into the coordinator's Write Scheduler; the scheduler flushes them in one `doc.transact(…, VALTIO_YJS_ORIGIN)` per microtask.
+- Controller Layer: A tree of Valtio proxies mirrors `Y.Map`/`Y.Array`. Local mutations enqueue direct-child ops into the coordinator's Write Scheduler; the scheduler flushes them in one `doc.transact(…, VALTIO_Y_ORIGIN)` per microtask.
 - Synchronization Layer: A root-scoped deep observer (`yRoot.observeDeep`) handles inbound updates. It ignores library-origin transactions and reconciles the nearest materialized ancestor for each event.
 - Type Conversion Layer: Pure utilities convert plain JS data to Yjs types and vice versa.
 

@@ -7,10 +7,10 @@ Scenario: `userProxy.profile.email = '...'` in the UI.
 1. Accessing `profile` returns the `profile` controller proxy (a Valtio proxy for a `Y.Map`). This proxy is the object you use; it performs the controller behavior under the hood.
 2. The Valtio subscription on the object proxy receives a top-level `set` operation for `email`.
 3. The operation is enqueued into the coordinator's write scheduler.
-4. On the next microtask, the scheduler flushes all pending operations in a single `doc.transact(..., VALTIO_YJS_ORIGIN)`.
+4. On the next microtask, the scheduler flushes all pending operations in a single `doc.transact(..., VALTIO_Y_ORIGIN)`.
 5. Inside the transaction, `yProfileMap.set('email', '...')` is called (or convert complex values using converter utilities if needed).
 6. The transaction ends.
-7. `yRoot.observeDeep` callback fires, but the handler ignores it because `transaction.origin === VALTIO_YJS_ORIGIN`.
+7. `yRoot.observeDeep` callback fires, but the handler ignores it because `transaction.origin === VALTIO_Y_ORIGIN`.
 8. `doc.on('update')` may fire via the provider and propagate to peers.
 
 Note: When assigning a plain object/array into a controller proxy, the system eagerly upgrades it to a Y type during planning. After the scheduler's transaction completes and the Y type is fully integrated, post-transaction callbacks replace the plain value with a live controller proxy under a reconciliation lock. This ensures the controller is created only after the Y value exists and keeps nested edits encapsulated within the child controller proxy, avoiding parent-level routing.
@@ -21,7 +21,7 @@ Scenario: A peer inserts a new item into a shared list (a `Y.Array`).
 
 1. The provider applies the update: `Y.applyUpdate(doc, update)`.
 2. `yRoot.observeDeep` callback fires with events and a transaction object.
-3. The synchronizer checks `transaction.origin !== VALTIO_YJS_ORIGIN` (to ignore our own changes) and processes the events.
+3. The synchronizer checks `transaction.origin !== VALTIO_Y_ORIGIN` (to ignore our own changes) and processes the events.
 4. For each event, it walks up to find the nearest materialized ancestor (boundary).
 5. Two-phase reconciliation:
    - Phase 1: Reconcile boundaries to ensure structure and materialize controller proxies for new Y types.

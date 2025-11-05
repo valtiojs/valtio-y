@@ -5,7 +5,7 @@ import {
   plainObjectToYType,
   validateDeepForSharedState,
 } from "./core/converter";
-import { VALTIO_YJS_ORIGIN } from "./core/constants";
+import { VALTIO_Y_ORIGIN } from "./core/constants";
 import { ValtioYjsCoordinator } from "./core/coordinator";
 import { isYArray, isYMap } from "./core/guards";
 import {
@@ -138,7 +138,7 @@ export function createYjsProxy<T extends object>(
         for (const [key, converted] of convertedEntries) {
           yRoot.set(key, converted);
         }
-      }, VALTIO_YJS_ORIGIN);
+      }, VALTIO_Y_ORIGIN);
     } else if (isYArray(yRoot)) {
       const items = (data as unknown as unknown[]).map((v) => {
         validateDeepForSharedState(v);
@@ -146,7 +146,7 @@ export function createYjsProxy<T extends object>(
       });
       doc.transact(() => {
         if (items.length > 0) yRoot.insert(0, items);
-      }, VALTIO_YJS_ORIGIN);
+      }, VALTIO_Y_ORIGIN);
     }
 
     // Our listener ignores our origin to avoid loops, so we must explicitly

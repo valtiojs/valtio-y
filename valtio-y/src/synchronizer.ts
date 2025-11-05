@@ -2,11 +2,11 @@
 //
 // Responsibility:
 // - Listen to Yjs deep events and trigger reconciliation.
-// - Ignore transactions with our origin (VALTIO_YJS_ORIGIN) to prevent loops.
+// - Ignore transactions with our origin (VALTIO_Y_ORIGIN) to prevent loops.
 // - For each deep event, walk up to the nearest materialized ancestor and
 //   reconcile that container to support lazy materialization.
 import * as Y from "yjs";
-import { VALTIO_YJS_ORIGIN } from "./core/constants";
+import { VALTIO_Y_ORIGIN } from "./core/constants";
 import {
   reconcileValtioMap,
   reconcileValtioArray,
@@ -37,7 +37,7 @@ export function setupSyncListener(
     events: Y.YEvent<Y.AbstractType<unknown>>[],
     transaction: Y.Transaction,
   ) => {
-    if (transaction.origin === VALTIO_YJS_ORIGIN) {
+    if (transaction.origin === VALTIO_Y_ORIGIN) {
       return;
     }
     coordinator.logger.debug("[sync] deep", {
