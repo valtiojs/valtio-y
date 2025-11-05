@@ -1,6 +1,4 @@
-<div align="center">
-
-# valtio-y
+# valtio-y ⚡
 
 ### Collaborative State Management
 
@@ -15,9 +13,7 @@
 
 Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs. Build collaborative apps for **structured data** (forms, dashboards, boards)—no special APIs, just mutate objects naturally.
 
-[Examples](#-examples) · [Guides](#-guides) · [Discord](https://discord.gg/MrQdmzd)
-
-</div>
+[Examples](#examples) · [Guides](#guides) · [Discord](https://discord.gg/MrQdmzd)
 
 ---
 
@@ -25,11 +21,11 @@ Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs
 
 Building collaborative apps for **structured data** (not text documents, not simple CRUD) is **hard**. You need:
 
-- ❌ **Automatic conflict resolution** when users edit simultaneously
-- ❌ **Offline support** that merges changes correctly when reconnected
-- ❌ **Network protocols** (WebSocket, WebRTC, etc.)
-- ❌ **State consistency** across clients
-- ❌ **Efficient re-renders** without performance issues
+- Automatic conflict resolution when users edit simultaneously
+- Offline support that merges changes correctly when reconnected
+- Network protocols (WebSocket, WebRTC, etc.)
+- State consistency across clients
+- Efficient re-renders without performance issues
 
 **valtio-y handles all of this for you.** Just mutate your state like normal:
 
@@ -43,15 +39,15 @@ It automatically syncs across all connected users with **zero configuration**. N
 
 ### How It Compares
 
-|                      | valtio-y      | Plain Yjs  | Other CRDT libs |
-| -------------------- | ------------- | ---------- | --------------- |
-| Framework Integration| ✅ Native     | ⚠️ Manual  | ⚠️ Manual       |
-| TypeScript Support   | ✅ Full       | ✅ Full    | ⚠️ Partial      |
-| Learning Curve       | ✅ Low        | ⚠️ Medium  | ❌ High         |
-| Nested Structures    | ✅ Natural    | ⚠️ Manual  | ⚠️ Manual       |
-| Array Operations     | ✅ All native | ⚠️ Y.Array | ⚠️ Limited      |
-| Fine-grained Updates | ✅ Yes        | ❌ No      | ❌ No           |
-| Offline-First        | ✅ Yes        | ✅ Yes     | ⚠️ Varies       |
+|                       | valtio-y     | Plain Yjs       | Other CRDT libs |
+| --------------------- | ------------ | --------------- | --------------- |
+| Framework Integration | ✓ Native     | Manual setup    | Manual setup    |
+| TypeScript Support    | ✓ Full       | ✓ Full          | ~ Partial       |
+| Learning Curve        | ✓ Low        | ~ Medium        | ✗ High          |
+| Nested Structures     | ✓ Natural    | Manual mapping  | Manual mapping  |
+| Array Operations      | ✓ All native | Y.Array focused | ~ Limited       |
+| Fine-grained Updates  | ✓ Yes        | ✗ No            | ✗ No            |
+| Offline-First         | ✓ Yes        | ✓ Yes           | ~ Varies        |
 
 Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), and battle-tested performance. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
 
@@ -59,18 +55,18 @@ Built from the ground up with a production-ready architecture, cleaner API (`cre
 
 valtio-y excels in the **sweet spot between text editors and sync engines**: real-time collaborative editing of **structured data** (objects, arrays, nested state) where conflicts must resolve automatically.
 
-**✅ Perfect for:**
+**Best suited for:**
 
 - **Form builders** - Drag-and-drop interfaces, field configuration, visual editors
 - **Kanban/project boards** - Task management, card reordering, status updates
 - **Collaborative spreadsheets** - Data entry, cell updates (not heavy text editing)
 - **Dashboard configurators** - Widget placement, settings, real-time layout adjustments
 - **Design tool data** - Layer properties, element positions, configuration (not text content)
-- **Multiplayer game state** - Player positions, inventory, world state (see our [Minecraft example](#-examples)!)
+- **Multiplayer game state** - Player positions, inventory, world state (see our [Minecraft example](#examples)!)
 - **Data annotation tools** - Labeling, categorization, collaborative markup
 - **Configuration panels** - Settings that multiple users can adjust simultaneously
 
-**❌ Wrong tool for the job:**
+**Consider other tooling for:**
 
 - **Text/document editors** → Use [Lexical](https://lexical.dev/), [TipTap](https://tiptap.dev/), or [ProseMirror](https://prosemirror.net/) with native Yjs integrations. They handle text-specific reconciliation internally.
 - **Apps like Linear/Notion** → Use sync engines (real-time updates without CRDT conflict resolution). Two users simultaneously editing the same Linear issue title or description doesn't need automatic merging—one user's change wins, and they can communicate to resolve it.
@@ -95,16 +91,24 @@ bun add valtio-y valtio yjs
 
 Create a synchronized proxy and mutate it like any normal object. Changes automatically sync across clients.
 
-```js
+```typescript
 import * as Y from "yjs";
 import { createYjsProxy } from "valtio-y";
 
+type State = {
+  text: string;
+  count: number;
+  user: { name: string; age: number };
+  todos: Array<{ text: string; done: boolean }>;
+};
+
 // Create a Yjs document
-const ydoc = new Y.Doc();
+const ydoc: Y.Doc = new Y.Doc();
 
 // Create a synchronized proxy
-const { proxy: state } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("mymap"),
+// getRoot selects which Yjs structure to sync (all clients must use the same name)
+const { proxy: state } = createYjsProxy<State>(ydoc, {
+  getRoot: (doc) => doc.getMap("root"), // Most apps use one root Map
 });
 
 // Mutate state like a normal object
@@ -125,42 +129,14 @@ That's it! State is now synchronized via Yjs. Add a provider to sync across clie
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-<table>
-<tr>
-<td width="50%" style="padding: 20px; vertical-align: top;">
-
-**✨ Zero API Overhead**
-
-No special methods—just mutate objects like normal JavaScript
-
-**🎯 Fine-Grained Updates**
-
-Components re-render only when their specific data changes
-
-**🔄 Offline-First**
-
-Local changes automatically merge when reconnected
-
-</td>
-<td width="50%" style="padding: 20px; vertical-align: top;">
-
-**⚡ Production-Ready**
-
-Validation, rollback, comprehensive tests, and benchmarks
-
-**🎨 Type-Safe**
-
-Full TypeScript support with complete type inference
-
-**🌐 Provider-Agnostic**
-
-Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
-
-</td>
-</tr>
-</table>
+- **⚡ Zero API Overhead** - No special methods—just mutate objects like normal JavaScript
+- **🎯 Fine-Grained Updates** - Valtio ensures only components with changed data re-render.
+- **🌐 Offline-First** - Local changes automatically merge when reconnected
+- **🛡️ Production-Ready** - Validation, rollback, comprehensive tests, and benchmarks
+- **🔒 Type-Safe** - Full TypeScript support with complete type inference
+- **🔌 Provider-Agnostic** - Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
 
 ---
 
@@ -195,10 +171,11 @@ valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Soli
 
 ---
 
-## 📚 Guides
+## Guides
 
 Core documentation for understanding and using valtio-y effectively:
 
+- **[Structuring Your App](./guides/structuring-your-app.md)** - How to organize state with `getRoot`
 - **[Core Concepts](./guides/concepts.md)** - Understand CRDTs and the valtio-y mental model
 - **[Basic Operations](./guides/basic-operations.md)** - Objects, arrays, and nested structures
 - **[Undo/Redo](./guides/undo-redo.md)** - Implement undo/redo with Yjs UndoManager
@@ -256,7 +233,7 @@ provider.on("synced", () => {
     todos: [],
     settings: { theme: "light" },
   });
-  // ✅ Only writes if document is empty
+  // Only writes if the document is empty
 });
 ```
 
@@ -364,7 +341,7 @@ Multiple mutations in the same tick are automatically batched:
 for (let i = 0; i < 100; i++) {
   state.count++;
 }
-// ✅ Single Yjs transaction, one sync event
+// Results in a single Yjs transaction and one sync event
 ```
 
 ### Bulk Operations
@@ -383,7 +360,7 @@ Nested objects create proxies on-demand:
 
 ```js
 state.users = Array(10000).fill({ name: "User", data: {...} });
-// ✅ Fast initialization, proxies created when accessed
+// Fast initialization, proxies are created when accessed
 const user = state.users[0]; // Materializes this user only
 ```
 
@@ -402,16 +379,16 @@ const user = state.users[0]; // Materializes this user only
 
 ### Not Supported
 
-- ❌ **`undefined` values** (use `null` or delete the key)
-- ❌ **Non-serializable types** (functions, symbols, class instances)
-- ❌ **Direct length manipulation** (use `array.splice()` instead of `array.length = N`)
+- `undefined` values (use `null` or delete the key)
+- Non-serializable types (functions, symbols, class instances)
+- Direct length manipulation (use `array.splice()` instead of `array.length = N`)
 
 ### What Works
 
-- ✅ **Objects & Arrays** - Full support with deep nesting
-- ✅ **Primitives** - string, number, boolean, null
-- ✅ **All array methods** - push, pop, splice, etc.
-- ✅ **Undo/Redo** - via Yjs UndoManager
+- Objects and arrays with full support for deep nesting
+- Primitives: string, number, boolean, null
+- All array methods: push, pop, splice, and more
+- Undo/redo via Yjs UndoManager
 
 ### Research In Progress
 
@@ -440,20 +417,20 @@ valtio-y currently focuses on collaborative data structures like maps, arrays, a
 
 ## Best Practices
 
-**Do:**
+**Recommended:**
 
-- ✅ Batch related updates in the same tick (automatically optimized into one transaction)
-- ✅ Use bulk array operations (`push(...items)`) for better performance
-- ✅ Initialize with `bootstrap()` when using network sync providers
-- ✅ Use plain strings for all text fields
-- ✅ Cache references to deeply nested objects in loops
+- Batch related updates in the same tick to keep them in one transaction
+- Use bulk array operations (`push(...items)`) for better performance
+- Initialize with `bootstrap()` when using network sync providers
+- Store text fields as plain strings
+- Cache references to deeply nested objects in loops
 
-**Don't:**
+**Avoid:**
 
-- ❌ Use `undefined` (use `null` or delete the property instead)
-- ❌ Store functions or class instances (not serializable)
-- ❌ Use `await` between mutations if you want them batched together
-- ❌ Repeatedly access deep paths in loops (cache the reference first)
+- Using `undefined` (prefer `null` or delete the property)
+- Storing functions or class instances (they are not serializable)
+- Awaiting between mutations that should be batched together
+- Repeatedly accessing deep paths in loops without caching the reference
 
 ### Advanced: Concurrent List Reordering
 
@@ -489,61 +466,19 @@ For more details, see the [architecture docs](./docs/architecture/)
 
 ---
 
-## 🎮 Examples
+## Examples
 
-Try these live collaborative demos showcasing valtio-y's sweet spot: **collaborative structured data** (task boards, game state, shared objects). Open each example in multiple browser tabs to see real-time sync in action!
+Live collaborative demos - open in multiple tabs to see real-time sync:
 
-### 🎓 Learning Path
+1. **[Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple)** - Single-file example with detailed comments. Best for learning core concepts (CRUD, nested objects, reordering, offline/online simulation).
 
-**Start here** if you're new to valtio-y:
+2. **[Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Minimal object synchronization with WebSocket provider.
 
-#### 1. [Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple) 🌟 **Best for Learning**
+3. **[Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Array operations (push, pop, splice) with WebSocket sync.
 
-Single-file example with detailed comments. Learn core concepts including CRUD operations, nested todos, reordering, and offline/online simulation.
+4. **[Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)** - Production-ready app with drag-and-drop, bulk operations, filtering (React, Tailwind, dnd-kit).
 
-**What you'll learn:** Basic setup, array operations, nested objects, state mutations
-
----
-
-#### 2. [Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)
-
-Minimal object synchronization with WebSocket provider. See how key-value pairs sync in real-time.
-
-**What you'll learn:** WebSocket provider setup, basic object mutations
-
----
-
-#### 3. [Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)
-
-Demonstrates array operations (push, pop, splice) with WebSocket sync.
-
-**What you'll learn:** Array manipulation, list operations
-
----
-
-### 🚀 Advanced Examples
-
-#### 4. [Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)
-
-Production-ready todo app with drag-and-drop, bulk operations, filtering, and selection modes.
-
-**What you'll learn:** Advanced UI patterns, @dnd-kit integration, bulk operations, complex state management
-
-**Tech:** React, Tailwind CSS, dnd-kit, lucide-react
-
----
-
-#### 5. [Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft) 🎮 **Most Impressive**
-
-Real-time multiplayer 3D game with WebRTC peer-to-peer sync. Move around a voxel world with other players!
-
-**What you'll learn:** High-frequency position updates, WebRTC P2P, multiplayer coordination, performance optimization
-
-**Tech:** Three.js, WebRTC (y-webrtc)
-
----
-
-All examples use `useSnapshot` from Valtio and work with any Yjs provider. Each example includes full source code you can explore and modify.
+5. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
 
 ---
 
