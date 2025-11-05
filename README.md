@@ -135,30 +135,30 @@ That's it! State is now synchronized via Yjs. Add a provider to sync across clie
 <tr>
 <td width="50%" style="padding: 20px; vertical-align: top;">
 
-**Zero API Overhead**
+**⚡ Zero API Overhead**
 
 No special methods—just mutate objects like normal JavaScript
 
-**Fine-Grained Updates**
+**🎯 Fine-Grained Updates**
 
-Components re-render only when their specific data changes
+Valtio ensures only components with changed data re-render.
 
-**Offline-First**
+**🌐 Offline-First**
 
 Local changes automatically merge when reconnected
 
 </td>
 <td width="50%" style="padding: 20px; vertical-align: top;">
 
-**Production-Ready**
+**🛡️ Production-Ready**
 
 Validation, rollback, comprehensive tests, and benchmarks
 
-**Type-Safe**
+**🔒 Type-Safe**
 
 Full TypeScript support with complete type inference
 
-**Provider-Agnostic**
+**🔌 Provider-Agnostic**
 
 Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
 
