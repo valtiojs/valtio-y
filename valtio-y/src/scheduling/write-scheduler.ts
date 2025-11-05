@@ -1,7 +1,7 @@
 import * as Y from "yjs";
 import type { PendingMapEntry, PendingArrayEntry } from "./batch-types";
 import type { Logger } from "../core/logger";
-import { VALTIO_YJS_ORIGIN } from "../core/constants";
+import { VALTIO_Y_ORIGIN } from "../core/constants";
 import { PostTransactionQueue } from "./post-transaction-queue";
 
 /**
@@ -465,7 +465,7 @@ export class WriteScheduler {
         postQueue,
         this.applyFunctions.withReconcilingLock,
       );
-    }, VALTIO_YJS_ORIGIN);
+    }, VALTIO_Y_ORIGIN);
 
     // Flush post-transaction callbacks with reconciling lock
     postQueue.flush(this.applyFunctions.withReconcilingLock);

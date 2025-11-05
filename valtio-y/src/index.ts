@@ -9,7 +9,7 @@ export { createYjsProxy } from "./create-yjs-proxy";
 export type { CreateYjsProxyOptions, YjsProxy } from "./create-yjs-proxy";
 
 // Constants
-export { VALTIO_YJS_ORIGIN } from "./core/constants";
+export { VALTIO_Y_ORIGIN } from "./core/constants";
 
 // Type utilities for advanced users
 export type {

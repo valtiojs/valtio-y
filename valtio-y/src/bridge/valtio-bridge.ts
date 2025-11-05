@@ -4,7 +4,7 @@
 // - Materialize real Valtio proxies for Yjs shared types (currently Y.Map).
 // - Maintain stable identity via caches (Y type <-> Valtio proxy) inside a context.
 // - Reflect local Valtio writes back to Yjs minimally (set/delete) inside
-//   transactions tagged with VALTIO_YJS_ORIGIN.
+//   transactions tagged with VALTIO_Y_ORIGIN.
 // - Lazily create nested controllers when a Y value is another Y type.
 import * as Y from "yjs";
 import { proxy, subscribe } from "valtio/vanilla";

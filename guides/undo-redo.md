@@ -200,11 +200,11 @@ window.addEventListener("keydown", (e) => {
 ### Track Only Local Changes (Multi-User)
 
 ```typescript
-import { VALTIO_YJS_ORIGIN } from "valtio-y";
+import { VALTIO_Y_ORIGIN } from "valtio-y";
 
 // Track only this client's changes (ignore remote users)
 const undoManager = new UndoManager(ydoc.getMap("state"), {
-  trackedOrigins: new Set([VALTIO_YJS_ORIGIN]),
+  trackedOrigins: new Set([VALTIO_Y_ORIGIN]),
 });
 ```
 
