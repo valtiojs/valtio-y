@@ -189,4 +189,13 @@ export class ValtioYjsCoordinator {
       reconcileValtioArray(this, yArray, doc, withReconcilingLock),
     );
   }
+
+  /**
+   * Get the effective length of an array, accounting for pending operations
+   * that haven't been flushed yet. This is used for correct operation planning
+   * when operations are batched before a flush.
+   */
+  getEffectiveArrayLength(yArray: Y.Array<unknown>): number {
+    return this.scheduler.getEffectiveArrayLength(yArray);
+  }
 }

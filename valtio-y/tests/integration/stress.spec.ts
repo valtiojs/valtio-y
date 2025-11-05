@@ -74,17 +74,16 @@ describe("Stress Tests", () => {
       });
 
       // Create deeply nested structure
-      let current: Record<string, unknown> = {};
-      let deepestRef = current;
+      const root: Record<string, unknown> = {};
+      let current: Record<string, unknown> = root;
       for (let i = 0; i < 100; i++) {
         const next: Record<string, unknown> = {};
         current[`level${i}`] = next;
-        deepestRef = next;
         current = next;
       }
-      deepestRef.value = "deep-value";
+      current.value = "deep-value"; // current is now the deepest level
 
-      proxy.nested = current;
+      proxy.nested = root; // Assign the root, not the deepest level
       await waitMicrotask();
 
       // Navigate to deepest level
@@ -369,7 +368,7 @@ describe("Stress Tests", () => {
       // Each client increments their counter 100 times
       for (let clientId = 0; clientId < 3; clientId++) {
         for (let i = 0; i < 100; i++) {
-          proxies[clientId]!.proxy.shared.counters[clientId]++;
+          proxies[clientId]!.proxy.shared.counters[clientId]!++;
         }
       }
       await waitMicrotask();

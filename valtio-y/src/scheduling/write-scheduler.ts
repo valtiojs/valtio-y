@@ -17,7 +17,7 @@ export interface ApplyFunctions {
   ) => void;
   applyArrayOperations: (
     arraySets: Map<Y.Array<unknown>, Map<number, PendingArrayEntry>>,
-    arrayDeletes: Map<Y.Array<unknown>, Set<number>>,
+    arrayDeletes: Map<Y.Array<unknown>, Map<number, number>>,
     arrayReplaces: Map<Y.Array<unknown>, Map<number, PendingArrayEntry>>,
     postQueue: PostTransactionQueue,
     withReconcilingLock: (fn: () => void) => void,
@@ -57,6 +57,7 @@ export class WriteScheduler {
 
   // Write scheduler state
   private flushScheduled = false;
+  private operationSequence = 0; // Global sequence counter for temporal ordering
 
   // Pending ops, deduped per target and key/index
   private pendingMapSets = new Map<
@@ -68,7 +69,7 @@ export class WriteScheduler {
     Y.Array<unknown>,
     Map<number, PendingArrayEntry>
   >();
-  private pendingArrayDeletes = new Map<Y.Array<unknown>, Set<number>>();
+  private pendingArrayDeletes = new Map<Y.Array<unknown>, Map<number, number>>();
   private pendingArrayReplaces = new Map<
     Y.Array<unknown>,
     Map<number, PendingArrayEntry>
@@ -131,7 +132,15 @@ export class WriteScheduler {
       perArr = new Map();
       this.pendingArraySets.set(yArray, perArr);
     }
-    perArr.set(index, { value, after: postUpgrade });
+    const seq = this.operationSequence++;
+    perArr.set(index, { value, after: postUpgrade, sequence: seq });
+
+    // Clear conflicting replace at same index (set wins over replace)
+    const replaces = this.pendingArrayReplaces.get(yArray);
+    if (replaces) {
+      replaces.delete(index);
+    }
+
     this.scheduleFlush();
   }
 
@@ -146,21 +155,149 @@ export class WriteScheduler {
       perArr = new Map();
       this.pendingArrayReplaces.set(yArray, perArr);
     }
-    perArr.set(index, { value, after: postUpgrade });
+    perArr.set(index, { value, after: postUpgrade, sequence: this.operationSequence++ });
+
+    // Clear conflicting set at same index (replace wins over set)
+    const sets = this.pendingArraySets.get(yArray);
+    if (sets) {
+      sets.delete(index);
+    }
+
     this.scheduleFlush();
   }
 
   enqueueArrayDelete(yArray: Y.Array<unknown>, index: number): void {
     let perArr = this.pendingArrayDeletes.get(yArray);
     if (!perArr) {
-      perArr = new Set();
+      perArr = new Map();
       this.pendingArrayDeletes.set(yArray, perArr);
     }
-    perArr.add(index);
+    const seq = this.operationSequence++;
+    perArr.set(index, seq);
+
+    // Note: Cancellation logic removed. Merge/cancel decisions now happen at flush time
+    // based on temporal ordering (sequence numbers). This provides correct semantics for:
+    // - Push+pop: set[i] @T1, delete[i] @T2 → cancel both
+    // - Splice: delete[i] @T1, set[i] @T2 → merge to replace[i]
+
     this.scheduleFlush();
   }
 
   // Moves are not handled at the library level. Use app-level fractional indexing instead.
+
+  /**
+   * Get the effective length of an array, accounting for pending operations.
+   * This is used by the planner to make correct decisions about whether operations
+   * are in-bounds or out-of-bounds when operations are batched before flush.
+   *
+   * Algorithm:
+   * 1. Start with the current Y.Array length
+   * 2. Find the maximum index that will have a value after pending operations:
+   *    - Check all pending sets, deletes, and replaces
+   *    - Max index from sets/replaces indicates potential extensions
+   *    - Deletes don't reduce length in this calculation (conservative)
+   * 3. Return max(yArray.length, maxPendingIndex + 1)
+   */
+  getEffectiveArrayLength(yArray: Y.Array<unknown>): number {
+    const baseLength = yArray.length;
+    let maxIndex = baseLength - 1;
+
+    // Check sets - these might extend the array
+    const sets = this.pendingArraySets.get(yArray);
+    if (sets) {
+      for (const index of sets.keys()) {
+        maxIndex = Math.max(maxIndex, index);
+      }
+    }
+
+    // Check replaces - these don't extend, but we account for them
+    const replaces = this.pendingArrayReplaces.get(yArray);
+    if (replaces) {
+      for (const index of replaces.keys()) {
+        maxIndex = Math.max(maxIndex, index);
+      }
+    }
+
+    // Effective length is the max index + 1
+    return Math.max(baseLength, maxIndex + 1);
+  }
+
+  /**
+   * Merge array operations based on temporal ordering.
+   * This implements the correct semantics for:
+   * - Push+pop: set[i] @T1, delete[i] @T2 → cancel both
+   * - Splice: delete[i] @T1, set[i] @T2 → merge to replace[i]
+   * - Delete+Replace: delete[i] @T1, replace[i] @T2 → keep replace (delete is redundant)
+   */
+  private mergeArrayOperations(
+    arraySets: Map<Y.Array<unknown>, Map<number, PendingArrayEntry>>,
+    arrayDeletes: Map<Y.Array<unknown>, Map<number, number>>,
+    arrayReplaces: Map<Y.Array<unknown>, Map<number, PendingArrayEntry>>,
+  ): void {
+    for (const [yArray, deleteMap] of arrayDeletes) {
+      // Handle DELETE + SET at same index
+      const setMap = arraySets.get(yArray);
+      if (setMap) {
+        for (const [index, deleteSeq] of Array.from(deleteMap.entries())) {
+          const setEntry = setMap.get(index);
+          if (setEntry) {
+            if (setEntry.sequence < deleteSeq) {
+              // Set came before delete: push+pop pattern → cancel both
+              this.log.debug(
+                "[merge] cancelling push+pop pattern",
+                { index, setSeq: setEntry.sequence, deleteSeq },
+              );
+              setMap.delete(index);
+              deleteMap.delete(index);
+            } else {
+              // Delete came before set: splice pattern → merge to replace
+              this.log.debug(
+                "[merge] merging splice pattern to replace",
+                { index, deleteSeq, setSeq: setEntry.sequence },
+              );
+              const replaceMap = arrayReplaces.get(yArray);
+              if (!replaceMap) {
+                const newReplaceMap = new Map<number, PendingArrayEntry>();
+                newReplaceMap.set(index, setEntry);
+                arrayReplaces.set(yArray, newReplaceMap);
+              } else {
+                replaceMap.set(index, setEntry);
+              }
+              setMap.delete(index);
+              deleteMap.delete(index);
+            }
+          }
+        }
+      }
+
+      // Handle DELETE + REPLACE at same index
+      // When we have delete[i] @T1 and replace[i] @T2, the replace already includes
+      // the delete semantics, so we just remove the redundant delete
+      const replaceMap = arrayReplaces.get(yArray);
+      if (replaceMap) {
+        for (const [index, deleteSeq] of Array.from(deleteMap.entries())) {
+          const replaceEntry = replaceMap.get(index);
+          if (replaceEntry) {
+            // Delete + Replace at same index → keep replace, remove delete
+            // The replace operation already does delete+insert
+            this.log.debug(
+              "[merge] removing redundant delete (replace exists)",
+              { index, deleteSeq, replaceSeq: replaceEntry.sequence },
+            );
+            deleteMap.delete(index);
+          }
+        }
+      }
+
+      // Clean up empty maps
+      if (setMap && setMap.size === 0) {
+        arraySets.delete(yArray);
+      }
+      if (deleteMap.size === 0) {
+        arrayDeletes.delete(yArray);
+      }
+    }
+  }
 
   private scheduleFlush(): void {
     if (this.flushScheduled) return;
@@ -185,75 +322,32 @@ export class WriteScheduler {
     this.pendingArrayDeletes = new Map();
     this.pendingArrayReplaces = new Map();
 
-    // Debug: log what we have before merging
-    if (arraySets.size > 0 || arrayDeletes.size > 0 || arrayReplaces.size > 0) {
-      this.log.debug("[scheduler] before merge:", {
-        arraySets: Array.from(arraySets.entries()).map(([, m]) =>
-          Array.from(m.keys()),
-        ),
-        arrayDeletes: Array.from(arrayDeletes.entries()).map(([, s]) =>
-          Array.from(s),
-        ),
-        arrayReplaces: Array.from(arrayReplaces.entries()).map(([, m]) =>
-          Array.from(m.keys()),
-        ),
-      });
-    }
+    // Merge operations based on temporal ordering
+    this.mergeArrayOperations(arraySets, arrayDeletes, arrayReplaces);
 
-    // Merge array delete+set operations for the same index into replace operations
-    // This handles the case where multiple Valtio operations in the same batch
-    // generate conflicting operations for the same index
-    for (const [yArray, deleteIndices] of arrayDeletes) {
-      const setMap = arraySets.get(yArray);
-      const replaceMap = arrayReplaces.get(yArray);
-
-      // Merge any delete+set at same index into replace
-      // Previous implementation was conservative (only if exactly one delete and one set),
-      // but testing shows we can safely merge any matching pairs at same indices
-      if (setMap) {
-        for (const deleteIndex of Array.from(deleteIndices)) {
-          if (setMap.has(deleteIndex)) {
-            // Get or create the replace map for this array
-            let replaceMapToUpdate = arrayReplaces.get(yArray);
-            if (!replaceMapToUpdate) {
-              replaceMapToUpdate = new Map();
-              arrayReplaces.set(yArray, replaceMapToUpdate);
-            }
-
-            // Move the operations from delete+set to replace
-            const setValue = setMap.get(deleteIndex)!;
-            replaceMapToUpdate.set(deleteIndex, setValue);
-            setMap.delete(deleteIndex);
-            deleteIndices.delete(deleteIndex);
-
-            this.log.debug("[scheduler] merging delete+set into replace", {
-              index: deleteIndex,
-            });
+    // Demote out-of-bounds replaces to sets
+    // This handles the case where operations like push+pop create "replaces" via delete+set merging,
+    // but the Y.Array is shorter than the replace indices would require
+    for (const [yArray, replaceMap] of arrayReplaces) {
+      for (const [index, entry] of Array.from(replaceMap.entries())) {
+        if (index >= yArray.length) {
+          // Out of bounds - demote to set
+          this.log.debug(
+            "[demotion] out-of-bounds replace demoted to set",
+            { index, yArrayLength: yArray.length },
+          );
+          let setMap = arraySets.get(yArray);
+          if (!setMap) {
+            setMap = new Map();
+            arraySets.set(yArray, setMap);
           }
-        }
-
-        // Clean up empty set map
-        if (setMap.size === 0) {
-          arraySets.delete(yArray);
+          setMap.set(index, entry);
+          replaceMap.delete(index);
         }
       }
-
-      // Check for delete+replace combinations - the replace wins, remove the delete
-      if (replaceMap) {
-        for (const deleteIndex of Array.from(deleteIndices)) {
-          if (replaceMap.has(deleteIndex)) {
-            deleteIndices.delete(deleteIndex);
-            this.log.debug(
-              "[scheduler] removing redundant delete (replace exists)",
-              { index: deleteIndex },
-            );
-          }
-        }
-      }
-
-      // Clean up empty delete set
-      if (deleteIndices.size === 0) {
-        arrayDeletes.delete(yArray);
+      // Clean up empty replace map
+      if (replaceMap.size === 0) {
+        arrayReplaces.delete(yArray);
       }
     }
 
@@ -320,8 +414,8 @@ export class WriteScheduler {
     // Purge stale operations targeting children of items that will be deleted in this flush
     if (arrayDeletes.size > 0) {
       const purged = { maps: 0, arrays: 0 };
-      for (const [yArray, deleteSet] of arrayDeletes) {
-        for (const index of deleteSet) {
+      for (const [yArray, deleteMap] of arrayDeletes) {
+        for (const index of deleteMap.keys()) {
           if (index >= 0 && index < yArray.length) {
             const oldItem = yArray.get(index) as unknown;
             const { maps, arrays } = collectYSubtree(oldItem);
@@ -385,9 +479,9 @@ export class WriteScheduler {
           : [],
       arrayDeletes:
         arrayDeletes.size > 0
-          ? Array.from(arrayDeletes.entries()).map(([yArray, indexSet]) => ({
+          ? Array.from(arrayDeletes.entries()).map(([yArray, indexMap]) => ({
               target: yArray.constructor.name,
-              operations: Array.from(indexSet),
+              operations: Array.from(indexMap.keys()),
             }))
           : [],
       arrayReplaces:
@@ -417,11 +511,11 @@ export class WriteScheduler {
       keys: Array.from(keyMap.keys()),
     }));
     const arrayDeletesLog = Array.from(arrayDeletes.entries()).map(
-      ([yArr, idxSet]) => ({
+      ([yArr, idxMap]) => ({
         targetId: (
           yArr as unknown as { _item?: { id?: { toString?: () => string } } }
         )?._item?.id?.toString?.(),
-        indices: Array.from(idxSet).sort((a, b) => a - b),
+        indices: Array.from(idxMap.keys()).sort((a, b) => a - b),
       }),
     );
     const arraySetsLog = Array.from(arraySets.entries()).map(
