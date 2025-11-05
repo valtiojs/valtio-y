@@ -1,5 +1,3 @@
-<div align="center">
-
 # valtio-y ⚡
 
 ### Collaborative State Management
@@ -16,8 +14,6 @@
 Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs. Build collaborative apps for **structured data** (forms, dashboards, boards)—no special APIs, just mutate objects naturally.
 
 [Examples](#examples) · [Guides](#guides) · [Discord](https://discord.gg/MrQdmzd)
-
-</div>
 
 ---
 
@@ -43,15 +39,15 @@ It automatically syncs across all connected users with **zero configuration**. N
 
 ### How It Compares
 
-|                       | valtio-y       | Plain Yjs       | Other CRDT libs |
-| --------------------- | -------------- | --------------- | --------------- |
-| Framework Integration | ✓ Native       | Manual setup    | Manual setup    |
-| TypeScript Support    | ✓ Full         | ✓ Full          | ~ Partial       |
-| Learning Curve        | ✓ Low          | ~ Medium        | ✗ High          |
-| Nested Structures     | ✓ Natural      | Manual mapping  | Manual mapping  |
-| Array Operations      | ✓ All native   | Y.Array focused | ~ Limited       |
-| Fine-grained Updates  | ✓ Yes          | ✗ No            | ✗ No            |
-| Offline-First         | ✓ Yes          | ✓ Yes           | ~ Varies        |
+|                       | valtio-y     | Plain Yjs       | Other CRDT libs |
+| --------------------- | ------------ | --------------- | --------------- |
+| Framework Integration | ✓ Native     | Manual setup    | Manual setup    |
+| TypeScript Support    | ✓ Full       | ✓ Full          | ~ Partial       |
+| Learning Curve        | ✓ Low        | ~ Medium        | ✗ High          |
+| Nested Structures     | ✓ Natural    | Manual mapping  | Manual mapping  |
+| Array Operations      | ✓ All native | Y.Array focused | ~ Limited       |
+| Fine-grained Updates  | ✓ Yes        | ✗ No            | ✗ No            |
+| Offline-First         | ✓ Yes        | ✓ Yes           | ~ Varies        |
 
 Built from the ground up with a production-ready architecture, cleaner API (`createYjsProxy` vs manual binding), and battle-tested performance. Based on the original valtio-yjs but completely rewritten for reliability and developer experience.
 
