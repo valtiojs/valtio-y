@@ -2,13 +2,10 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches:
-      - main
 
 # Cancel previous PR runs when new commits are pushed
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.sha }}
   cancel-in-progress: true
 
 jobs:
@@ -44,14 +41,17 @@ jobs:
 
       # --- 5. Build (needed for tests) --------------------------------------
       - name: Build
+        timeout-minutes: 5
         run: bun run build
 
       # --- 6. Typecheck (fast, fail fast) -----------------------------------
       - name: Typecheck
+        timeout-minutes: 2
         run: bun run typecheck
 
       # --- 7. Lint (fastest, fail fast) -------------------------------------
       - name: Lint
+        timeout-minutes: 2
         run: bun run lint
 
       # --- 8. Install Playwright browsers (optimized for CI) ----------------
