@@ -131,40 +131,12 @@ That's it! State is now synchronized via Yjs. Add a provider to sync across clie
 
 ## Key Features
 
-<table>
-<tr>
-<td width="50%" style="padding: 20px; vertical-align: top;">
-
-**⚡ Zero API Overhead**
-
-No special methods—just mutate objects like normal JavaScript
-
-**🎯 Fine-Grained Updates**
-
-Valtio ensures only components with changed data re-render.
-
-**🌐 Offline-First**
-
-Local changes automatically merge when reconnected
-
-</td>
-<td width="50%" style="padding: 20px; vertical-align: top;">
-
-**🛡️ Production-Ready**
-
-Validation, rollback, comprehensive tests, and benchmarks
-
-**🔒 Type-Safe**
-
-Full TypeScript support with complete type inference
-
-**🔌 Provider-Agnostic**
-
-Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
-
-</td>
-</tr>
-</table>
+- **⚡ Zero API Overhead** - No special methods—just mutate objects like normal JavaScript
+- **🎯 Fine-Grained Updates** - Valtio ensures only components with changed data re-render.
+- **🌐 Offline-First** - Local changes automatically merge when reconnected
+- **🛡️ Production-Ready** - Validation, rollback, comprehensive tests, and benchmarks
+- **🔒 Type-Safe** - Full TypeScript support with complete type inference
+- **🔌 Provider-Agnostic** - Works with any Yjs provider (WebSocket, WebRTC, IndexedDB)
 
 ---
 
@@ -203,7 +175,7 @@ valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Soli
 
 Core documentation for understanding and using valtio-y effectively:
 
-- **[Structuring Your App](./guides/structuring-your-app.md)** - **Start here** - How to organize state with `getRoot`
+- **[Structuring Your App](./guides/structuring-your-app.md)** - How to organize state with `getRoot`
 - **[Core Concepts](./guides/concepts.md)** - Understand CRDTs and the valtio-y mental model
 - **[Basic Operations](./guides/basic-operations.md)** - Objects, arrays, and nested structures
 - **[Undo/Redo](./guides/undo-redo.md)** - Implement undo/redo with Yjs UndoManager
