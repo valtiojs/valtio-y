@@ -17,7 +17,6 @@ export class YDocServer extends YServer {
   //   debounceMaxWait: 10000,
   //   timeout: 5000
   // };
-
   // Optional: Load document state from storage
   // async onLoad() {
   //   const stored = await this.ctx.storage.get<Uint8Array>("document");
@@ -26,7 +25,6 @@ export class YDocServer extends YServer {
   //     Y.applyUpdate(this.document, stored);
   //   }
   // }
-
   // Optional: Save document state to storage
   // async onSave() {
   //   const Y = await import("yjs");

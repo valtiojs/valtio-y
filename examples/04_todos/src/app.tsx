@@ -23,14 +23,16 @@ import { ClientView } from "./components/client-view";
  * Main App Component
  *
  * Renders two side-by-side clients to demonstrate real-time collaboration.
- * Each client has its own Y.Doc and proxy, but they sync through a simulated network.
+ * Each client has its own Y.Doc and proxy, syncing through Y-PartyServer.
  *
  * Try it:
  * - Add a todo in Client 1, watch it appear in Client 2
+ * - Disconnect/reconnect either client to test offline behavior
  * - Drag items to reorder them
  * - Add nested subtasks with the + button
  * - Use selection mode for bulk operations
  * - Double-click any todo to edit it inline
+ * - Open multiple browser windows for true multi-client collaboration!
  */
 const App = () => {
   return (
@@ -42,19 +44,21 @@ const App = () => {
             Collaborative Todo List
           </h1>
           <p className="text-slate-600 text-base mb-2">
-            Powered by <strong>valtio-y</strong> · Real-time synchronization
-            between clients
+            Powered by <strong>valtio-y</strong> + <strong>Y-PartyServer</strong>{" "}
+            · Real-time synchronization over WebSockets
           </p>
           <p className="text-sm text-slate-500 max-w-2xl mx-auto mb-4">
             This example showcases how valtio-y handles complex state including
-            nested arrays, drag-and-drop reordering, and bulk operations. All
-            changes sync automatically through Yjs CRDTs.
+            nested arrays, drag-and-drop reordering, and bulk operations. Both
+            clients connect to a real PartyServer backend, demonstrating true
+            network synchronization with Yjs CRDTs.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-slate-500">
             <span>💡 Double-click to edit</span>
             <span>🔄 Drag to reorder</span>
             <span>➕ Click + to add subtasks</span>
             <span>✅ Enable selection for bulk actions</span>
+            <span>📡 Connect/disconnect to test offline mode</span>
             <span>⚡ Changes sync instantly</span>
           </div>
         </div>
@@ -112,20 +116,11 @@ const App = () => {
           </div>
           <div className="mt-4 pt-4 border-t border-slate-200">
             <p className="text-xs text-slate-500">
-              💡 <strong>Tip:</strong> In a real application, replace the
-              simulated network relay in{" "}
-              <code className="bg-slate-100 px-1.5 py-0.5 rounded">
-                yjsSetup.ts
-              </code>{" "}
-              with a provider like{" "}
-              <code className="bg-slate-100 px-1.5 py-0.5 rounded">
-                y-websocket
-              </code>{" "}
-              or{" "}
-              <code className="bg-slate-100 px-1.5 py-0.5 rounded">
-                y-webrtc
-              </code>{" "}
-              for real network synchronization.
+              💡 <strong>Real-time sync:</strong> Both clients connect to a
+              Y-PartyServer running on Cloudflare Durable Objects. Use the
+              Connect/Disconnect buttons to simulate network interruptions and
+              see how changes sync when reconnected. Try opening multiple
+              browser windows to see true multi-client collaboration!
             </p>
           </div>
         </div>
