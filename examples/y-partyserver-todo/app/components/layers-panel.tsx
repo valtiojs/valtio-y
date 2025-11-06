@@ -29,7 +29,6 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
 import { proxy } from "../yjs-setup";
-import type { Shape } from "../types";
 
 interface LayersPanelProps {
   onShapeSelect?: (shapeId: string) => void;
@@ -75,17 +74,23 @@ export function LayersPanel({
   const shapes = snap.shapes || [];
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-lg h-full flex flex-col">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4">
-        Layers ({shapes.length})
+    <div className="bg-white border border-gray-300 rounded-lg p-5 shadow-lg h-full flex flex-col">
+      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center justify-between">
+        <span>Layers</span>
+        <span className="text-sm font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
+          {shapes.length}
+        </span>
       </h3>
 
       {shapes.length === 0 ? (
-        <div className="flex-1 flex items-center justify-center text-gray-400 text-sm">
-          No shapes yet. Start drawing!
+        <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
+          <div className="text-gray-400 text-sm space-y-2">
+            <p className="font-medium">No shapes yet.</p>
+            <p className="text-xs">Start drawing to see layers here!</p>
+          </div>
         </div>
       ) : (
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pr-1">
           <DndContext
             sensors={sensors}
             collisionDetection={closestCenter}
@@ -113,8 +118,8 @@ export function LayersPanel({
       )}
 
       <div className="mt-4 pt-4 border-t border-gray-200">
-        <p className="text-xs text-gray-500">
-          💡 Drag layers to reorder them - showcases array moves without
+        <p className="text-xs text-gray-500 leading-relaxed">
+          💡 <strong>Tip:</strong> Drag layers to reorder them - showcases array moves without
           fractional indexes!
         </p>
       </div>
@@ -200,10 +205,10 @@ function LayerItem({ shape, selected, onSelect, onDelete }: LayerItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 p-2 rounded-md border transition-colors ${
+      className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all duration-200 ${
         selected
-          ? "bg-blue-50 border-blue-300"
-          : "bg-white border-gray-200 hover:bg-gray-50"
+          ? "bg-blue-50 border-blue-300 shadow-sm"
+          : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
       }`}
     >
       {/* Drag Handle */}
@@ -231,10 +236,10 @@ function LayerItem({ shape, selected, onSelect, onDelete }: LayerItemProps) {
       {/* Delete Button */}
       <button
         onClick={onDelete}
-        className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50 p-1 rounded transition-colors"
+        className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-md transition-all duration-200"
         title="Delete shape"
       >
-        <Trash2 size={14} />
+        <Trash2 size={16} />
       </button>
     </div>
   );

@@ -19,6 +19,8 @@ import {
   Globe,
   Clock,
   Database,
+  ChevronDown,
+  ChevronUp,
 } from "lucide-react";
 import { proxy, getSyncStatus, subscribeSyncStatus, yDoc } from "../yjs-setup";
 import type { SyncStatus } from "../types";
@@ -30,6 +32,7 @@ export function PerformanceStats() {
   const [colo, setColo] = useState<string>("--");
   const [rtt, setRtt] = useState<number>(0);
   const [snapshotSize, setSnapshotSize] = useState<number>(0);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Fetch Cloudflare colo (datacenter location)
   useEffect(() => {
@@ -96,104 +99,114 @@ export function PerformanceStats() {
 
   return (
     <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-lg">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-        <Activity size={20} />
-        Edge Metrics
-      </h3>
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between text-left hover:bg-gray-50 -m-4 p-4 rounded-t-lg transition-colors"
+      >
+        <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+          <Activity size={20} />
+          Edge Metrics
+        </h3>
+        {isExpanded ? <ChevronUp size={20} /> : <ChevronDown size={20} />}
+      </button>
 
-      <div className="space-y-3">
-        {/* Connection Status */}
-        <StatItem
-          icon={syncStatus === "connected" ? Wifi : WifiOff}
-          label="Connection"
-          value={syncStatus}
-          color={
-            syncStatus === "connected"
-              ? "text-green-600"
-              : syncStatus === "syncing"
-                ? "text-yellow-600"
-                : "text-red-600"
-          }
-        />
+      {isExpanded && (
+        <>
+          <div className="space-y-3 mt-4">
+            {/* Connection Status */}
+            <StatItem
+              icon={syncStatus === "connected" ? Wifi : WifiOff}
+              label="Connection"
+              value={syncStatus}
+              color={
+                syncStatus === "connected"
+                  ? "text-green-600"
+                  : syncStatus === "syncing"
+                    ? "text-yellow-600"
+                    : "text-red-600"
+              }
+            />
 
-        {/* Cloudflare Colo */}
-        <StatItem
-          icon={Globe}
-          label="Datacenter"
-          value={colo}
-          suffix=""
-          color="text-purple-600"
-          highlight={colo !== "DEV" && colo !== "--"}
-        />
+            {/* Cloudflare Colo */}
+            <StatItem
+              icon={Globe}
+              label="Datacenter"
+              value={colo}
+              suffix=""
+              color="text-purple-600"
+              highlight={colo !== "DEV" && colo !== "--"}
+            />
 
-        {/* Round-Trip Time */}
-        <StatItem
-          icon={Clock}
-          label="RTT"
-          value={rtt}
-          suffix=" ms"
-          color="text-blue-600"
-          highlight={rtt > 0 && rtt < 100}
-        />
+            {/* Round-Trip Time */}
+            <StatItem
+              icon={Clock}
+              label="RTT"
+              value={rtt}
+              suffix=" ms"
+              color="text-blue-600"
+              highlight={rtt > 0 && rtt < 100}
+            />
 
-        {/* Snapshot Size */}
-        <StatItem
-          icon={Database}
-          label="Snapshot"
-          value={formatBytes(snapshotSize)}
-          suffix=""
-          color="text-orange-600"
-        />
+            {/* Snapshot Size */}
+            <StatItem
+              icon={Database}
+              label="Snapshot"
+              value={formatBytes(snapshotSize)}
+              suffix=""
+              color="text-orange-600"
+            />
 
-        <div className="border-t border-gray-200 my-2" />
+            <div className="border-t border-gray-200 my-2" />
 
-        {/* Operations Per Second */}
-        <StatItem
-          icon={Zap}
-          label="Ops/Second"
-          value={stats?.opsPerSecond || 0}
-          suffix=" ops/s"
-          color="text-blue-600"
-          highlight={stats && stats.opsPerSecond > 0}
-        />
+            {/* Operations Per Second */}
+            <StatItem
+              icon={Zap}
+              label="Ops/Second"
+              value={stats?.opsPerSecond || 0}
+              suffix=" ops/s"
+              color="text-blue-600"
+              highlight={stats && stats.opsPerSecond > 0}
+            />
 
-        {/* Batch Size */}
-        <StatItem
-          icon={Hash}
-          label="Batch Size"
-          value={stats?.batchSize || 0}
-          suffix=" pts"
-          color="text-purple-600"
-          highlight={stats && stats.batchSize > 10}
-        />
+            {/* Batch Size */}
+            <StatItem
+              icon={Hash}
+              label="Batch Size"
+              value={stats?.batchSize || 0}
+              suffix=" pts"
+              color="text-purple-600"
+              highlight={stats && stats.batchSize > 10}
+            />
 
-        {/* Shape Count */}
-        <StatItem
-          icon={Hash}
-          label="Shapes"
-          value={shapes.length}
-          color="text-indigo-600"
-        />
-      </div>
+            {/* Shape Count */}
+            <StatItem
+              icon={Hash}
+              label="Shapes"
+              value={shapes.length}
+              color="text-indigo-600"
+            />
+          </div>
 
-      {/* Info Box - Edge Architecture */}
-      <div className="mt-4 p-3 bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-md">
-        <h4 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-1">
-          <Zap size={14} />
-          Running on the Edge
-        </h4>
-        <ul className="text-xs text-blue-800 space-y-1 leading-relaxed">
-          <li>
-            <strong>Colo:</strong> Cloudflare datacenter serving this session
-          </li>
-          <li>
-            <strong>RTT:</strong> Sub-50ms latency to nearest edge location
-          </li>
-          <li>
-            <strong>Snapshot:</strong> CRDT state compressed for fast sync
-          </li>
-        </ul>
-      </div>
+          {/* Info Box - Edge Architecture */}
+          <div className="mt-4 p-3 bg-gradient-to-br from-blue-50 to-purple-50 border border-blue-200 rounded-md">
+            <h4 className="text-sm font-semibold text-blue-900 mb-2 flex items-center gap-1">
+              <Zap size={14} />
+              Running on the Edge
+            </h4>
+            <ul className="text-xs text-blue-800 space-y-1 leading-relaxed">
+              <li>
+                <strong>Colo:</strong> Cloudflare datacenter serving this session
+              </li>
+              <li>
+                <strong>RTT:</strong> Sub-50ms latency to nearest edge location
+              </li>
+              <li>
+                <strong>Snapshot:</strong> CRDT state compressed for fast sync
+              </li>
+            </ul>
+          </div>
+        </>
+      )}
     </div>
   );
 }

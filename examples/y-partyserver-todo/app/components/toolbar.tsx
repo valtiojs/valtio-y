@@ -58,38 +58,43 @@ export function Toolbar({
   onClearCanvas,
 }: ToolbarProps) {
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-lg">
+    <div className="bg-white border border-gray-300 rounded-lg p-5 shadow-lg space-y-8">
       {/* Tool Selection */}
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">Tools</h3>
+      <div>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Tools</h3>
         <div className="flex gap-2">
           <ToolButton
             icon={MousePointer}
             label="Select"
+            shortcut="V"
             active={tool === "select"}
             onClick={() => onToolChange("select")}
           />
           <ToolButton
             icon={Pencil}
             label="Pen"
+            shortcut="P"
             active={tool === "pen"}
             onClick={() => onToolChange("pen")}
           />
           <ToolButton
             icon={Square}
             label="Rectangle"
+            shortcut="R"
             active={tool === "rect"}
             onClick={() => onToolChange("rect")}
           />
           <ToolButton
             icon={Circle}
             label="Circle"
+            shortcut="C"
             active={tool === "circle"}
             onClick={() => onToolChange("circle")}
           />
           <ToolButton
             icon={Eraser}
             label="Eraser"
+            shortcut="E"
             active={tool === "eraser"}
             onClick={() => onToolChange("eraser")}
           />
@@ -97,16 +102,16 @@ export function Toolbar({
       </div>
 
       {/* Color Picker */}
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">Color</h3>
-        <div className="flex flex-wrap gap-2">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">Color</h3>
+        <div className="grid grid-cols-5 gap-2.5">
           {COLORS.map((c) => (
             <button
               key={c}
-              className={`w-8 h-8 rounded-md border-2 transition-all ${
+              className={`w-10 h-10 rounded-lg border-3 transition-all duration-200 ${
                 color === c
-                  ? "border-blue-500 scale-110"
-                  : "border-gray-300 hover:scale-105"
+                  ? "border-blue-500 scale-110 shadow-lg ring-2 ring-blue-200"
+                  : "border-gray-300 hover:scale-105 hover:border-gray-400 hover:shadow-md"
               }`}
               style={{ backgroundColor: c }}
               onClick={() => onColorChange(c)}
@@ -117,20 +122,21 @@ export function Toolbar({
       </div>
 
       {/* Stroke Width */}
-      <div className="mb-6">
-        <h3 className="text-sm font-semibold text-gray-700 mb-2">
+      <div>
+        <h3 className="text-sm font-semibold text-gray-700 mb-3">
           Stroke Width
         </h3>
         <div className="flex gap-2">
           {STROKE_WIDTHS.map((width) => (
             <button
               key={width}
-              className={`px-3 py-2 rounded-md border text-sm font-medium transition-colors ${
+              className={`px-3 py-2 rounded-md border text-sm font-medium transition-all duration-200 ${
                 strokeWidth === width
-                  ? "bg-blue-500 text-white border-blue-600"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+                  ? "bg-blue-500 text-white border-blue-600 shadow-md"
+                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
               }`}
               onClick={() => onStrokeWidthChange(width)}
+              title={`${width}px stroke`}
             >
               {width}px
             </button>
@@ -139,8 +145,8 @@ export function Toolbar({
       </div>
 
       {/* Fill Toggle */}
-      <div className="mb-6">
-        <label className="flex items-center gap-2 cursor-pointer">
+      <div>
+        <label className="flex items-center gap-2.5 cursor-pointer p-2 rounded-md hover:bg-gray-50 transition-colors">
           <input
             type="checkbox"
             checked={fillEnabled}
@@ -155,7 +161,8 @@ export function Toolbar({
       <div>
         <button
           onClick={onClearCanvas}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors font-medium"
+          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
+          title="Clear all shapes from canvas"
         >
           <Trash2 size={16} />
           Clear Canvas
@@ -172,20 +179,29 @@ export function Toolbar({
 interface ToolButtonProps {
   icon: React.ComponentType<{ size?: number; className?: string }>;
   label: string;
+  shortcut?: string;
   active: boolean;
   onClick: () => void;
 }
 
-function ToolButton({ icon: Icon, label, active, onClick }: ToolButtonProps) {
+function ToolButton({
+  icon: Icon,
+  label,
+  shortcut,
+  active,
+  onClick,
+}: ToolButtonProps) {
+  const tooltipText = shortcut ? `${label} (${shortcut})` : label;
+
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 px-3 py-2 rounded-md border transition-colors ${
+      className={`flex flex-col items-center gap-1 px-3 py-2 rounded-md border transition-all duration-200 ${
         active
-          ? "bg-blue-500 text-white border-blue-600"
-          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
+          ? "bg-blue-500 text-white border-blue-600 shadow-md"
+          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:shadow-sm"
       }`}
-      title={label}
+      title={tooltipText}
     >
       <Icon size={20} />
       <span className="text-xs font-medium">{label}</span>

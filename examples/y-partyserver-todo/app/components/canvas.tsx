@@ -25,6 +25,8 @@ interface CanvasProps {
   strokeWidth: number;
   userId: string;
   fillEnabled: boolean;
+  selectedShapeId?: string;
+  onShapeSelect?: (shapeId: string | undefined) => void;
 }
 
 // Type for ghost shape (in-progress drawing)
@@ -36,6 +38,8 @@ export function Canvas({
   strokeWidth,
   userId,
   fillEnabled,
+  selectedShapeId,
+  onShapeSelect,
 }: CanvasProps) {
   const snap = useSnapshot(proxy);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -43,6 +47,8 @@ export function Canvas({
   const [ghostShape, setGhostShape] = useState<GhostShape | null>(null);
   const [awarenessUsers, setAwarenessUsers] = useState<any[]>([]);
   const commitTimerRef = useRef<number | null>(null);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
 
   // Update awareness users on change
   useEffect(() => {
@@ -112,12 +118,73 @@ export function Canvas({
     setGhostShape(null);
   }, [ghostShape]);
 
+  // Check if a point is inside a shape
+  const isPointInShape = useCallback((point: Point, shape: Shape): boolean => {
+    if (shape.type === "rect") {
+      const x1 = Math.min(shape.x, shape.x + shape.width);
+      const x2 = Math.max(shape.x, shape.x + shape.width);
+      const y1 = Math.min(shape.y, shape.y + shape.height);
+      const y2 = Math.max(shape.y, shape.y + shape.height);
+      return point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2;
+    } else if (shape.type === "circle") {
+      const dx = point.x - shape.x;
+      const dy = point.y - shape.y;
+      return Math.sqrt(dx * dx + dy * dy) <= shape.radius;
+    } else if (shape.type === "path" && shape.points.length > 0) {
+      // Simple bounding box check for paths
+      const xs = shape.points.map(p => p.x);
+      const ys = shape.points.map(p => p.y);
+      const minX = Math.min(...xs) - 10;
+      const maxX = Math.max(...xs) + 10;
+      const minY = Math.min(...ys) - 10;
+      const maxY = Math.max(...ys) + 10;
+      return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+    }
+    return false;
+  }, []);
+
   // Handle mouse down - start drawing
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
-      if (tool === "select" || tool === "eraser") return;
-
       const point = getCanvasPoint(e.nativeEvent);
+
+      // Handle select tool
+      if (tool === "select") {
+        // Check if clicking on a shape (iterate in reverse to check top shapes first)
+        const shapes = snap.shapes || [];
+        let foundShape: Shape | undefined;
+
+        for (let i = shapes.length - 1; i >= 0; i--) {
+          if (isPointInShape(point, shapes[i])) {
+            foundShape = shapes[i];
+            break;
+          }
+        }
+
+        if (foundShape) {
+          onShapeSelect?.(foundShape.id);
+
+          // Start dragging if clicking on a shape
+          setIsDragging(true);
+
+          // Calculate drag offset based on shape type
+          if (foundShape.type === "rect") {
+            setDragOffset({ x: point.x - foundShape.x, y: point.y - foundShape.y });
+          } else if (foundShape.type === "circle") {
+            setDragOffset({ x: point.x - foundShape.x, y: point.y - foundShape.y });
+          } else if (foundShape.type === "path" && foundShape.points.length > 0) {
+            // For paths, use the first point as reference
+            setDragOffset({ x: point.x - foundShape.points[0].x, y: point.y - foundShape.points[0].y });
+          }
+        } else {
+          onShapeSelect?.(undefined);
+        }
+        return;
+      }
+
+      // Eraser not implemented yet
+      if (tool === "eraser") return;
+
       setIsDrawing(true);
 
       const shapeId = `${userId}-${Date.now()}`;
@@ -186,16 +253,53 @@ export function Canvas({
       getCanvasPoint,
       ghostShape,
       commitShape,
+      snap.shapes,
+      isPointInShape,
+      onShapeSelect,
     ],
   );
 
-  // Handle mouse move - continue drawing
+  // Handle mouse move - continue drawing or dragging
   const handlePointerMove = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
       const point = getCanvasPoint(e.nativeEvent);
 
       // Update cursor position in awareness (ephemeral)
       updateCursor(point.x, point.y);
+
+      // Handle dragging selected shape
+      if (isDragging && tool === "select" && selectedShapeId && proxy.shapes) {
+        const shapeIndex = proxy.shapes.findIndex((s) => s.id === selectedShapeId);
+        if (shapeIndex !== -1) {
+          const shape = proxy.shapes[shapeIndex];
+
+          if (shape.type === "rect") {
+            const newX = point.x - dragOffset.x;
+            const newY = point.y - dragOffset.y;
+            proxy.shapes[shapeIndex] = { ...shape, x: newX, y: newY };
+          } else if (shape.type === "circle") {
+            const newX = point.x - dragOffset.x;
+            const newY = point.y - dragOffset.y;
+            proxy.shapes[shapeIndex] = { ...shape, x: newX, y: newY };
+          } else if (shape.type === "path") {
+            // Calculate delta from original first point
+            const firstPoint = shape.points[0];
+            const targetX = point.x - dragOffset.x;
+            const targetY = point.y - dragOffset.y;
+            const deltaX = targetX - firstPoint.x;
+            const deltaY = targetY - firstPoint.y;
+
+            // Move all points
+            const movedPoints = shape.points.map(p => ({
+              x: p.x + deltaX,
+              y: p.y + deltaY,
+            }));
+
+            proxy.shapes[shapeIndex] = { ...shape, points: movedPoints };
+          }
+        }
+        return;
+      }
 
       if (!isDrawing || !ghostShape) return;
 
@@ -222,11 +326,17 @@ export function Canvas({
         });
       }
     },
-    [isDrawing, ghostShape, tool, getCanvasPoint],
+    [isDrawing, ghostShape, tool, getCanvasPoint, isDragging, selectedShapeId, dragOffset, proxy.shapes],
   );
 
-  // Handle mouse up - finish drawing
+  // Handle mouse up - finish drawing or dragging
   const handlePointerUp = useCallback(() => {
+    // Stop dragging
+    if (isDragging) {
+      setIsDragging(false);
+      return;
+    }
+
     if (!isDrawing) return;
 
     // Clear auto-commit timer
@@ -239,7 +349,7 @@ export function Canvas({
     commitShape();
 
     setIsDrawing(false);
-  }, [isDrawing, commitShape]);
+  }, [isDrawing, commitShape, isDragging]);
 
   // Render the canvas (two-layer architecture)
   useEffect(() => {
@@ -255,6 +365,37 @@ export function Canvas({
     // Layer 1: Committed shapes (from CRDT)
     snap.shapes?.forEach((shape) => {
       renderShape(ctx, shape);
+
+      // Draw selection indicator if this shape is selected
+      if (selectedShapeId && shape.id === selectedShapeId) {
+        ctx.save();
+        ctx.strokeStyle = "#3B82F6";
+        ctx.lineWidth = 3;
+        ctx.setLineDash([5, 5]);
+
+        if (shape.type === "rect") {
+          const padding = 5;
+          const x1 = Math.min(shape.x, shape.x + shape.width) - padding;
+          const y1 = Math.min(shape.y, shape.y + shape.height) - padding;
+          const w = Math.abs(shape.width) + padding * 2;
+          const h = Math.abs(shape.height) + padding * 2;
+          ctx.strokeRect(x1, y1, w, h);
+        } else if (shape.type === "circle") {
+          ctx.beginPath();
+          ctx.arc(shape.x, shape.y, shape.radius + 5, 0, Math.PI * 2);
+          ctx.stroke();
+        } else if (shape.type === "path" && shape.points.length > 0) {
+          const xs = shape.points.map(p => p.x);
+          const ys = shape.points.map(p => p.y);
+          const minX = Math.min(...xs) - 10;
+          const maxX = Math.max(...xs) + 10;
+          const minY = Math.min(...ys) - 10;
+          const maxY = Math.max(...ys) + 10;
+          ctx.strokeRect(minX, minY, maxX - minX, maxY - minY);
+        }
+
+        ctx.restore();
+      }
     });
 
     // Layer 2: Ghost shape (in-progress, ephemeral)
@@ -271,19 +412,60 @@ export function Canvas({
         renderCursor(ctx, user.cursor, user.color, user.name);
       }
     });
-  }, [snap.shapes, ghostShape, awarenessUsers]);
+  }, [snap.shapes, ghostShape, awarenessUsers, selectedShapeId]);
+
+  const hasShapes = snap.shapes && snap.shapes.length > 0;
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={1200}
-      height={800}
-      className="border border-gray-300 rounded-lg bg-white cursor-crosshair touch-none"
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerLeave={handlePointerUp}
-    />
+    <div className="relative">
+      <canvas
+        ref={canvasRef}
+        width={1200}
+        height={800}
+        className={`border border-gray-300 rounded-lg bg-white touch-none ${
+          tool === "select"
+            ? isDragging
+              ? "cursor-grabbing"
+              : "cursor-grab"
+            : "cursor-crosshair"
+        }`}
+        style={{
+          backgroundImage: hasShapes
+            ? "none"
+            : "radial-gradient(circle, #e5e7eb 1px, transparent 1px)",
+          backgroundSize: hasShapes ? "0" : "20px 20px",
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerLeave={handlePointerUp}
+      />
+
+      {/* Empty State Overlay */}
+      {!hasShapes && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+          <div className="text-center p-8 bg-white/90 rounded-xl shadow-lg max-w-md">
+            <h3 className="text-2xl font-bold text-gray-800 mb-3">
+              Start Drawing!
+            </h3>
+            <p className="text-gray-600 mb-4">
+              Select a tool from the left sidebar and start creating.
+            </p>
+            <div className="space-y-2 text-sm text-gray-500">
+              <p>
+                <strong>Pen (P):</strong> Draw freehand strokes
+              </p>
+              <p>
+                <strong>Rectangle (R):</strong> Drag to create rectangles
+              </p>
+              <p>
+                <strong>Circle (C):</strong> Drag to create circles
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
   );
 }
 

@@ -219,6 +219,61 @@ export function getAwarenessUsers(): any[] {
 }
 
 // ============================================================================
+// UNDO/REDO MANAGER
+// ============================================================================
+
+let undoManager: Y.UndoManager | null = null;
+
+/**
+ * Initialize the undo manager for the shapes array
+ */
+export function initUndoManager() {
+  const shapesArray = yDoc.getMap("drawingState").get("shapes") as Y.Array<any>;
+  if (shapesArray) {
+    undoManager = new Y.UndoManager(shapesArray, {
+      trackedOrigins: new Set([yDoc.clientID]),
+    });
+  }
+  return undoManager;
+}
+
+/**
+ * Perform undo operation
+ */
+export function undo() {
+  if (undoManager && undoManager.canUndo()) {
+    undoManager.undo();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Perform redo operation
+ */
+export function redo() {
+  if (undoManager && undoManager.canRedo()) {
+    undoManager.redo();
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Check if undo is available
+ */
+export function canUndo(): boolean {
+  return undoManager?.canUndo() ?? false;
+}
+
+/**
+ * Check if redo is available
+ */
+export function canRedo(): boolean {
+  return undoManager?.canRedo() ?? false;
+}
+
+// ============================================================================
 // PERFORMANCE TRACKING
 // ============================================================================
 
