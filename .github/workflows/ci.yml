@@ -37,7 +37,7 @@ jobs:
 
       # --- 4. Install dependencies -------------------------------------------
       - name: Install dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
+        run: bun install --frozen-lockfile
 
       # --- 5. Build (needed for tests) --------------------------------------
       - name: Build

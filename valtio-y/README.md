@@ -154,12 +154,12 @@ valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Soli
 
 ## Features
 
-- **⚡ Zero API overhead** - Just mutate objects like normal JavaScript
-- **🎯 Fine-grained updates** - Components re-render only when their data changes
-- **🌐 Offline-first** - Changes merge automatically when reconnected
-- **🔒 TypeScript** - Full type safety and inference
-- **🛡️ Production-ready** - Comprehensive tests and benchmarks
-- **🔌 Framework-agnostic** - Works with React, Vue, Svelte, Solid, and vanilla JS
+- **Zero API overhead** - Just mutate objects like normal JavaScript
+- **Fine-grained updates** - Components re-render only when their data changes
+- **Offline-first** - Changes merge automatically when reconnected
+- **TypeScript** - Full type safety and inference
+- **Production-ready** - Comprehensive tests and benchmarks
+- **Framework-agnostic** - Works with React, Vue, Svelte, Solid, and vanilla JS
 
 ## Limitations
 

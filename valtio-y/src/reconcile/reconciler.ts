@@ -6,6 +6,7 @@ import {
 import type { ValtioYjsCoordinator } from "../core/coordinator";
 import { isYSharedContainer, isYArray, isYMap } from "../core/guards";
 import { yTypeToJSON } from "../core/types";
+import { ValtioYReconciliationError } from "../core/errors";
 
 function cleanupNestedValue(
   coordinator: ValtioYjsCoordinator,
@@ -104,99 +105,117 @@ export function reconcileValtioMap(
   }
 
   withReconcilingLock(() => {
-    coordinator.logger.debug("reconcileValtioMap start", {
-      yKeys: Array.from(yMap.keys()),
-      valtioKeys: Object.keys(valtioProxy),
-      yJson: yTypeToJSON(yMap),
-    });
-    const yKeys = new Set(Array.from(yMap.keys()).map((k) => String(k)));
-    const valtioKeys = new Set(Object.keys(valtioProxy));
-    const allKeys = new Set<string>([...yKeys, ...valtioKeys]);
+    try {
+      coordinator.logger.debug("reconcileValtioMap start", {
+        yKeys: Array.from(yMap.keys()),
+        valtioKeys: Object.keys(valtioProxy),
+        yJson: yTypeToJSON(yMap),
+      });
+      const yKeys = new Set(Array.from(yMap.keys()).map((k) => String(k)));
+      const valtioKeys = new Set(Object.keys(valtioProxy));
+      const allKeys = new Set<string>([...yKeys, ...valtioKeys]);
 
-    for (const key of allKeys) {
-      const inY = yKeys.has(key);
-      const inValtio = valtioKeys.has(key);
+      for (const key of allKeys) {
+        const inY = yKeys.has(key);
+        const inValtio = valtioKeys.has(key);
 
-      if (inY && !inValtio) {
-        const yValue = yMap.get(key);
-        if (isYSharedContainer(yValue)) {
-          coordinator.logger.debug("[ADD] create controller", key);
-          valtioProxy[key] = getOrCreateValtioProxy(coordinator, yValue, doc);
-          if (isYMap(yValue)) {
-            coordinator.logger.debug("[RECONCILE-CHILD] map", key);
-            reconcileValtioMap(
-              coordinator,
-              yValue as Y.Map<unknown>,
-              doc,
-              withReconcilingLock,
-            );
-          } else if (isYArray(yValue)) {
-            coordinator.logger.debug("[RECONCILE-CHILD] array", key);
-            reconcileValtioArray(
-              coordinator,
-              yValue as Y.Array<unknown>,
-              doc,
-              withReconcilingLock,
-            );
-          }
-        } else {
-          coordinator.logger.debug("[ADD] set primitive", key);
-          valtioProxy[key] = yValue;
-        }
-        continue;
-      }
-
-      if (!inY && inValtio) {
-        coordinator.logger.debug("[DELETE] remove key", key);
-        cleanupNestedValue(coordinator, valtioProxy[key]);
-        delete valtioProxy[key];
-        continue;
-      }
-
-      if (inY && inValtio) {
-        const yValue = yMap.get(key);
-        const current = valtioProxy[key];
-        if (isYSharedContainer(yValue)) {
-          const desired = getOrCreateValtioProxy(coordinator, yValue, doc);
-          if (current !== desired) {
-            coordinator.logger.debug("[REPLACE] replace controller", key);
-            cleanupNestedValue(coordinator, current);
-            valtioProxy[key] = desired;
-          }
-          if (isYMap(yValue)) {
-            coordinator.logger.debug("[RECONCILE-CHILD] map", key);
-            reconcileValtioMap(
-              coordinator,
-              yValue as Y.Map<unknown>,
-              doc,
-              withReconcilingLock,
-            );
-          } else if (isYArray(yValue)) {
-            coordinator.logger.debug("[RECONCILE-CHILD] array", key);
-            reconcileValtioArray(
-              coordinator,
-              yValue as Y.Array<unknown>,
-              doc,
-              withReconcilingLock,
-            );
-          }
-        } else {
-          cleanupNestedValue(coordinator, current);
-          if (current !== yValue) {
-            coordinator.logger.debug("[UPDATE] primitive", key);
+        if (inY && !inValtio) {
+          const yValue = yMap.get(key);
+          if (isYSharedContainer(yValue)) {
+            coordinator.logger.debug("[ADD] create controller", key);
+            valtioProxy[key] = getOrCreateValtioProxy(coordinator, yValue, doc);
+            if (isYMap(yValue)) {
+              coordinator.logger.debug("[RECONCILE-CHILD] map", key);
+              reconcileValtioMap(
+                coordinator,
+                yValue as Y.Map<unknown>,
+                doc,
+                withReconcilingLock,
+              );
+            } else if (isYArray(yValue)) {
+              coordinator.logger.debug("[RECONCILE-CHILD] array", key);
+              reconcileValtioArray(
+                coordinator,
+                yValue as Y.Array<unknown>,
+                doc,
+                withReconcilingLock,
+              );
+            }
+          } else {
+            coordinator.logger.debug("[ADD] set primitive", key);
             valtioProxy[key] = yValue;
           }
+          continue;
+        }
+
+        if (!inY && inValtio) {
+          coordinator.logger.debug("[DELETE] remove key", key);
+          cleanupNestedValue(coordinator, valtioProxy[key]);
+          delete valtioProxy[key];
+          continue;
+        }
+
+        if (inY && inValtio) {
+          const yValue = yMap.get(key);
+          const current = valtioProxy[key];
+          if (isYSharedContainer(yValue)) {
+            const desired = getOrCreateValtioProxy(coordinator, yValue, doc);
+            if (current !== desired) {
+              coordinator.logger.debug("[REPLACE] replace controller", key);
+              cleanupNestedValue(coordinator, current);
+              valtioProxy[key] = desired;
+            }
+            if (isYMap(yValue)) {
+              coordinator.logger.debug("[RECONCILE-CHILD] map", key);
+              reconcileValtioMap(
+                coordinator,
+                yValue as Y.Map<unknown>,
+                doc,
+                withReconcilingLock,
+              );
+            } else if (isYArray(yValue)) {
+              coordinator.logger.debug("[RECONCILE-CHILD] array", key);
+              reconcileValtioArray(
+                coordinator,
+                yValue as Y.Array<unknown>,
+                doc,
+                withReconcilingLock,
+              );
+            }
+          } else {
+            cleanupNestedValue(coordinator, current);
+            if (current !== yValue) {
+              coordinator.logger.debug("[UPDATE] primitive", key);
+              valtioProxy[key] = yValue;
+            }
+          }
         }
       }
+      coordinator.logger.debug("reconcileValtioMap end", {
+        valtioKeys: Object.keys(valtioProxy),
+      });
+    } catch (err) {
+      coordinator.logger.error("[reconcile] Failed to reconcile map", {
+        error: err,
+        yKeys: Array.from(yMap.keys()),
+      });
+      throw new ValtioYReconciliationError(
+        "Failed to reconcile map structure",
+        "map",
+        err,
+      );
     }
-    coordinator.logger.debug("reconcileValtioMap end", {
-      valtioKeys: Object.keys(valtioProxy),
-    });
   });
 }
 
-// TODO: Implement granular delta-based reconciliation for arrays.
-// For now, perform a coarse structural sync using splice.
+/**
+ * Performs coarse structural reconciliation for arrays.
+ * Granular delta-based reconciliation is handled by reconcileValtioArrayWithDelta().
+ * This function is used when:
+ * - Initial materialization of an array
+ * - No delta is available (e.g., applying state vector)
+ * - Structural reconciliation is needed for deeply nested arrays
+ */
 export function reconcileValtioArray(
   coordinator: ValtioYjsCoordinator,
   yArray: Y.Array<unknown>,
@@ -209,68 +228,81 @@ export function reconcileValtioArray(
   if (!valtioProxy) return;
 
   withReconcilingLock(() => {
-    // Skip structural reconcile if this array has a delta in the current sync pass
-    if (coordinator.state.shouldSkipArrayStructuralReconcile(yArray)) {
-      coordinator.logger.debug(
-        "reconcileValtioArray skipped due to pending delta",
-        {
-          yLength: yArray.length,
-          valtioLength: valtioProxy.length,
-        },
-      );
-      return;
-    }
-    coordinator.logger.debug("reconcileValtioArray start", {
-      yLength: yArray.length,
-      valtioLength: valtioProxy.length,
-      yJson: yTypeToJSON(yArray),
-    });
-    const newContent = yArray.toArray().map((item) => {
-      if (isYSharedContainer(item)) {
-        return getOrCreateValtioProxy(coordinator, item, doc);
-      } else {
-        return item;
+    try {
+      // Skip structural reconcile if this array has a delta in the current sync pass
+      if (coordinator.state.shouldSkipArrayStructuralReconcile(yArray)) {
+        coordinator.logger.debug(
+          "reconcileValtioArray skipped due to pending delta",
+          {
+            yLength: yArray.length,
+            valtioLength: valtioProxy.length,
+          },
+        );
+        return;
       }
-    });
-    // Find controllers that need cleanup (present in old array but not in new)
-    // Uses reference counting to handle duplicates correctly (same object appearing multiple times)
-    const removedControllers = findRemovedControllers(
-      valtioProxy.slice(),
-      newContent,
-    );
+      coordinator.logger.debug("reconcileValtioArray start", {
+        yLength: yArray.length,
+        valtioLength: valtioProxy.length,
+        yJson: yTypeToJSON(yArray),
+      });
+      const newContent = yArray.toArray().map((item) => {
+        if (isYSharedContainer(item)) {
+          return getOrCreateValtioProxy(coordinator, item, doc);
+        } else {
+          return item;
+        }
+      });
+      // Find controllers that need cleanup (present in old array but not in new)
+      // Uses reference counting to handle duplicates correctly (same object appearing multiple times)
+      const removedControllers = findRemovedControllers(
+        valtioProxy.slice(),
+        newContent,
+      );
 
-    coordinator.logger.debug("reconcile array splice", newContent.length);
-    valtioProxy.splice(0, valtioProxy.length, ...newContent);
+      coordinator.logger.debug("reconcile array splice", newContent.length);
+      valtioProxy.splice(0, valtioProxy.length, ...newContent);
 
-    // Cleanup removed controllers (unsubscribe and remove from caches)
-    for (const removed of removedControllers) {
-      cleanupNestedValue(coordinator, removed);
-    }
+      // Cleanup removed controllers (unsubscribe and remove from caches)
+      for (const removed of removedControllers) {
+        cleanupNestedValue(coordinator, removed);
+      }
 
-    // Recursively reconcile nested containers to ensure deep materialization
-    for (const item of newContent) {
-      if (item && isYSharedContainer(item)) {
-        if (isYMap(item)) {
-          reconcileValtioMap(
-            coordinator,
-            item as Y.Map<unknown>,
-            doc,
-            withReconcilingLock,
-          );
-        } else if (isYArray(item)) {
-          reconcileValtioArray(
-            coordinator,
-            item as Y.Array<unknown>,
-            doc,
-            withReconcilingLock,
-          );
+      // Recursively reconcile nested containers to ensure deep materialization
+      for (const item of newContent) {
+        if (item && isYSharedContainer(item)) {
+          if (isYMap(item)) {
+            reconcileValtioMap(
+              coordinator,
+              item as Y.Map<unknown>,
+              doc,
+              withReconcilingLock,
+            );
+          } else if (isYArray(item)) {
+            reconcileValtioArray(
+              coordinator,
+              item as Y.Array<unknown>,
+              doc,
+              withReconcilingLock,
+            );
+          }
         }
       }
-    }
 
-    coordinator.logger.debug("reconcileValtioArray end", {
-      valtioLength: valtioProxy.length,
-    });
+      coordinator.logger.debug("reconcileValtioArray end", {
+        valtioLength: valtioProxy.length,
+      });
+    } catch (err) {
+      coordinator.logger.error("[reconcile] Failed to reconcile array", {
+        error: err,
+        yLength: yArray.length,
+        valtioLength: valtioProxy.length,
+      });
+      throw new ValtioYReconciliationError(
+        "Failed to reconcile array structure",
+        "array",
+        err,
+      );
+    }
   });
 }
 

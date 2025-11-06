@@ -46,22 +46,29 @@ function attachValtioArraySubscription(
     arrProxy,
     (ops: unknown[]) => {
       if (coordinator.state.isReconciling) return;
+
       coordinator.logger.debug("[controller][array] ops", safeStringify(ops));
 
       // Wrap planning + enqueue in try/catch to rollback local proxy on validation failure
       try {
         // Phase 1: Planning - categorize operations into explicit intents
-        // Use Y.Array length as the start-of-batch baseline for deterministic planning
+        // Use actual Y.Array length (NOT effective length) because we need to
+        // classify operations based on what will actually exist in the Y.Array
+        // at flush time, not based on pending operations that haven't been applied yet.
+        const yLength = yArray.length;
+
         const { sets, deletes, replaces } = planArrayOps(
           ops,
-          yArray.length,
+          yLength,
           coordinator,
         );
+
         coordinator.logger.debug("Controller plan (array):", {
           replaces: Array.from(replaces.keys()).sort((a, b) => a - b),
           deletes: Array.from(deletes.values()).sort((a, b) => a - b),
           sets: Array.from(sets.keys()).sort((a, b) => a - b),
-          yLength: yArray.length,
+          yLength,
+          proxyLength: arrProxy.length,
         });
 
         // Phase 2: Scheduling - enqueue planned operations

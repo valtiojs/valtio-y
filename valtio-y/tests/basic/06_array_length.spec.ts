@@ -5,28 +5,9 @@ import { createYjsProxy } from "../../src/index";
 const waitMicrotask = () => Promise.resolve();
 
 describe("array length manipulation", () => {
-  // Note: Direct length manipulation has some quirks with Valtio proxies.
-  // Use splice() for more reliable array resizing.
-
-  it.skip("reset length then push (known limitation)", async () => {
-    // This test demonstrates a current limitation:
-    // Setting length = 0 may not fully clear the array in some scenarios
-    const doc = new Y.Doc();
-    const { proxy: p } = createYjsProxy<string[]>(doc, {
-      getRoot: (d) => d.getArray("root"),
-    });
-    const a = doc.getArray<string>("root");
-
-    p.push("a");
-    p.push("b");
-    p.length = 0;
-    p.push("b");
-    await waitMicrotask();
-
-    // Currently fails - gets ['b', 'b'] instead of ['b']
-    expect(a.toJSON()).toEqual(["b"]);
-    expect(p).toEqual(["b"]);
-  });
+  // Note: Direct length manipulation is not supported in valtio-y.
+  // See docs/architecture/limitations.md for details.
+  // Use splice() for array resizing operations.
 
   it("clear array using splice", async () => {
     // Recommended approach: use splice instead of length manipulation
