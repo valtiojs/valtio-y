@@ -223,6 +223,10 @@ function handleSets(
       index >= lengthAtStart ||
       index >= firstDeleteIndex ||
       index >= yArray.length;
+    // Use current yArray.length (modified by replaces/deletes) for clamping instead of
+    // lengthAtStart because we want to insert at the safest position given the current
+    // array state. This prevents index-out-of-bounds errors in edge cases where complex
+    // operation sequences might create temporary inconsistencies.
     const targetIndex = shouldAppend
       ? tailCursor
       : Math.min(Math.max(index, 0), yArray.length);
