@@ -10,7 +10,16 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { Route } from "./+types/home";
-import { Undo2, Redo2, Wifi, WifiOff, ZoomIn, ZoomOut, Maximize2, HelpCircle } from "lucide-react";
+import {
+  Undo2,
+  Redo2,
+  Wifi,
+  WifiOff,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  HelpCircle,
+} from "lucide-react";
 import { Canvas } from "../components/canvas";
 import { Toolbar } from "../components/toolbar";
 import { LayersPanel } from "../components/layers-panel";
@@ -406,10 +415,10 @@ export default function Home() {
               </h3>
               <p className="text-sm text-gray-700">
                 Draw with the <strong>pen tool</strong>. Your stroke appears
-                instantly in a &quot;ghost&quot; layer (ephemeral, not synced). Every
-                200ms or on release, it commits to the CRDT layer (persisted).
-                This Figma-style approach delivers 60fps drawing with
-                bulletproof sync.
+                instantly in a &quot;ghost&quot; layer (ephemeral, not synced).
+                Every 200ms or on release, it commits to the CRDT layer
+                (persisted). This Figma-style approach delivers 60fps drawing
+                with bulletproof sync.
               </p>
             </div>
             <div>
@@ -418,8 +427,9 @@ export default function Home() {
               </h3>
               <p className="text-sm text-gray-700">
                 Live cursors use <strong>Yjs Awareness</strong> - ephemeral
-                presence data that&apos;s never persisted. Open two windows to see
-                collaborators&apos; cursors in real-time, without bloating the CRDT.
+                presence data that&apos;s never persisted. Open two windows to
+                see collaborators&apos; cursors in real-time, without bloating
+                the CRDT.
               </p>
             </div>
             <div>

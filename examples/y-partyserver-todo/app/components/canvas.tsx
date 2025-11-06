@@ -132,13 +132,15 @@ export function Canvas({
       return Math.sqrt(dx * dx + dy * dy) <= shape.radius;
     } else if (shape.type === "path" && shape.points.length > 0) {
       // Simple bounding box check for paths
-      const xs = shape.points.map(p => p.x);
-      const ys = shape.points.map(p => p.y);
+      const xs = shape.points.map((p) => p.x);
+      const ys = shape.points.map((p) => p.y);
       const minX = Math.min(...xs) - 10;
       const maxX = Math.max(...xs) + 10;
       const minY = Math.min(...ys) - 10;
       const maxY = Math.max(...ys) + 10;
-      return point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY;
+      return (
+        point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY
+      );
     }
     return false;
   }, []);
@@ -169,12 +171,24 @@ export function Canvas({
 
           // Calculate drag offset based on shape type
           if (foundShape.type === "rect") {
-            setDragOffset({ x: point.x - foundShape.x, y: point.y - foundShape.y });
+            setDragOffset({
+              x: point.x - foundShape.x,
+              y: point.y - foundShape.y,
+            });
           } else if (foundShape.type === "circle") {
-            setDragOffset({ x: point.x - foundShape.x, y: point.y - foundShape.y });
-          } else if (foundShape.type === "path" && foundShape.points.length > 0) {
+            setDragOffset({
+              x: point.x - foundShape.x,
+              y: point.y - foundShape.y,
+            });
+          } else if (
+            foundShape.type === "path" &&
+            foundShape.points.length > 0
+          ) {
             // For paths, use the first point as reference
-            setDragOffset({ x: point.x - foundShape.points[0].x, y: point.y - foundShape.points[0].y });
+            setDragOffset({
+              x: point.x - foundShape.points[0].x,
+              y: point.y - foundShape.points[0].y,
+            });
           }
         } else {
           onShapeSelect?.(undefined);
@@ -269,7 +283,9 @@ export function Canvas({
 
       // Handle dragging selected shape
       if (isDragging && tool === "select" && selectedShapeId && proxy.shapes) {
-        const shapeIndex = proxy.shapes.findIndex((s) => s.id === selectedShapeId);
+        const shapeIndex = proxy.shapes.findIndex(
+          (s) => s.id === selectedShapeId,
+        );
         if (shapeIndex !== -1) {
           const shape = proxy.shapes[shapeIndex];
 
@@ -290,7 +306,7 @@ export function Canvas({
             const deltaY = targetY - firstPoint.y;
 
             // Move all points
-            const movedPoints = shape.points.map(p => ({
+            const movedPoints = shape.points.map((p) => ({
               x: p.x + deltaX,
               y: p.y + deltaY,
             }));
@@ -326,7 +342,16 @@ export function Canvas({
         });
       }
     },
-    [isDrawing, ghostShape, tool, getCanvasPoint, isDragging, selectedShapeId, dragOffset, proxy.shapes],
+    [
+      isDrawing,
+      ghostShape,
+      tool,
+      getCanvasPoint,
+      isDragging,
+      selectedShapeId,
+      dragOffset,
+      proxy.shapes,
+    ],
   );
 
   // Handle mouse up - finish drawing or dragging
@@ -385,8 +410,8 @@ export function Canvas({
           ctx.arc(shape.x, shape.y, shape.radius + 5, 0, Math.PI * 2);
           ctx.stroke();
         } else if (shape.type === "path" && shape.points.length > 0) {
-          const xs = shape.points.map(p => p.x);
-          const ys = shape.points.map(p => p.y);
+          const xs = shape.points.map((p) => p.x);
+          const ys = shape.points.map((p) => p.y);
           const minX = Math.min(...xs) - 10;
           const maxX = Math.max(...xs) + 10;
           const minY = Math.min(...ys) - 10;

@@ -195,7 +195,8 @@ export function PerformanceStats() {
             </h4>
             <ul className="text-xs text-blue-800 space-y-1 leading-relaxed">
               <li>
-                <strong>Colo:</strong> Cloudflare datacenter serving this session
+                <strong>Colo:</strong> Cloudflare datacenter serving this
+                session
               </li>
               <li>
                 <strong>RTT:</strong> Sub-50ms latency to nearest edge location

@@ -119,8 +119,8 @@ export function LayersPanel({
 
       <div className="mt-4 pt-4 border-t border-gray-200">
         <p className="text-xs text-gray-500 leading-relaxed">
-          💡 <strong>Tip:</strong> Drag layers to reorder them - showcases array moves without
-          fractional indexes!
+          💡 <strong>Tip:</strong> Drag layers to reorder them - showcases array
+          moves without fractional indexes!
         </p>
       </div>
     </div>

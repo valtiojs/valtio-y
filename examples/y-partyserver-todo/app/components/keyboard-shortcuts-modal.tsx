@@ -102,7 +102,11 @@ export function KeyboardShortcutsModal({
         {/* Footer */}
         <div className="p-6 bg-gray-50 border-t border-gray-200 rounded-b-xl">
           <p className="text-sm text-gray-600 text-center">
-            Press <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono">?</kbd> anytime to toggle this help dialog
+            Press{" "}
+            <kbd className="px-2 py-1 bg-white border border-gray-300 rounded text-xs font-mono">
+              ?
+            </kbd>{" "}
+            anytime to toggle this help dialog
           </p>
         </div>
       </div>
