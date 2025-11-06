@@ -39,19 +39,18 @@ describe("Multiple Root Proxies", () => {
       getRoot: (d) => d.getMap("settings"),
     });
 
-    const { proxy: tasks } = createYjsProxy<Array<{ id: number; text: string }>>(
-      doc,
-      {
-        getRoot: (d) => d.getArray("tasks"),
-      },
-    );
+    const { proxy: tasks } = createYjsProxy<
+      Array<{ id: number; text: string }>
+    >(doc, {
+      getRoot: (d) => d.getArray("tasks"),
+    });
 
-    const { proxy: metadata } = createYjsProxy<{ version: number; updated: string }>(
-      doc,
-      {
-        getRoot: (d) => d.getMap("metadata"),
-      },
-    );
+    const { proxy: metadata } = createYjsProxy<{
+      version: number;
+      updated: string;
+    }>(doc, {
+      getRoot: (d) => d.getMap("metadata"),
+    });
 
     // Perform operations on all proxies
     userSettings.theme = "dark";

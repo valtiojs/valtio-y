@@ -84,11 +84,7 @@ export function validateValueForSharedState(jsValue: unknown): void {
       throw new ValtioYValidationError(ERROR_BIGINT, jsValue, "bigint");
     }
     if (t === "number" && !Number.isFinite(jsValue as number)) {
-      throw new ValtioYValidationError(
-        ERROR_NON_FINITE,
-        jsValue,
-        "non-finite",
-      );
+      throw new ValtioYValidationError(ERROR_NON_FINITE, jsValue, "non-finite");
     }
     return; // Valid primitive
   }
@@ -199,11 +195,7 @@ export function plainObjectToYType(
       throw new ValtioYValidationError(ERROR_BIGINT, jsValue, "bigint");
     }
     if (t === "number" && !Number.isFinite(jsValue as number)) {
-      throw new ValtioYValidationError(
-        ERROR_NON_FINITE,
-        jsValue,
-        "non-finite",
-      );
+      throw new ValtioYValidationError(ERROR_NON_FINITE, jsValue, "non-finite");
     }
     return jsValue;
   }

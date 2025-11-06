@@ -133,10 +133,7 @@ export class ValtioYValidationError extends ValtioYError {
 export class ValtioYTransactionError extends ValtioYError {
   constructor(
     message: string,
-    public readonly operation:
-      | "map-deletes"
-      | "map-sets"
-      | "array-operations",
+    public readonly operation: "map-deletes" | "map-sets" | "array-operations",
     public readonly cause: unknown,
   ) {
     super(message);
