@@ -10,10 +10,10 @@
 
 import { useEffect, useState, useCallback } from "react";
 import type { Route } from "./+types/home";
-import { Canvas } from "../components/Canvas";
-import { Toolbar } from "../components/Toolbar";
-import { LayersPanel } from "../components/LayersPanel";
-import { PerformanceStats } from "../components/PerformanceStats";
+import { Canvas } from "../components/canvas";
+import { Toolbar } from "../components/toolbar";
+import { LayersPanel } from "../components/layers-panel";
+import { PerformanceStats } from "../components/performance-stats";
 import {
   initProvider,
   setupSyncListeners,
@@ -186,7 +186,7 @@ export default function Home() {
               </h3>
               <p className="text-sm text-gray-700">
                 Draw with the <strong>pen tool</strong>. Your stroke appears
-                instantly in a "ghost" layer (ephemeral, not synced). Every
+                instantly in a &quot;ghost&quot; layer (ephemeral, not synced). Every
                 200ms or on release, it commits to the CRDT layer (persisted).
                 This Figma-style approach delivers 60fps drawing with
                 bulletproof sync.
@@ -198,8 +198,8 @@ export default function Home() {
               </h3>
               <p className="text-sm text-gray-700">
                 Live cursors use <strong>Yjs Awareness</strong> - ephemeral
-                presence data that's never persisted. Open two windows to see
-                collaborators' cursors in real-time, without bloating the CRDT.
+                presence data that&apos;s never persisted. Open two windows to see
+                collaborators&apos; cursors in real-time, without bloating the CRDT.
               </p>
             </div>
             <div>

@@ -85,7 +85,7 @@ The example includes a YServer Durable Object (`workers/y-server.ts`) that:
 
 ### Client Setup
 
-The CollaborativeTextBox component (`app/components/CollaborativeTextBox.tsx`):
+The CollaborativeTextBox component (`app/components/collaborative-text-box.tsx`):
 - Creates a Yjs document with a Y.Text type
 - Connects to the YServer using YProvider
 - Observes changes to the Yjs document and updates the UI
