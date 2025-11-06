@@ -208,8 +208,14 @@ export function reconcileValtioMap(
   });
 }
 
-// TODO: Implement granular delta-based reconciliation for arrays.
-// For now, perform a coarse structural sync using splice.
+/**
+ * Performs coarse structural reconciliation for arrays.
+ * Granular delta-based reconciliation is handled by reconcileValtioArrayWithDelta().
+ * This function is used when:
+ * - Initial materialization of an array
+ * - No delta is available (e.g., applying state vector)
+ * - Structural reconciliation is needed for deeply nested arrays
+ */
 export function reconcileValtioArray(
   coordinator: ValtioYjsCoordinator,
   yArray: Y.Array<unknown>,
