@@ -25,8 +25,12 @@ import { Toolbar } from "../components/toolbar";
 import { LayersPanel } from "../components/layers-panel";
 import { PerformanceStats } from "../components/performance-stats";
 import { KeyboardShortcutsModal } from "../components/keyboard-shortcuts-modal";
+import useYProvider from "y-partyserver/react";
 import {
-  initProvider,
+  yDoc,
+  ROOM_NAME,
+  PARTY_NAME,
+  setProvider,
   setupSyncListeners,
   initializeState,
   cleanupUser,
@@ -38,6 +42,7 @@ import {
   canRedo,
   getSyncStatus,
   subscribeSyncStatus,
+  subscribeUndoRedo,
 } from "../yjs-setup";
 import type { Tool, SyncStatus } from "../types";
 
@@ -79,29 +84,41 @@ export default function Home() {
   const [zoom, setZoom] = useState(100);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
 
-  // Initialize Yjs provider and state
+  // Initialize Yjs provider using the hook
+  const provider = useYProvider({
+    host: typeof window !== "undefined" && window.location.hostname === "localhost"
+      ? "localhost:8788"
+      : undefined,
+    room: ROOM_NAME,
+    party: PARTY_NAME,
+    doc: yDoc,
+  });
+
+  // Initialize state when provider syncs
   useEffect(() => {
-    // Initialize provider
-    const provider = initProvider();
+    // Set the provider so other parts of the app can access it
+    setProvider(provider);
 
     // Setup sync listeners
-    setupSyncListeners();
+    setupSyncListeners(provider);
 
     // Wait for initial sync, then initialize state
-    provider.on("sync", (synced: boolean) => {
+    const handleSync = (synced: boolean) => {
       if (synced && !initialized) {
         initializeState(USER_ID, USER_NAME, USER_COLOR);
         initUndoManager();
         setInitialized(true);
       }
-    });
+    };
+
+    provider.on("sync", handleSync);
 
     // Cleanup on unmount
     return () => {
-      // Remove user from awareness when disconnecting
+      provider.off("sync", handleSync);
       cleanupUser();
     };
-  }, []);
+  }, [provider, initialized]);
 
   const handleClearCanvas = useCallback(() => {
     if (proxy.shapes) {
@@ -124,10 +141,17 @@ export default function Home() {
     setRedoEnabled(canRedo());
   }, []);
 
-  // Update undo/redo state when shapes change
+  // Subscribe to undo/redo stack changes
   useEffect(() => {
+    const unsubscribe = subscribeUndoRedo(() => {
+      updateUndoRedoState();
+    });
+
+    // Initial state
     updateUndoRedoState();
-  }, [proxy.shapes, updateUndoRedoState]);
+
+    return unsubscribe;
+  }, [updateUndoRedoState]);
 
   // Subscribe to sync status changes
   useEffect(() => {

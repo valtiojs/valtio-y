@@ -22,39 +22,18 @@ import type { AppState, SyncStatus } from "./types";
 export const yDoc = new Y.Doc();
 
 /**
- * Connect to the Y-PartyServer worker
- * The worker runs on localhost:8788 in development
+ * PartyServer configuration
  */
-const getPartyHost = () => {
-  if (typeof window === "undefined") return "localhost:8788";
-  return window.location.hostname === "localhost"
-    ? "localhost:8788"
-    : window.location.host;
-};
+export const ROOM_NAME = "drawing-room";
+export const PARTY_NAME = "y-doc-server"; // PartyServer converts YDocServer -> y-doc-server
 
-const ROOM_NAME = "drawing-room";
-const PARTY_NAME = "y-doc-server"; // PartyServer converts YDocServer -> y-doc-server
-
-let provider: YProvider | null = null;
+let currentProvider: YProvider | null = null;
 
 /**
- * Initialize the provider (call this on the client side only)
+ * Set the current provider (called from useYProvider hook)
  */
-export function initProvider(): YProvider {
-  if (provider) return provider;
-
-  const host = getPartyHost();
-  console.log("[valtio-y] Creating YProvider");
-  console.log("[valtio-y] Host:", host);
-  console.log("[valtio-y] Party:", PARTY_NAME);
-  console.log("[valtio-y] Room:", ROOM_NAME);
-
-  provider = new YProvider(host, ROOM_NAME, yDoc, {
-    connect: true,
-    party: PARTY_NAME,
-  });
-
-  return provider;
+export function setProvider(provider: YProvider) {
+  currentProvider = provider;
 }
 
 // ============================================================================
@@ -66,17 +45,17 @@ export function initProvider(): YProvider {
  * Awareness data is NOT persisted in the CRDT - perfect for cursors!
  */
 export function getAwareness(): any {
-  if (!provider) {
+  if (!currentProvider) {
     throw new Error("[valtio-y] Provider not initialized");
   }
-  return provider.awareness;
+  return currentProvider.awareness;
 }
 
 /**
  * Get the current provider instance
  */
 export function getProvider(): YProvider | null {
-  return provider;
+  return currentProvider;
 }
 
 // ============================================================================
@@ -91,14 +70,9 @@ function notifySyncListeners() {
 }
 
 /**
- * Setup sync status listeners (call this after initProvider)
+ * Setup sync status listeners (call this after provider is ready)
  */
-export function setupSyncListeners() {
-  if (!provider) {
-    console.warn("[valtio-y] Provider not initialized");
-    return;
-  }
-
+export function setupSyncListeners(provider: YProvider) {
   provider.on("status", ({ status }: { status: string }) => {
     console.log("[valtio-y] Status changed:", status);
     syncStatus = status === "connected" ? "connected" : "offline";
@@ -223,18 +197,42 @@ export function getAwarenessUsers(): any[] {
 // ============================================================================
 
 let undoManager: Y.UndoManager | null = null;
+const undoRedoListeners: Set<() => void> = new Set();
+
+function notifyUndoRedoListeners() {
+  undoRedoListeners.forEach((listener) => listener());
+}
 
 /**
- * Initialize the undo manager for the shapes array
+ * Initialize the undo manager for the drawing state
  */
 export function initUndoManager() {
-  const shapesArray = yDoc.getMap("drawingState").get("shapes") as Y.Array<any>;
-  if (shapesArray) {
-    undoManager = new Y.UndoManager(shapesArray, {
-      trackedOrigins: new Set([yDoc.clientID]),
-    });
-  }
+  const drawingStateMap = yDoc.getMap("drawingState");
+
+  undoManager = new Y.UndoManager(drawingStateMap, {
+    trackedOrigins: new Set([yDoc.clientID]),
+  });
+
+  // Listen to stack changes
+  undoManager.on("stack-item-added", () => {
+    notifyUndoRedoListeners();
+  });
+
+  undoManager.on("stack-item-popped", () => {
+    notifyUndoRedoListeners();
+  });
+
   return undoManager;
+}
+
+/**
+ * Subscribe to undo/redo stack changes
+ */
+export function subscribeUndoRedo(listener: () => void): () => void {
+  undoRedoListeners.add(listener);
+  return () => {
+    undoRedoListeners.delete(listener);
+  };
 }
 
 /**
@@ -243,6 +241,7 @@ export function initUndoManager() {
 export function undo() {
   if (undoManager && undoManager.canUndo()) {
     undoManager.undo();
+    notifyUndoRedoListeners();
     return true;
   }
   return false;
@@ -254,6 +253,7 @@ export function undo() {
 export function redo() {
   if (undoManager && undoManager.canRedo()) {
     undoManager.redo();
+    notifyUndoRedoListeners();
     return true;
   }
   return false;
