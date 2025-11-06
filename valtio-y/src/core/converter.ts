@@ -3,6 +3,7 @@ import type { SynchronizationState } from "./synchronization-state";
 import type { Logger } from "./logger";
 import { isYArray, isYMap, isYAbstractType } from "./guards";
 import { isPlainObject } from "./types";
+import { ValtioYValidationError } from "./errors";
 
 /**
  * Error message constants (DRY principle - single source of truth)
@@ -34,7 +35,7 @@ const createUnsupportedObjectError = (ctorName: string): string =>
  */
 function throwIfReparenting(yType: Y.AbstractType<unknown>): void {
   if (yType.parent !== null) {
-    throw new Error(ERROR_REPARENTING);
+    throw new ValtioYValidationError(ERROR_REPARENTING, yType, "reparenting");
   }
 }
 
@@ -69,21 +70,25 @@ export function validateValueForSharedState(jsValue: unknown): void {
   // Check primitive types
   if (jsValue === null || typeof jsValue !== "object") {
     if (jsValue === undefined) {
-      throw new Error(ERROR_UNDEFINED);
+      throw new ValtioYValidationError(ERROR_UNDEFINED, jsValue, "undefined");
     }
 
     const t = typeof jsValue;
     if (t === "function") {
-      throw new Error(ERROR_FUNCTION);
+      throw new ValtioYValidationError(ERROR_FUNCTION, jsValue, "function");
     }
     if (t === "symbol") {
-      throw new Error(ERROR_SYMBOL);
+      throw new ValtioYValidationError(ERROR_SYMBOL, jsValue, "symbol");
     }
     if (t === "bigint") {
-      throw new Error(ERROR_BIGINT);
+      throw new ValtioYValidationError(ERROR_BIGINT, jsValue, "bigint");
     }
     if (t === "number" && !Number.isFinite(jsValue as number)) {
-      throw new Error(ERROR_NON_FINITE);
+      throw new ValtioYValidationError(
+        ERROR_NON_FINITE,
+        jsValue,
+        "non-finite",
+      );
     }
     return; // Valid primitive
   }
@@ -95,7 +100,11 @@ export function validateValueForSharedState(jsValue: unknown): void {
   const ctorName =
     (jsValue as { constructor?: { name?: string } }).constructor?.name ??
     "UnknownObject";
-  throw new Error(createUnsupportedObjectError(ctorName));
+  throw new ValtioYValidationError(
+    createUnsupportedObjectError(ctorName),
+    jsValue,
+    "non-plain",
+  );
 }
 
 /**
@@ -127,7 +136,11 @@ export function validateDeepForSharedState(jsValue: unknown): void {
   if (isPlainObject(jsValue)) {
     for (const [_key, value] of Object.entries(jsValue)) {
       if (value === undefined) {
-        throw new Error(ERROR_UNDEFINED_IN_OBJECT);
+        throw new ValtioYValidationError(
+          ERROR_UNDEFINED_IN_OBJECT,
+          jsValue,
+          "undefined-in-object",
+        );
       }
       validateDeepForSharedState(value);
     }
@@ -138,7 +151,11 @@ export function validateDeepForSharedState(jsValue: unknown): void {
   const ctorName =
     (jsValue as { constructor?: { name?: string } }).constructor?.name ??
     "UnknownObject";
-  throw new Error(createUnsupportedObjectError(ctorName));
+  throw new ValtioYValidationError(
+    createUnsupportedObjectError(ctorName),
+    jsValue,
+    "non-plain",
+  );
 }
 
 /**
@@ -169,20 +186,24 @@ export function plainObjectToYType(
   if (jsValue === null || typeof jsValue !== "object") {
     // Quick defensive checks for fundamentally invalid primitives
     if (jsValue === undefined) {
-      throw new Error(ERROR_UNDEFINED);
+      throw new ValtioYValidationError(ERROR_UNDEFINED, jsValue, "undefined");
     }
     const t = typeof jsValue;
     if (t === "function") {
-      throw new Error(ERROR_FUNCTION);
+      throw new ValtioYValidationError(ERROR_FUNCTION, jsValue, "function");
     }
     if (t === "symbol") {
-      throw new Error(ERROR_SYMBOL);
+      throw new ValtioYValidationError(ERROR_SYMBOL, jsValue, "symbol");
     }
     if (t === "bigint") {
-      throw new Error(ERROR_BIGINT);
+      throw new ValtioYValidationError(ERROR_BIGINT, jsValue, "bigint");
     }
     if (t === "number" && !Number.isFinite(jsValue as number)) {
-      throw new Error(ERROR_NON_FINITE);
+      throw new ValtioYValidationError(
+        ERROR_NON_FINITE,
+        jsValue,
+        "non-finite",
+      );
     }
     return jsValue;
   }
@@ -229,7 +250,11 @@ export function plainObjectToYType(
   // Defensive check: Unknown object types (should have been caught by validation layer)
   // This is a fail-safe in case converter is called without proper validation
   const ctorName = jsValue.constructor?.name ?? "UnknownObject";
-  throw new Error(createUnsupportedObjectError(ctorName));
+  throw new ValtioYValidationError(
+    createUnsupportedObjectError(ctorName),
+    jsValue,
+    "non-plain",
+  );
 }
 
 // Build a deep plain JS value from a Valtio controller proxy, without touching its underlying Y types.

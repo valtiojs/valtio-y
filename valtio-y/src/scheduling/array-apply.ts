@@ -19,7 +19,7 @@ import type { Logger } from "../core/logger";
 export function applyArrayOperations(
   coordinator: ValtioYjsCoordinator,
   arraySets: Map<Y.Array<unknown>, Map<number, PendingArrayEntry>>,
-  arrayDeletes: Map<Y.Array<unknown>, Set<number>>,
+  arrayDeletes: Map<Y.Array<unknown>, Map<number, number>>,
   arrayReplaces: Map<Y.Array<unknown>, Map<number, PendingArrayEntry>>,
   postQueue: PostTransactionQueue,
   withReconcilingLock: (fn: () => void) => void,
@@ -33,7 +33,8 @@ export function applyArrayOperations(
     const lengthAtStart = yArray.length;
     const setsForArray =
       arraySets.get(yArray) ?? new Map<number, PendingArrayEntry>();
-    const deletesForArray = arrayDeletes.get(yArray) ?? new Set<number>();
+    const deletesForArray =
+      arrayDeletes.get(yArray) ?? new Map<number, number>();
     const replacesForArray =
       arrayReplaces.get(yArray) ?? new Map<number, PendingArrayEntry>();
 
@@ -41,7 +42,7 @@ export function applyArrayOperations(
     coordinator.logger.trace("[arrayApply] batch", {
       targetId: getYItemId(yArray),
       replaces: Array.from(replacesForArray.keys()).sort((a, b) => a - b),
-      deletes: Array.from(deletesForArray.values()).sort((a, b) => a - b),
+      deletes: Array.from(deletesForArray.keys()).sort((a, b) => a - b),
       sets: Array.from(setsForArray.keys()).sort((a, b) => a - b),
       lengthAtStart: yArray.length,
     });
@@ -141,14 +142,14 @@ function handleReplaces(
 function handleDeletes(
   logger: Logger,
   yArray: Y.Array<unknown>,
-  deletes: Set<number>,
+  deletes: Map<number, number>,
 ): void {
   if (deletes.size === 0) return;
 
   logger.debug("[arrayApply] handling deletes", { count: deletes.size });
 
   // Sort indices in descending order to avoid index shifting issues
-  const sortedDeletes = Array.from(deletes).sort((a, b) => b - a);
+  const sortedDeletes = Array.from(deletes.keys()).sort((a, b) => b - a);
 
   for (const index of sortedDeletes) {
     logger.debug("[arrayApply] delete", { index, length: yArray.length });
@@ -166,7 +167,7 @@ function handleSets(
   coordinator: ValtioYjsCoordinator,
   yArray: Y.Array<unknown>,
   sets: Map<number, PendingArrayEntry>,
-  deletes: Set<number>,
+  deletes: Map<number, number>,
   lengthAtStart: number,
   postQueue: PostTransactionQueue,
 ): void {
@@ -197,7 +198,7 @@ function handleSets(
   const sortedSetIndices = Array.from(sets.keys()).sort((a, b) => a - b);
   const firstDeleteIndex =
     deletes.size > 0
-      ? Math.min(...Array.from(deletes))
+      ? Math.min(...Array.from(deletes.keys()))
       : Number.POSITIVE_INFINITY;
   // Compute tail cursor deterministically: after replaces (no length change) and deletes
   // we want tail cursor to be yArray.length, but also guarantee that when inserting items

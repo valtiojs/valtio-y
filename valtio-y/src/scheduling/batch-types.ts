@@ -8,4 +8,5 @@ export type PendingMapEntry = {
 export type PendingArrayEntry = {
   value: unknown;
   after?: (yValue: unknown) => void; // post-integration callback for array entries
+  sequence: number; // temporal ordering for merge decisions
 };
