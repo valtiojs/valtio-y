@@ -1,228 +1,93 @@
-import { useState, useEffect } from "react";
-import { YDocProvider, useYDoc } from "./y/useYDoc";
-import { Lobby } from "./views/Lobby";
-import { Table } from "./views/Table";
-import { Hand } from "./components/Hand";
-import { PlayersBar } from "./components/PlayersBar";
-import { Chat } from "./components/Chat";
-import { SuitPicker } from "./components/SuitPicker";
-import { HUD } from "./components/HUD";
-import {
-  getPhase,
-  getActivePlayers,
-  getPlayer,
-  getPlayerHand,
-  getPlayerHandSize,
-  getTopDiscard,
-  getDeckSize,
-  getCurrentPlayer,
-  isPlayerTurn,
-  getForcedSuit,
-  getWinnerPlayerId,
-  getLog,
-  getLegalCards,
-} from "./y/selectors";
+import { ClientView } from "./components/ClientView";
+import { gameState1, gameState2, gameState3 } from "./yjs-setup";
 
-function GameView() {
-  const { doc, sendOp, playerId } = useYDoc();
-  const [phase, setPhase] = useState<string>("lobby");
-  const [players, setPlayers] = useState<any[]>([]);
-  const [myHand, setMyHand] = useState<any[]>([]);
-  const [topCard, setTopCard] = useState<any>(null);
-  const [deckSize, setDeckSize] = useState(0);
-  const [currentPlayer, setCurrentPlayer] = useState<any>(null);
-  const [isMyTurn, setIsMyTurn] = useState(false);
-  const [forcedSuit, setForcedSuit] = useState<string | null>(null);
-  const [winnerId, setWinnerId] = useState<string | null>(null);
-  const [log, setLog] = useState<any[]>([]);
-  const [legalCards, setLegalCards] = useState<Set<string>>(new Set());
-  const [showSuitPicker, setShowSuitPicker] = useState(false);
-  const [pendingEightCard, setPendingEightCard] = useState<string | null>(null);
-  const [joined, setJoined] = useState(false);
-
-  useEffect(() => {
-    const update = () => {
-      setPhase(getPhase(doc));
-      setPlayers(getActivePlayers(doc));
-      setMyHand(getPlayerHand(doc, playerId));
-      setTopCard(getTopDiscard(doc));
-      setDeckSize(getDeckSize(doc));
-      setCurrentPlayer(getCurrentPlayer(doc));
-      setIsMyTurn(isPlayerTurn(doc, playerId));
-      setForcedSuit(getForcedSuit(doc));
-      setWinnerId(getWinnerPlayerId(doc));
-      setLog(getLog(doc));
-
-      // Calculate legal cards
-      const legal = getLegalCards(doc, playerId);
-      setLegalCards(new Set(legal.map((c) => c.id)));
-    };
-
-    update();
-    doc.on("update", update);
-    return () => doc.off("update", update);
-  }, [doc, playerId]);
-
-  const handleJoin = (name: string, spectator: boolean) => {
-    sendOp({ t: "JOIN", name, spectator });
-    setJoined(true);
-  };
-
-  const handleStart = () => {
-    sendOp({ t: "START" });
-  };
-
-  const handlePlayCard = (cardId: string) => {
-    const card = myHand.find((c) => c.id === cardId);
-    if (!card) return;
-
-    // If playing an 8, show suit picker
-    if (card.rank === "8") {
-      setPendingEightCard(cardId);
-      setShowSuitPicker(true);
-    } else {
-      sendOp({ t: "PLAY_CARD", cardId });
-    }
-  };
-
-  const handleSelectSuit = (suit: string) => {
-    if (pendingEightCard) {
-      sendOp({ t: "PLAY_CARD", cardId: pendingEightCard, chosenSuit: suit });
-      setPendingEightCard(null);
-    }
-    setShowSuitPicker(false);
-  };
-
-  const handleDraw = () => {
-    sendOp({ t: "DRAW", count: 1 });
-  };
-
-  const handlePass = () => {
-    sendOp({ t: "PASS" });
-  };
-
-  const handleChat = (text: string) => {
-    sendOp({ t: "CHAT", text });
-  };
-
-  const handleReset = () => {
-    sendOp({ t: "RESET" });
-    setJoined(false);
-  };
-
-  const me = getPlayer(doc, playerId);
-  const winner = winnerId ? getPlayer(doc, winnerId) : null;
-
-  // Show lobby if not joined
-  if (!joined) {
-    return <Lobby onJoin={handleJoin} />;
-  }
-
-  // Calculate hand sizes for all players
-  const handSizes = new Map<string, number>();
-  players.forEach((p) => {
-    handSizes.set(p.id, getPlayerHandSize(doc, p.id));
-  });
-
+/**
+ * Main App Component
+ *
+ * Renders three side-by-side game clients to demonstrate real-time collaboration.
+ * Each client has its own Y.Doc and proxy, but they sync through a simulated network.
+ *
+ * Try it:
+ * - Join as different players in each client
+ * - Host starts the game
+ * - Players take turns playing cards
+ * - See updates sync instantly across all clients
+ */
+export default function App() {
   return (
-    <div className="h-screen flex flex-col">
-      <HUD
-        phase={phase}
-        winner={winner}
-        isHost={me?.isHost || false}
-        onStart={handleStart}
-        onReset={handleReset}
-        roomId={window.location.pathname.split("/").pop() || "unknown"}
-      />
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 to-slate-800">
+      <div className="container mx-auto px-4 py-8">
+        {/* Header */}
+        <div className="text-center mb-8">
+          <h1 className="text-5xl font-bold text-white mb-3 tracking-tight">
+            🃏 Crazy Eights
+          </h1>
+          <p className="text-slate-300 text-lg mb-2">
+            Multiplayer Card Game · Powered by <strong>valtio-y</strong>
+          </p>
+          <p className="text-sm text-slate-400 max-w-2xl mx-auto mb-4">
+            This example demonstrates real-time game state synchronization using Yjs CRDTs.
+            All game logic and state mutations sync automatically between players.
+          </p>
+          <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-slate-400">
+            <span>🎴 Match suit or rank</span>
+            <span>🎯 8s are wild</span>
+            <span>🎲 Draw if you can't play</span>
+            <span>🏆 First to empty hand wins!</span>
+          </div>
+        </div>
 
-      <PlayersBar
-        players={players}
-        handSizes={handSizes}
-        currentPlayerId={currentPlayer?.id || null}
-        myPlayerId={playerId}
-      />
+        {/* Three clients side by side */}
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 max-w-[1800px] mx-auto">
+          <ClientView
+            name="Player 1"
+            gameState={gameState1}
+            playerId="player-1"
+            colorScheme="blue"
+          />
+          <ClientView
+            name="Player 2"
+            gameState={gameState2}
+            playerId="player-2"
+            colorScheme="purple"
+          />
+          <ClientView
+            name="Player 3"
+            gameState={gameState3}
+            playerId="player-3"
+            colorScheme="green"
+          />
+        </div>
 
-      {phase === "lobby" && (
-        <div className="flex-1 flex items-center justify-center bg-gradient-to-br from-green-800 to-green-900">
-          <div className="text-center text-white">
-            <div className="text-6xl mb-4">🃏</div>
-            <div className="text-3xl font-bold mb-2">Waiting for host to start...</div>
-            <div className="text-gray-300">
-              {players.length} player{players.length !== 1 ? "s" : ""} ready
+        {/* Educational footer */}
+        <div className="mt-8 max-w-4xl mx-auto bg-slate-800/50 rounded-lg border border-slate-700 p-6">
+          <h3 className="text-lg font-semibold text-white mb-3">
+            How It Works
+          </h3>
+          <div className="grid md:grid-cols-2 gap-4 text-sm text-slate-300">
+            <div>
+              <strong className="text-white">Local Network Simulation:</strong>{" "}
+              Each client has its own Y.Doc. Changes relay between them with simulated network delay
+              to demonstrate real-time sync.
+            </div>
+            <div>
+              <strong className="text-white">Game Rules:</strong>{" "}
+              Classic Crazy Eights - match the suit or rank of the top card. 8s let you change suits.
+              Draw if you can't play, pass to end your turn.
+            </div>
+            <div>
+              <strong className="text-white">State Management:</strong>{" "}
+              All game state (deck, hands, discard pile) is stored in Yjs and syncs automatically.
+              React components use useSnapshot() to reactively update.
+            </div>
+            <div>
+              <strong className="text-white">Production Ready:</strong>{" "}
+              Replace the local relay with y-websocket, y-webrtc, or y-partyserver for real
+              multiplayer over the network.
             </div>
           </div>
         </div>
-      )}
-
-      {(phase === "playing" || phase === "finished") && (
-        <>
-          <Table
-            topCard={topCard}
-            deckSize={deckSize}
-            forcedSuit={forcedSuit}
-            currentPlayerName={currentPlayer?.name || null}
-          />
-
-          <Hand
-            cards={myHand}
-            legalCards={legalCards}
-            isMyTurn={isMyTurn}
-            onPlayCard={handlePlayCard}
-            onDraw={handleDraw}
-            onPass={handlePass}
-          />
-        </>
-      )}
-
-      <Chat log={log} onSendMessage={handleChat} />
-
-      {showSuitPicker && (
-        <SuitPicker
-          onSelectSuit={handleSelectSuit}
-          onCancel={() => {
-            setShowSuitPicker(false);
-            setPendingEightCard(null);
-          }}
-        />
-      )}
-    </div>
-  );
-}
-
-export default function App() {
-  const [roomId, setRoomId] = useState<string>("");
-  const [playerId] = useState(() => {
-    // Generate a unique player ID
-    return `player-${Math.random().toString(36).substring(2, 11)}`;
-  });
-
-  useEffect(() => {
-    // Get room ID from URL or generate one
-    const path = window.location.pathname;
-    const parts = path.split("/");
-    const urlRoomId = parts[parts.length - 1];
-
-    if (urlRoomId && urlRoomId !== "") {
-      setRoomId(urlRoomId);
-    } else {
-      // Generate a random room ID
-      const newRoomId = Math.random().toString(36).substring(2, 9);
-      setRoomId(newRoomId);
-      window.history.pushState({}, "", `/${newRoomId}`);
-    }
-  }, []);
-
-  if (!roomId) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-gray-900">
-        <div className="text-white text-2xl">Loading...</div>
       </div>
-    );
-  }
-
-  return (
-    <YDocProvider roomId={roomId} playerId={playerId}>
-      <GameView />
-    </YDocProvider>
+    </div>
   );
 }

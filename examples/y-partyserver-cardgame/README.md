@@ -1,15 +1,12 @@
-# 🃏 Crazy Eights - Multiplayer Card Game
+# 🃏 Crazy Eights - Multiplayer Card Game Example
 
-A real-time, multiplayer implementation of Crazy Eights using **PartyKit**, **Yjs**, and **React**.
+A real-time, multiplayer implementation of Crazy Eights demonstrating **valtio-y** with **Yjs** CRDTs and **React**.
 
 ## Features
 
-- ✅ **2-6 players** per room (spectators allowed)
-- ✅ **Server-authoritative** game logic prevents cheating
-- ✅ **Deterministic shuffle** using seeded RNG for reproducible games
-- ✅ **Real-time sync** via Yjs CRDTs
-- ✅ **Game chat** and action log
-- ✅ **Reconnection support** - rejoin and resume playing
+- ✅ **Multi-player game** with real-time synchronization
+- ✅ **Local network simulation** for development and demonstration
+- ✅ **Side-by-side clients** showing live state sync
 - ✅ **Full Crazy Eights rules**:
   - Match suit or rank of the top card
   - 8s are wild - choose any suit
@@ -18,206 +15,194 @@ A real-time, multiplayer implementation of Crazy Eights using **PartyKit**, **Yj
 
 ## Architecture
 
-### Server (PartyKit)
+This example demonstrates valtio-y's capabilities using **local network simulation**. Three clients run in the same browser window, each with its own Y.Doc that syncs through a simulated network relay.
 
-- **Authoritative state**: All game mutations happen server-side
-- **Validation**: Server validates every player action
-- **Deterministic shuffle**: Seeded RNG ensures reproducible game states
-- **Y.Doc storage**: Game state stored in Yjs document for automatic sync
+### How It Works
 
-### Client (React)
+1. **Three Y.Docs**: Each client has its own `Y.Doc` instance
+2. **Network Relay**: Updates relay between docs with simulated network delay (50ms)
+3. **Valtio Integration**: `createYjsProxy()` creates reactive proxies over each Y.Doc
+4. **React UI**: Components use `useSnapshot()` to reactively render game state
+5. **Direct Mutations**: Game actions mutate the proxy directly - changes sync automatically
 
-- **Non-optimistic UI**: Clients send intents, wait for server state updates
-- **Yjs sync**: Automatic state synchronization via WebSocket
-- **React hooks**: Clean integration with Y.Doc updates
+### Game State
 
-### Data Model
-
-All state lives in a single `Y.Doc` per room:
+All state is stored in Yjs structures:
 
 ```typescript
-state: Y.Map
-  - phase: "lobby" | "playing" | "finished"
-  - seed: string (server-generated)
-  - turnIndex: number
-  - direction: 1 | -1
-  - winnerPlayerId?: string
-  - forceSuit?: string (from playing an 8)
+{
+  phase: "lobby" | "playing" | "finished",
+  players: Player[],               // Array of players
+  deck: Card[],                    // Remaining cards
+  discard: Card[],                 // Played cards
+  hands: Record<playerId, Card[]>, // Each player's hand
+  currentPlayerIndex: number,      // Whose turn it is
+  forcedSuit?: Suit,              // Suit chosen from playing an 8
+  winnerId?: string,              // Winner's player ID
+  log: Array<{t: number, msg: string}> // Game log
+}
+```
 
-players: Y.Map<playerId, Y.Map>
-  - id, name, joinedAt, isHost, isSpectator
+### Code Structure
 
-hands: Y.Map<playerId, Y.Array<Card>>
-
-deck: Y.Array<Card>
-
-discard: Y.Array<Card>
-
-log: Y.Array<{t: number, msg: string}>
-
-settings: Y.Map
-  - startingHand: 7
-  - drawOnNoMatch: 1
+```
+src/
+├── yjs-setup.ts       # Y.Doc setup, network relay, game logic
+├── App.tsx            # Main app with 3 side-by-side clients
+├── components/
+│   └── ClientView.tsx # Individual client/player view
+└── main.tsx           # Entry point
 ```
 
 ## Getting Started
 
-### Prerequisites
-
-- Node.js 18+
-- npm, pnpm, or bun
-
 ### Installation
 
+This example is part of the valtio-y monorepo. From the repository root:
+
 ```bash
-npm install
+# Install all dependencies (uses Bun workspace)
+bun install
 ```
 
 ### Development
 
-Run both the PartyKit server and Vite dev server:
+Run from the example directory:
 
 ```bash
-npm run dev
+cd examples/y-partyserver-cardgame
+bun run dev
 ```
 
-This starts:
-- **PartyKit server** on `ws://localhost:1999`
-- **Vite dev server** on `http://localhost:3000`
+This starts Vite on `http://localhost:3000` (or next available port).
 
-Open multiple browser tabs to test multiplayer!
-
-### Building
-
-```bash
-npm run build
-```
+Open your browser and you'll see three clients side-by-side. Try:
+1. Join with different names in each client
+2. First player to join is the host
+3. Host starts the game
+4. Take turns playing cards - watch updates sync instantly!
 
 ### Type Checking
 
 ```bash
-npm run typecheck
+bun run typecheck
 ```
 
-## How to Play
+## Game Rules
 
-1. **Join a Room**
-   - Open the app and enter your name
-   - Optionally join as a spectator
-   - Share the room URL with friends
+**Objective**: Be the first player to play all your cards!
 
-2. **Start the Game**
-   - Wait for at least 2 players to join
-   - Host clicks "Start Game"
-   - Each player gets 7 cards
+**On Your Turn**:
+1. **Play a card** that matches the top discard's suit or rank
+2. **8s are wild** - play an 8 and choose any suit
+3. **Can't play?** Draw a card from the deck
+4. **Pass** to end your turn
 
-3. **Take Your Turn**
-   - When it's your turn, play a card that matches the suit or rank of the top discard
-   - **8s are wild**: Choose any suit when playing an 8
-   - **Can't play?** Draw a card, then pass
+**Winning**: Empty your hand first!
 
-4. **Win Condition**
-   - First player to empty their hand wins! 🎉
+## Production Deployment
 
-5. **New Game**
-   - Host can reset the game to lobby
+This example uses **local simulation** for demonstration. For real multiplayer, replace the relay code in `yjs-setup.ts` with a network provider:
 
-## Server Operations
+### Using y-websocket
 
-All client actions go through validated server operations:
+```typescript
+import { WebsocketProvider } from "y-websocket";
 
-| Operation | Description | Validation |
-|-----------|-------------|------------|
-| `JOIN` | Join game as player or spectator | Phase must be "lobby", max 6 players |
-| `START` | Start the game | Only host, min 2 players |
-| `PLAY_CARD` | Play a card from hand | Must be player's turn, card must be legal |
-| `DRAW` | Draw card(s) from deck | Must be player's turn |
-| `PASS` | Pass turn | Must be player's turn |
-| `CHAT` | Send chat message | Max 500 chars |
-| `RESET` | Reset game to lobby | Only host |
+const doc = new Y.Doc();
+const provider = new WebsocketProvider("ws://yourserver.com", "room-name", doc);
 
-## Anti-Cheat Features
+const { proxy } = createYjsProxy(doc, {
+  getRoot: (doc) => doc.getMap("cardgame"),
+});
+```
 
-- ✅ **Server-side validation**: All moves validated before applying
-- ✅ **Read-only hands**: Clients can't directly mutate their hands
-- ✅ **Authoritative shuffle**: Server controls card distribution
-- ✅ **Turn enforcement**: Only active player can act
+### Using y-webrtc
+
+```typescript
+import { WebrtcProvider } from "y-webrtc";
+
+const doc = new Y.Doc();
+const provider = new WebrtcProvider("room-name", doc);
+
+const { proxy } = createYjsProxy(doc, {
+  getRoot: (doc) => doc.getMap("cardgame"),
+});
+```
+
+### Using y-partyserver
+
+```typescript
+import PartySocket from "partysocket";
+import { IndexeddbPersistence } from "y-indexeddb";
+
+const doc = new Y.Doc();
+
+// Connect to PartyKit server
+const provider = new PartySocket({
+  host: "your-app.username.partykit.dev",
+  room: "room-name",
+});
+
+// Optional: Add offline persistence
+const persistence = new IndexeddbPersistence("cardgame", doc);
+
+const { proxy } = createYjsProxy(doc, {
+  getRoot: (doc) => doc.getMap("cardgame"),
+});
+```
+
+## Key Concepts
+
+### Direct Mutations
+
+valtio-y lets you mutate state directly:
+
+```typescript
+// Add a player
+gameState.players.push({ id: "player-1", name: "Alice", ... });
+
+// Play a card
+const card = gameState.hands["player-1"].shift();
+gameState.discard.push(card);
+
+// Change game phase
+gameState.phase = "playing";
+```
+
+All mutations automatically convert to Yjs operations and sync across clients!
+
+### Reactive UI
+
+Use Valtio's `useSnapshot()` for reactive rendering:
+
+```typescript
+import { useSnapshot } from "valtio/react";
+
+function GameView({ gameState }) {
+  const snap = useSnapshot(gameState);
+
+  return (
+    <div>
+      <p>Phase: {snap.phase}</p>
+      <p>Players: {snap.players.length}</p>
+      <p>Your hand: {snap.hands["player-1"]?.length} cards</p>
+    </div>
+  );
+}
+```
+
+Components automatically re-render when accessed state changes!
 
 ## Tech Stack
 
-- **PartyKit** - WebSocket server infrastructure
-- **Yjs** - CRDT for state synchronization
+- **Valtio** - Reactive state management
+- **Yjs** - CRDT for conflict-free state sync
+- **valtio-y** - Bridge between Valtio and Yjs
 - **React** - UI framework
 - **TypeScript** - Type safety
 - **Vite** - Build tool
 - **Tailwind CSS** - Styling
-
-## File Structure
-
-```
-examples/y-partyserver-cardgame/
-├── server/
-│   ├── index.ts           # PartyKit server entry
-│   ├── ops.ts             # Operation handlers
-│   ├── rules.ts           # Game logic
-│   ├── rng.ts             # Seeded RNG
-│   └── schema.ts          # Y.Doc schema
-├── src/
-│   ├── views/
-│   │   ├── Lobby.tsx      # Lobby view
-│   │   └── Table.tsx      # Game table
-│   ├── components/
-│   │   ├── Hand.tsx       # Player hand
-│   │   ├── PlayersBar.tsx # Player list
-│   │   ├── Chat.tsx       # Chat/log
-│   │   ├── SuitPicker.tsx # Suit selection for 8s
-│   │   └── HUD.tsx        # Game HUD
-│   ├── y/
-│   │   ├── useYDoc.tsx    # Y.Doc connection
-│   │   └── selectors.ts   # State selectors
-│   ├── App.tsx
-│   └── main.tsx
-├── partykit.config.ts
-├── package.json
-└── README.md
-```
-
-## Development Tips
-
-### Testing Multiplayer
-
-1. Open multiple browser tabs
-2. Use different names for each player
-3. Test reconnection by refreshing a tab mid-game
-
-### Debugging
-
-- Check browser console for client logs
-- Check terminal for PartyKit server logs
-- All operations are logged to the game log (visible in chat)
-
-### Seeded Games
-
-For testing, you can reuse game seeds:
-1. Check the console for the seed when a game starts
-2. Modify `handleStart` to use a fixed seed for reproducible tests
-
-## Known Limitations
-
-- No persistence (games reset on server restart)
-- No player authentication
-- No spectator-specific UI enhancements
-- Deck reshuffling uses non-seeded shuffle (when deck runs out mid-game)
-
-## Future Enhancements
-
-- [ ] Spectator mode toggle in-game
-- [ ] Room code sharing UI
-- [ ] Mobile-optimized layout
-- [ ] House rules panel (reverse, skip, draw-2)
-- [ ] Game statistics/analytics
-- [ ] Player avatars/emojis
-- [ ] Sound effects
 
 ## License
 
