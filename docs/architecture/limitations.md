@@ -59,6 +59,8 @@ arr.splice(5, 0, ...Array(5 - arr.length).fill(null)); // Extend
 arr.splice(2); // Truncate array
 ```
 
+**Testing**: See `tests/basic/06_array_length.spec.ts` for examples of the recommended splice-based approach.
+
 **Why this limitation?**
 
 1. **CRDT semantics**: Y.Array is a continuous sequence without native support for "holes" or sparse arrays

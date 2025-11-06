@@ -153,6 +153,7 @@ export function planArrayOps(
   // Note: Move detection is handled at the scheduler level where we have full batch context
 
   // Phase 5: Trace planning result in debug sessions (controlled by debug flag)
+
   if (coordinator) {
     coordinator.logger.debug("[planner][array] result", {
       yArrayLength,
