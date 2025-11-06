@@ -80,6 +80,15 @@ export class ValtioYjsCoordinator {
   /**
    * Execute a function while holding the reconciling lock.
    * This prevents Valtio changes from being reflected back to Yjs during reconciliation.
+   *
+   * IMPORTANT: This lock is recursion-safe. It saves and restores the previous lock state,
+   * allowing nested reconciliation calls to work correctly. For example:
+   * - Outer reconciliation sets isReconciling = true
+   * - Nested reconciliation saves previous=true, sets isReconciling=true (no-op), executes, restores to true
+   * - Outer reconciliation continues with isReconciling=true, then finally restores to original state
+   *
+   * This design is critical for nested structure reconciliation where a parent map/array
+   * reconciliation may trigger child reconciliations.
    */
   withReconcilingLock(fn: () => void): void {
     const previous = this.state.isReconciling;

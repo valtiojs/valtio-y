@@ -110,16 +110,8 @@ export function createYjsProxy<T extends object>(
     if (!data) {
       return;
     }
-    if (
-      (isYMap(yRoot) && yRoot.size > 0) ||
-      (isYArray(yRoot) && yRoot.length > 0)
-    ) {
-      coordinator.logger.warn(
-        "bootstrap called on a non-empty document. Aborting to prevent data loss.",
-      );
-      return;
-    }
-    // Pre-convert to ensure deterministic behavior: either all converts or none
+    // Pre-convert and validate BEFORE transaction to fail fast
+    // This ensures deterministic behavior: either all converts or none
     if (isYMap(yRoot)) {
       const record = data as unknown as Record<string, unknown>;
       const convertedEntries: Array<[string, unknown]> = [];
@@ -134,7 +126,15 @@ export function createYjsProxy<T extends object>(
         );
         convertedEntries.push([key, converted]);
       }
+      // Atomic check-and-set inside transaction to prevent TOCTOU race
+      // This prevents bootstrap from overwriting remote data that arrives between check and write
       doc.transact(() => {
+        if (yRoot.size > 0) {
+          coordinator.logger.warn(
+            "bootstrap called on a non-empty document. Aborting to prevent data loss.",
+          );
+          return;
+        }
         for (const [key, converted] of convertedEntries) {
           yRoot.set(key, converted);
         }
@@ -144,7 +144,14 @@ export function createYjsProxy<T extends object>(
         validateDeepForSharedState(v);
         return plainObjectToYType(v, coordinator.state, coordinator.logger);
       });
+      // Atomic check-and-set inside transaction to prevent TOCTOU race
       doc.transact(() => {
+        if (yRoot.length > 0) {
+          coordinator.logger.warn(
+            "bootstrap called on a non-empty document. Aborting to prevent data loss.",
+          );
+          return;
+        }
         if (items.length > 0) yRoot.insert(0, items);
       }, VALTIO_Y_ORIGIN);
     }

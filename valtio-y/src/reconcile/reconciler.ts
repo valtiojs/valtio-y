@@ -359,8 +359,20 @@ export function reconcileValtioArrayWithDelta(
             return item;
           }
         });
-        // Idempotency guard: if the exact converted items already exist at this position
-        // (e.g., due to a prior structural reconcile in the same sync pass), skip inserting.
+        // Idempotency guard: prevents double-application when structural reconciliation
+        // already materialized the array with final Yjs state.
+        //
+        // Context: When an unmaterialized array is first accessed during a sync pass,
+        // getOrCreateValtioProxy() calls processYArrayItems() which uses yArray.toArray()
+        // to get the CURRENT (post-update) state. Then this delta reconciliation runs.
+        // If the delta describes changes already reflected in toArray(), we'd apply them twice.
+        //
+        // Solution: Check if items are already present at this position using reference equality.
+        // - For controller proxies: Reference equality ensures same proxy instance
+        // - For primitives: Value equality is sufficient (42 === 42)
+        //
+        // Note: This is NOT general deduplication - it specifically guards against double-applying
+        // the same delta. Legitimate duplicate values (e.g., [1, 1]) are preserved correctly.
         const existingSlice = valtioProxy.slice(
           position,
           position + converted.length,
