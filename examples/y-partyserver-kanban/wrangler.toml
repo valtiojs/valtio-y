@@ -1,0 +1,12 @@
+name = "y-partyserver-kanban"
+main = "server/index.ts"
+compatibility_date = "2024-01-01"
+
+[durable_objects]
+bindings = [
+  { name = "KANBAN_DO", class_name = "KanbanDurableObject" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["KanbanDurableObject"]

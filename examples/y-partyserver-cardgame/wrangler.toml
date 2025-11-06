@@ -1,0 +1,12 @@
+name = "y-partyserver-cardgame"
+main = "server/index.ts"
+compatibility_date = "2024-01-01"
+
+[durable_objects]
+bindings = [
+  { name = "CARDGAME_DO", class_name = "CardGameDurableObject" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = ["CardGameDurableObject"]
