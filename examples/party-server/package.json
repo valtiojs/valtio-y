@@ -1,0 +1,18 @@
+{
+  "name": "valtio-y-party-server",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "y-partyserver": "latest",
+    "yjs": "latest"
+  },
+  "devDependencies": {
+    "partykit": "latest",
+    "typescript": "latest"
+  },
+  "scripts": {
+    "dev": "partykit dev",
+    "deploy": "partykit deploy"
+  }
+}

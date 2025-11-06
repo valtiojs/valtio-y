@@ -1,0 +1,6 @@
+{
+  "name": "valtio-y-examples",
+  "main": "server.ts",
+  "port": 1999,
+  "serve": "../"
+}
