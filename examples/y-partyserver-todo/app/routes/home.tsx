@@ -86,9 +86,10 @@ export default function Home() {
 
   // Initialize Yjs provider using the hook
   const provider = useYProvider({
-    host: typeof window !== "undefined" && window.location.hostname === "localhost"
-      ? "localhost:8788"
-      : undefined,
+    host:
+      typeof window !== "undefined" && window.location.hostname === "localhost"
+        ? "localhost:8788"
+        : undefined,
     room: ROOM_NAME,
     party: PARTY_NAME,
     doc: yDoc,
