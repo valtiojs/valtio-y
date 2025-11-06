@@ -77,7 +77,7 @@ describe("Multiple Root Proxies", () => {
 
     // Verify Y structures are separate
     expect(doc.getMap("settings").get("theme")).toBe("dark");
-    expect(doc.getArray("tasks").length).toBe(2);
+    expect(doc.getArray("tasks")).toHaveLength(2);
     expect(doc.getMap("metadata").get("version")).toBe(1);
   });
 
