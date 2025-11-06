@@ -616,4 +616,50 @@ describe("Stress Tests", () => {
       expect(proxy[49]![20]!.value).toBe(10049);
     });
   });
+
+  describe("Provider Stress", () => {
+    it("should handle rapid provider disconnect/reconnect cycles", async () => {
+      const docs = Array.from({ length: 2 }, () => new Y.Doc());
+      const proxies = docs.map((doc) =>
+        createYjsProxy<{ value: number }>(doc, {
+          getRoot: (d) => d.getMap("root"),
+        }),
+      );
+
+      // Set up connection that can be toggled
+      let connected = true;
+      const relay = (update: Uint8Array, origin: number) => {
+        if (connected) {
+          docs.forEach((doc, idx) => {
+            if (idx !== origin) {
+              Y.applyUpdate(doc, update);
+            }
+          });
+        }
+      };
+
+      docs.forEach((doc, idx) => {
+        doc.on("update", (update: Uint8Array) => relay(update, idx));
+      });
+
+      // Simulate 100 cycles of: update → disconnect → reconnect
+      for (let i = 0; i < 100; i++) {
+        proxies[0]!.proxy.value = i;
+        connected = false; // Disconnect
+        await waitMicrotask();
+
+        proxies[1]!.proxy.value = i + 1000;
+        connected = true; // Reconnect
+        await waitMicrotask();
+
+        // Force sync
+        Y.applyUpdate(docs[0]!, Y.encodeStateAsUpdate(docs[1]!));
+        Y.applyUpdate(docs[1]!, Y.encodeStateAsUpdate(docs[0]!));
+        await waitMicrotask();
+      }
+
+      // Both should converge to same value (CRDT ensures eventual consistency)
+      expect(proxies[0]!.proxy.value).toBe(proxies[1]!.proxy.value);
+    });
+  });
 });
