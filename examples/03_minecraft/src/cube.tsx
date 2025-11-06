@@ -8,16 +8,32 @@ import { useBox, type BoxProps, type Triplet } from "@react-three/cannon";
 import { useSnapshot } from "valtio";
 import * as Y from "yjs";
 import { createYjsProxy } from "valtio-y";
-import { WebrtcProvider } from "y-webrtc";
+import YProvider from "y-partyserver/provider";
 import dirt from "./assets/dirt.jpg";
 
 const ydoc = new Y.Doc();
 
-const provider = new WebrtcProvider("minecraft-valtio-y-demo-3", ydoc, {
-  signaling: ["ws://localhost:4444"],
+// Y-PartyServer configuration
+const getPartyHost = () => {
+  if (typeof window === "undefined") return "localhost:8788";
+  return window.location.hostname === "localhost"
+    ? "localhost:8788"
+    : window.location.host;
+};
+
+const ROOM_NAME = "minecraft-room";
+const PARTY_NAME = "y-doc-server"; // PartyServer converts YDocServer -> y-doc-server
+
+const host = getPartyHost();
+const provider = new YProvider(host, ROOM_NAME, ydoc, {
+  connect: true,
+  party: PARTY_NAME,
 });
 
-// (optional) attach provider event logs when debugging connectivity
+console.log("[valtio-y] Creating YProvider");
+console.log("[valtio-y] Host:", host);
+console.log("[valtio-y] Party:", PARTY_NAME);
+console.log("[valtio-y] Room:", ROOM_NAME);
 
 const { proxy: state, bootstrap } = createYjsProxy<{
   cubes?: [number, number, number][];

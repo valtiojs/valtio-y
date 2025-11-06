@@ -7,12 +7,13 @@
     "@react-three/cannon": "latest",
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",
+    "partyserver": "^0.0.75",
     "react": "latest",
     "react-dom": "latest",
     "three": "latest",
     "valtio": "latest",
     "valtio-y": "workspace:*",
-    "y-webrtc": "latest",
+    "y-partyserver": "^0.0.51",
     "yjs": "latest"
   },
   "devDependencies": {
@@ -20,10 +21,13 @@
     "@types/react-dom": "latest",
     "@types/three": "latest",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "latest",
+    "wrangler": "^4.44.0"
   },
   "scripts": {
-    "dev": "PORT=4444 node node_modules/y-webrtc/bin/server.js & vite",
+    "dev": "bun run dev:y-party & bun run dev:app",
+    "dev:app": "vite",
+    "dev:y-party": "wrangler dev --config wrangler.y-party.jsonc --port 8788",
     "typecheck": "tsc --noEmit"
   }
 }

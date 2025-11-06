@@ -1,0 +1,31 @@
+/**
+ * Wrangler configuration for the Y-Party worker (Durable Objects)
+ * This worker runs standalone and clients connect to it via WebSocket
+ */
+{
+	"$schema": "node_modules/wrangler/config-schema.json",
+	"name": "minecraft-y-party-worker",
+	"compatibility_date": "2025-04-04",
+	"main": "./workers/y-party-worker.ts",
+	/**
+	 * Durable Objects
+	 */
+	"durable_objects": {
+		"bindings": [
+			{
+				"name": "YDocServer",
+				"class_name": "YDocServer",
+				"script_name": "minecraft-y-party-worker"
+			}
+		]
+	},
+	/**
+	 * Migrations - required for Durable Objects
+	 */
+	"migrations": [
+		{
+			"tag": "v1",
+			"new_classes": ["YDocServer"]
+		}
+	]
+}
