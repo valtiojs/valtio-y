@@ -156,27 +156,58 @@ state.filter = "all";
 
 ---
 
-## Understanding Bootstrap
+## Understanding Initial Sync and Bootstrap
 
-The `bootstrap()` function safely initializes state when using network providers.
+The critical challenge: **ensuring all clients start in sync**. valtio-y handles synchronization automatically after initial sync, but you must get that first sync right.
 
-### The Problem
+### The Problem: Initial Sync
 
 ```typescript
-// ❌ WRONG: Overwrites server data
+// ❌ WRONG: Race condition with server sync
 const { proxy: state } = createYjsProxy<AppState>(ydoc, {
   getRoot: (doc) => doc.getMap("root"),
 });
 
-state.todos = []; // Deletes existing data from other clients!
+state.todos = []; // Might overwrite server data OR get overwritten!
 ```
 
-When you connect to a server that already has data, direct assignment overwrites everything. This destroys other users' work.
+**What goes wrong:**
+- You set `state.todos = []` immediately
+- Server has existing data and syncs it shortly after
+- Result: Your initialization gets overwritten, OR you overwrite server data
+- Clients end up out of sync from the start
 
-### The Solution
+### The Best Solution: Server-Side Initial State
+
+**Recommended approach:** Set initial state on the server, clients auto-sync:
 
 ```typescript
-// ✅ CORRECT: Safe initialization
+// Server (if you have control)
+const rootMap = ydoc.getMap("root");
+if (rootMap.size === 0) {
+  rootMap.set("todos", new Y.Array());
+  rootMap.set("filter", "all");
+}
+
+// Client - just connect, no initialization needed!
+const { proxy: state } = createYjsProxy<AppState>(ydoc, {
+  getRoot: (doc) => doc.getMap("root"),
+});
+// State automatically syncs from server ✓
+```
+
+**Why this is best:**
+- Single source of truth (the server)
+- No race conditions
+- All clients guaranteed to start with same state
+- No client-side initialization logic needed
+
+### When You Can't Control the Server: bootstrap()
+
+When server-side initialization isn't possible, use `bootstrap()` to safely initialize from the client:
+
+```typescript
+// YOU wait for sync, then call bootstrap
 provider.on("synced", () => {
   bootstrap({
     todos: [],
@@ -185,47 +216,61 @@ provider.on("synced", () => {
 });
 ```
 
-**How bootstrap works:**
-1. Waits for the provider's "synced" event
-2. Checks if the root structure is empty
-3. If empty → writes your initial data
-4. If not empty → does nothing (preserves existing data)
+**What bootstrap does:**
+1. Checks if the root structure is empty
+2. If empty → writes your initial data
+3. If not empty → does nothing (preserves existing data)
 
-### When to Use Bootstrap
+**Important:** `bootstrap()` doesn't wait for you—YOU must wait for the "synced" event before calling it. This ensures you've received any existing server state first.
 
-**Use `bootstrap()` when:**
-- ✅ Using network providers (WebSocket, WebRTC, PartyKit)
-- ✅ Multiple clients connecting to the same room
-- ✅ Server might have existing data
+### When to Use What
 
-**Use direct assignment when:**
+**Server-side initialization (best):**
+- ✅ You control the server
+- ✅ Want guaranteed consistency
+- ✅ Single source of truth
+
+**Client-side with bootstrap():**
+- ✅ Can't modify server (using third-party provider)
+- ✅ Serverless setup (PartyKit, etc.)
+- ✅ Need to initialize from client
+
+**Direct assignment (rare):**
 - ✅ Local-only app (no network sync)
-- ✅ You're certain the document is empty
-- ✅ You want to forcefully overwrite (rare)
+- ✅ Testing/development
+- ✅ You want to forcefully overwrite everything
 
 ### Bootstrap Examples
 
 ```typescript
-// Simple initialization
-bootstrap({
-  todos: [],
-  filter: "all",
+// Wait for sync, then bootstrap
+provider.on("synced", () => {
+  bootstrap({
+    todos: [],
+    filter: "all",
+  });
 });
 
 // With default data
-bootstrap({
-  todos: [
-    { id: "1", text: "Welcome to valtio-y!", done: false },
-  ],
-  filter: "all",
+provider.on("synced", () => {
+  bootstrap({
+    todos: [{ id: "1", text: "Welcome!", done: false }],
+    filter: "all",
+  });
 });
 
-// Manual check (alternative to bootstrap)
-if (Object.keys(state).length === 0) {
-  state.todos = [];
-  state.filter = "all";
-}
+// Manual check (equivalent to bootstrap)
+provider.on("synced", () => {
+  if (Object.keys(state).length === 0) {
+    state.todos = [];
+    state.filter = "all";
+  }
+});
 ```
+
+### The Key Insight
+
+valtio-y handles **all synchronization automatically** after the initial sync. The only thing you need to carefully consider is how clients get their initial state. Use server-side initialization when possible, or `bootstrap()` inside the "synced" event when not. After that, just mutate `state` naturally—valtio-y does the rest.
 
 ---
 
