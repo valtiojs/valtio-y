@@ -251,7 +251,7 @@ describe("UndoManager integration", () => {
 
   describe("Configuration options", () => {
     it("accepts custom captureTimeout", async () => {
-      const { proxy,  undoState, manager } = createYjsProxy<{
+      const { proxy, undoState, manager } = createYjsProxy<{
         count?: number;
       }>(doc, {
         getRoot: (d) => d.getMap("state"),
@@ -510,7 +510,9 @@ describe("UndoManager integration", () => {
       // These should not exist (TypeScript will catch this at compile time)
       expect((result as unknown as { undo?: unknown }).undo).toBe(undefined);
       expect((result as unknown as { redo?: unknown }).redo).toBe(undefined);
-      expect((result as unknown as { undoState?: unknown }).undoState).toBe(undefined);
+      expect((result as unknown as { undoState?: unknown }).undoState).toBe(
+        undefined,
+      );
     });
   });
 
