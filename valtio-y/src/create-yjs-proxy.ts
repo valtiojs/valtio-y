@@ -1,4 +1,5 @@
 import * as Y from "yjs";
+import { proxy as valtioProxy } from "valtio";
 import { getOrCreateValtioProxy } from "./bridge/valtio-bridge";
 import { setupSyncListener } from "./synchronizer";
 import {
@@ -12,7 +13,62 @@ import {
   reconcileValtioArray,
   reconcileValtioMap,
 } from "./reconcile/reconciler";
+import { initializeValtioYjsIntegration } from "./core/valtio-y-integration";
 import type { LogLevel } from "./core/logger";
+
+/**
+ * Configuration options for the UndoManager.
+ */
+export interface UndoManagerOptions {
+  /**
+   * Time window to group operations into a single undo step (default: 500ms).
+   * Operations within this window are merged together.
+   *
+   * @default 500
+   *
+   * @example
+   * ```typescript
+   * captureTimeout: 1000  // Group operations within 1 second
+   * ```
+   */
+  captureTimeout?: number;
+
+  /**
+   * Which transaction origins to track for undo/redo.
+   *
+   * @default new Set([VALTIO_Y_ORIGIN]) - Only track local valtio-y changes
+   *
+   * In collaborative apps, you typically want to undo only YOUR changes, not remote users' changes.
+   * The default setting achieves this by only tracking changes with the VALTIO_Y_ORIGIN.
+   *
+   * Set to `undefined` to track ALL changes (including remote users).
+   *
+   * @example Track only local changes (default)
+   * ```typescript
+   * trackedOrigins: new Set([VALTIO_Y_ORIGIN])
+   * ```
+   *
+   * @example Track all changes (including remote)
+   * ```typescript
+   * trackedOrigins: undefined
+   * ```
+   */
+  trackedOrigins?: Set<any>;
+
+  /**
+   * Optional filter function to exclude certain items from undo/redo.
+   * Return `false` to exclude an item from the undo stack.
+   *
+   * @example
+   * ```typescript
+   * deleteFilter: (item) => {
+   *   // Don't track temporary data
+   *   return item.content.type !== 'TemporaryData';
+   * }
+   * ```
+   */
+  deleteFilter?: (item: Y.Item) => boolean;
+}
 
 /**
  * Options for creating a Y.js-backed Valtio proxy.
@@ -75,7 +131,67 @@ export interface CreateYjsProxyOptions<_T> {
    * @see https://github.com/valtiojs/valtio-y/blob/main/guides/structuring-your-app.md
    */
   getRoot: (doc: Y.Doc) => Y.Map<unknown> | Y.Array<unknown>;
+
+  /**
+   * Enable undo/redo functionality.
+   *
+   * The UndoManager tracks changes to the same scope as `getRoot`.
+   * By default, only local valtio-y changes are tracked (not remote users).
+   *
+   * @default undefined (disabled)
+   *
+   * @example Enable with defaults
+   * ```typescript
+   * undoManager: true
+   * // Tracks: Only local valtio-y changes
+   * // Scope: Whatever getRoot returns
+   * // Timeout: 500ms
+   * ```
+   *
+   * @example Configure options
+   * ```typescript
+   * undoManager: {
+   *   captureTimeout: 1000,  // Group operations within 1 second
+   *   trackedOrigins: new Set([VALTIO_Y_ORIGIN])  // Only local changes
+   * }
+   * ```
+   *
+   * @example Track all changes (including remote)
+   * ```typescript
+   * undoManager: {
+   *   trackedOrigins: undefined  // Track ALL origins
+   * }
+   * ```
+   *
+   * @example Advanced: Provide your own UndoManager instance
+   * ```typescript
+   * const undoManager = new Y.UndoManager(ydoc.getMap("root"), {
+   *   deleteFilter: (item) => item.content.type !== 'temp'
+   * });
+   *
+   * createYjsProxy(ydoc, {
+   *   getRoot: (doc) => doc.getMap("root"),  // ⚠️ Must match UndoManager scope!
+   *   undoManager: undoManager
+   * });
+   * ```
+   *
+   * ⚠️ **WARNING:** When passing an UndoManager instance, YOU are responsible for ensuring
+   * the scope matches `getRoot`. We cannot validate this at runtime.
+   */
+  undoManager?: boolean | UndoManagerOptions | Y.UndoManager;
+
   logLevel?: LogLevel;
+}
+
+/**
+ * Reactive state for undo/redo functionality.
+ * Use with Valtio's useSnapshot() to get reactive updates.
+ */
+export interface UndoRedoState {
+  /** Whether undo is available */
+  canUndo: boolean;
+  /** Whether redo is available */
+  canRedo: boolean;
 }
 
 /**
@@ -88,10 +204,48 @@ export interface YjsProxy<T> {
   bootstrap: (data?: T) => void;
 }
 
+/**
+ * Extended return type when UndoManager is enabled.
+ * Includes undo/redo functionality in addition to the base proxy.
+ */
+export interface YjsProxyWithUndo<T> extends YjsProxy<T> {
+  /** Perform undo operation if available */
+  undo: () => void;
+  /** Perform redo operation if available */
+  redo: () => void;
+  /** Reactive Valtio proxy with canUndo/canRedo state. Use with useSnapshot(). */
+  undoState: UndoRedoState;
+  /** Stop capturing current operation (force new undo step) */
+  stopCapturing: () => void;
+  /** Clear all undo/redo history */
+  clearHistory: () => void;
+  /** The underlying Yjs UndoManager instance for advanced usage */
+  manager: Y.UndoManager;
+}
+
+// Overload: with undoManager
+export function createYjsProxy<T extends object>(
+  doc: Y.Doc,
+  options: CreateYjsProxyOptions<T> & {
+    undoManager: boolean | UndoManagerOptions | Y.UndoManager;
+  },
+): YjsProxyWithUndo<T>;
+
+// Overload: without undoManager
 export function createYjsProxy<T extends object>(
   doc: Y.Doc,
   options: CreateYjsProxyOptions<T>,
-): YjsProxy<T> {
+): YjsProxy<T>;
+
+// Implementation
+export function createYjsProxy<T extends object>(
+  doc: Y.Doc,
+  options: CreateYjsProxyOptions<T>,
+): YjsProxy<T> | YjsProxyWithUndo<T> {
+  // Initialize Valtio customizations for Y.js compatibility
+  // This must happen before any proxies are created
+  initializeValtioYjsIntegration();
+
   const { getRoot } = options;
   const yRoot = getRoot(doc);
 
@@ -184,7 +338,86 @@ export function createYjsProxy<T extends object>(
     }
   }
 
-  // 4. Return the proxy, dispose, and bootstrap function.
+  // 4. Set up UndoManager if requested
+  if (options.undoManager) {
+    let manager: Y.UndoManager;
+
+    if (options.undoManager instanceof Y.UndoManager) {
+      // Advanced: User provided instance
+      manager = options.undoManager;
+    } else {
+      // Standard: We create it
+      const config =
+        options.undoManager === true
+          ? {
+              captureTimeout: 500,
+              trackedOrigins: new Set([VALTIO_Y_ORIGIN]),
+            }
+          : {
+              captureTimeout: options.undoManager.captureTimeout ?? 500,
+              trackedOrigins:
+                options.undoManager.trackedOrigins ??
+                new Set([VALTIO_Y_ORIGIN]),
+              deleteFilter: options.undoManager.deleteFilter,
+            };
+
+      manager = new Y.UndoManager(yRoot, config);
+    }
+
+    // Create reactive Valtio proxy for undo state
+    const undoState = valtioProxy<UndoRedoState>({
+      canUndo: false,
+      canRedo: false,
+    });
+
+    const updateUndoState = () => {
+      undoState.canUndo = manager.canUndo();
+      undoState.canRedo = manager.canRedo();
+    };
+
+    // Subscribe to UndoManager events
+    manager.on("stack-item-added", updateUndoState);
+    manager.on("stack-item-popped", updateUndoState);
+    manager.on("stack-cleared", updateUndoState);
+
+    // Set initial state
+    updateUndoState();
+
+    // Dispose function that cleans up both sync and undo manager
+    const disposeWithUndo = () => {
+      disposeSync();
+      coordinator.disposeAll();
+      manager.off("stack-item-added", updateUndoState);
+      manager.off("stack-item-popped", updateUndoState);
+      manager.off("stack-cleared", updateUndoState);
+    };
+
+    // Return with undo/redo functionality
+    return {
+      proxy: stateProxy as T,
+      dispose: disposeWithUndo,
+      bootstrap,
+      undo: () => {
+        if (manager.canUndo()) {
+          manager.undo();
+        }
+      },
+      redo: () => {
+        if (manager.canRedo()) {
+          manager.redo();
+        }
+      },
+      undoState,
+      stopCapturing: () => manager.stopCapturing(),
+      clearHistory: () => {
+        manager.clear();
+        updateUndoState();
+      },
+      manager,
+    };
+  }
+
+  // 5. Return the proxy, dispose, and bootstrap function (without undo).
   const dispose = () => {
     disposeSync();
     coordinator.disposeAll();

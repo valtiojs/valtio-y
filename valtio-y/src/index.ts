@@ -6,7 +6,13 @@
 
 // Main API
 export { createYjsProxy } from "./create-yjs-proxy";
-export type { CreateYjsProxyOptions, YjsProxy } from "./create-yjs-proxy";
+export type {
+  CreateYjsProxyOptions,
+  YjsProxy,
+  YjsProxyWithUndo,
+  UndoManagerOptions,
+  UndoRedoState,
+} from "./create-yjs-proxy";
 
 // Constants
 export { VALTIO_Y_ORIGIN } from "./core/constants";
