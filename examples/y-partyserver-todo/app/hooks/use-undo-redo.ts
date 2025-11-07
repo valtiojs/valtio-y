@@ -1,5 +1,9 @@
 import { useSnapshot } from "valtio";
-import { undo as performUndo, redo as performRedo, uiState } from "../yjs-setup";
+import {
+  undo as performUndo,
+  redo as performRedo,
+  uiState,
+} from "../yjs-setup";
 
 /**
  * Custom hook for reactive undo/redo state

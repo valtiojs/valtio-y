@@ -232,12 +232,22 @@ export function initUndoManager() {
 
   // Listen to stack changes and update the reactive UI state
   undoManager.on("stack-item-added", () => {
-    console.log("[undo/redo] Stack item added, canUndo:", undoManager?.canUndo(), "canRedo:", undoManager?.canRedo());
+    console.log(
+      "[undo/redo] Stack item added, canUndo:",
+      undoManager?.canUndo(),
+      "canRedo:",
+      undoManager?.canRedo(),
+    );
     updateUndoRedoState();
   });
 
   undoManager.on("stack-item-popped", () => {
-    console.log("[undo/redo] Stack item popped, canUndo:", undoManager?.canUndo(), "canRedo:", undoManager?.canRedo());
+    console.log(
+      "[undo/redo] Stack item popped, canUndo:",
+      undoManager?.canUndo(),
+      "canRedo:",
+      undoManager?.canRedo(),
+    );
     updateUndoRedoState();
   });
 
