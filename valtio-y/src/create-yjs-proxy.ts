@@ -1,5 +1,4 @@
 import * as Y from "yjs";
-import { proxy as valtioProxy } from "valtio";
 import { getOrCreateValtioProxy } from "./bridge/valtio-bridge";
 import { setupSyncListener } from "./synchronizer";
 import {
@@ -15,60 +14,14 @@ import {
 } from "./reconcile/reconciler";
 import { initializeValtioYjsIntegration } from "./core/valtio-y-integration";
 import type { LogLevel } from "./core/logger";
+import {
+  setupUndoManager,
+  type UndoManagerOptions,
+  type UndoRedoState,
+} from "./undo/setup-undo-manager";
 
-/**
- * Configuration options for the UndoManager.
- */
-export interface UndoManagerOptions {
-  /**
-   * Time window to group operations into a single undo step (default: 500ms).
-   * Operations within this window are merged together.
-   *
-   * @default 500
-   *
-   * @example
-   * ```typescript
-   * captureTimeout: 1000  // Group operations within 1 second
-   * ```
-   */
-  captureTimeout?: number;
-
-  /**
-   * Which transaction origins to track for undo/redo.
-   *
-   * @default new Set([VALTIO_Y_ORIGIN]) - Only track local valtio-y changes
-   *
-   * In collaborative apps, you typically want to undo only YOUR changes, not remote users' changes.
-   * The default setting achieves this by only tracking changes with the VALTIO_Y_ORIGIN.
-   *
-   * Set to `undefined` to track ALL changes (including remote users).
-   *
-   * @example Track only local changes (default)
-   * ```typescript
-   * trackedOrigins: new Set([VALTIO_Y_ORIGIN])
-   * ```
-   *
-   * @example Track all changes (including remote)
-   * ```typescript
-   * trackedOrigins: undefined
-   * ```
-   */
-  trackedOrigins?: Set<any>;
-
-  /**
-   * Optional filter function to exclude certain items from undo/redo.
-   * Return `false` to exclude an item from the undo stack.
-   *
-   * @example
-   * ```typescript
-   * deleteFilter: (item) => {
-   *   // Don't track temporary data
-   *   return item.content.type !== 'TemporaryData';
-   * }
-   * ```
-   */
-  deleteFilter?: (item: Y.Item) => boolean;
-}
+// Re-export for convenience
+export type { UndoManagerOptions, UndoRedoState };
 
 /**
  * Options for creating a Y.js-backed Valtio proxy.
@@ -181,17 +134,6 @@ export interface CreateYjsProxyOptions<_T> {
   undoManager?: boolean | UndoManagerOptions | Y.UndoManager;
 
   logLevel?: LogLevel;
-}
-
-/**
- * Reactive state for undo/redo functionality.
- * Use with Valtio's useSnapshot() to get reactive updates.
- */
-export interface UndoRedoState {
-  /** Whether undo is available */
-  canUndo: boolean;
-  /** Whether redo is available */
-  canRedo: boolean;
 }
 
 /**
@@ -340,56 +282,16 @@ export function createYjsProxy<T extends object>(
 
   // 4. Set up UndoManager if requested
   if (options.undoManager) {
-    let manager: Y.UndoManager;
-
-    if (options.undoManager instanceof Y.UndoManager) {
-      // Advanced: User provided instance
-      manager = options.undoManager;
-    } else {
-      // Standard: We create it
-      const config =
-        options.undoManager === true
-          ? {
-              captureTimeout: 500,
-              trackedOrigins: new Set([VALTIO_Y_ORIGIN]),
-            }
-          : {
-              captureTimeout: options.undoManager.captureTimeout ?? 500,
-              trackedOrigins:
-                options.undoManager.trackedOrigins ??
-                new Set([VALTIO_Y_ORIGIN]),
-              deleteFilter: options.undoManager.deleteFilter,
-            };
-
-      manager = new Y.UndoManager(yRoot, config);
-    }
-
-    // Create reactive Valtio proxy for undo state
-    const undoState = valtioProxy<UndoRedoState>({
-      canUndo: false,
-      canRedo: false,
-    });
-
-    const updateUndoState = () => {
-      undoState.canUndo = manager.canUndo();
-      undoState.canRedo = manager.canRedo();
-    };
-
-    // Subscribe to UndoManager events
-    manager.on("stack-item-added", updateUndoState);
-    manager.on("stack-item-popped", updateUndoState);
-    manager.on("stack-cleared", updateUndoState);
-
-    // Set initial state
-    updateUndoState();
+    const { manager, undoState, updateState, cleanup } = setupUndoManager(
+      yRoot,
+      options.undoManager,
+    );
 
     // Dispose function that cleans up both sync and undo manager
     const disposeWithUndo = () => {
       disposeSync();
       coordinator.disposeAll();
-      manager.off("stack-item-added", updateUndoState);
-      manager.off("stack-item-popped", updateUndoState);
-      manager.off("stack-cleared", updateUndoState);
+      cleanup();
     };
 
     // Return with undo/redo functionality
@@ -411,7 +313,7 @@ export function createYjsProxy<T extends object>(
       stopCapturing: () => manager.stopCapturing(),
       clearHistory: () => {
         manager.clear();
-        updateUndoState();
+        updateState();
       },
       manager,
     };
