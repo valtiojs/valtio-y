@@ -43,7 +43,7 @@ export interface UndoManagerOptions {
    * trackedOrigins: undefined
    * ```
    */
-  trackedOrigins?: Set<any>;
+  trackedOrigins?: Set<unknown>;
 
   /**
    * Optional filter function to exclude certain items from undo/redo.

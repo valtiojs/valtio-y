@@ -2,7 +2,6 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 import * as Y from "yjs";
 import { setupUndoManager } from "./setup-undo-manager";
 import { VALTIO_Y_ORIGIN } from "../core/constants";
-import { useSnapshot } from "valtio";
 
 describe("setupUndoManager", () => {
   let doc: Y.Doc;
@@ -220,7 +219,7 @@ describe("setupUndoManager", () => {
 
   describe("Event listeners", () => {
     it("listens to stack-item-added event", () => {
-      const { manager, undoState } = setupUndoManager(yRoot, true);
+      const { undoState } = setupUndoManager(yRoot, true);
 
       expect(undoState.canUndo).toBe(false);
 

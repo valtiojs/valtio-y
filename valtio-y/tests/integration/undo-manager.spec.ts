@@ -1,7 +1,6 @@
 import { describe, it, expect, beforeEach } from "vitest";
 import * as Y from "yjs";
 import { createYjsProxy, VALTIO_Y_ORIGIN } from "../../src/index";
-import { useSnapshot } from "valtio";
 
 const waitMicrotask = () => Promise.resolve();
 
@@ -252,7 +251,7 @@ describe("UndoManager integration", () => {
 
   describe("Configuration options", () => {
     it("accepts custom captureTimeout", async () => {
-      const { proxy, undo, undoState, manager } = createYjsProxy<{
+      const { proxy,  undoState, manager } = createYjsProxy<{
         count?: number;
       }>(doc, {
         getRoot: (d) => d.getMap("state"),
@@ -509,9 +508,9 @@ describe("UndoManager integration", () => {
       });
 
       // These should not exist (TypeScript will catch this at compile time)
-      expect((result as any).undo).toBe(undefined);
-      expect((result as any).redo).toBe(undefined);
-      expect((result as any).undoState).toBe(undefined);
+      expect((result as unknown as { undo?: unknown }).undo).toBe(undefined);
+      expect((result as unknown as { redo?: unknown }).redo).toBe(undefined);
+      expect((result as unknown as { undoState?: unknown }).undoState).toBe(undefined);
     });
   });
 
@@ -575,7 +574,7 @@ describe("UndoManager integration", () => {
       await waitMicrotask();
 
       expect(proxy.todos).toHaveLength(1);
-      expect(proxy.todos[0].text).toBe("Task 1");
+      expect(proxy.todos[0]!.text).toBe("Task 1");
     });
 
     it("handles rapid sequential changes", async () => {
