@@ -36,15 +36,9 @@ import {
   cleanupUser,
   proxy,
   initUndoManager,
-  undo,
-  redo,
-  canUndo,
-  canRedo,
-  getSyncStatus,
-  subscribeSyncStatus,
-  subscribeUndoRedo,
 } from "../yjs-setup";
-import type { Tool, SyncStatus } from "../types";
+import type { Tool } from "../types";
+import { useUndoRedo, useSyncStatus } from "../hooks";
 
 // Generate a random user ID and color for this session
 const USER_ID = `user-${Math.random().toString(36).substr(2, 9)}`;
@@ -78,11 +72,12 @@ export default function Home() {
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [fillEnabled, setFillEnabled] = useState(false);
   const [selectedShapeId, setSelectedShapeId] = useState<string>();
-  const [undoEnabled, setUndoEnabled] = useState(false);
-  const [redoEnabled, setRedoEnabled] = useState(false);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>("offline");
   const [zoom, setZoom] = useState(100);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+  // Use custom hooks for reactive undo/redo and sync status
+  const { undo, redo, canUndo, canRedo } = useUndoRedo();
+  const syncStatus = useSyncStatus();
 
   // Initialize Yjs provider using the hook
   const provider = useYProvider({
@@ -127,44 +122,6 @@ export default function Home() {
     }
   }, []);
 
-  const handleUndo = useCallback(() => {
-    undo();
-    updateUndoRedoState();
-  }, []);
-
-  const handleRedo = useCallback(() => {
-    redo();
-    updateUndoRedoState();
-  }, []);
-
-  const updateUndoRedoState = useCallback(() => {
-    setUndoEnabled(canUndo());
-    setRedoEnabled(canRedo());
-  }, []);
-
-  // Subscribe to undo/redo stack changes
-  useEffect(() => {
-    const unsubscribe = subscribeUndoRedo(() => {
-      updateUndoRedoState();
-    });
-
-    // Initial state
-    updateUndoRedoState();
-
-    return unsubscribe;
-  }, [updateUndoRedoState]);
-
-  // Subscribe to sync status changes
-  useEffect(() => {
-    setSyncStatus(getSyncStatus());
-
-    const unsubscribe = subscribeSyncStatus(() => {
-      setSyncStatus(getSyncStatus());
-    });
-
-    return unsubscribe;
-  }, []);
-
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -185,7 +142,7 @@ export default function Home() {
       // Undo: Ctrl+Z or Cmd+Z
       if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
         e.preventDefault();
-        handleUndo();
+        undo();
       }
       // Redo: Ctrl+Y or Cmd+Shift+Z or Ctrl+Shift+Z
       else if (
@@ -193,7 +150,7 @@ export default function Home() {
         ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
       ) {
         e.preventDefault();
-        handleRedo();
+        redo();
       }
       // Tool shortcuts
       else if (e.key === "v" || e.key === "V") {
@@ -211,7 +168,7 @@ export default function Home() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [handleUndo, handleRedo, showKeyboardShortcuts]);
+  }, [undo, redo, showKeyboardShortcuts]);
 
   // Zoom controls
   const handleZoomIn = useCallback(() => {
@@ -287,10 +244,10 @@ export default function Home() {
               {/* Undo/Redo Buttons */}
               <div className="flex items-center gap-2 border-r border-gray-300 pr-4">
                 <button
-                  onClick={handleUndo}
-                  disabled={!undoEnabled}
+                  onClick={undo}
+                  disabled={!canUndo}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-md border transition-all ${
-                    undoEnabled
+                    canUndo
                       ? "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
                       : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                   }`}
@@ -300,10 +257,10 @@ export default function Home() {
                   <span className="text-sm font-medium">Undo</span>
                 </button>
                 <button
-                  onClick={handleRedo}
-                  disabled={!redoEnabled}
+                  onClick={redo}
+                  disabled={!canRedo}
                   className={`flex items-center gap-1.5 px-3 py-2 rounded-md border transition-all ${
-                    redoEnabled
+                    canRedo
                       ? "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
                       : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
                   }`}

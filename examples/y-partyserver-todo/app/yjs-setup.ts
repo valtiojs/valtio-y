@@ -9,7 +9,8 @@
 
 import * as Y from "yjs";
 import YProvider from "y-partyserver/provider";
-import { createYjsProxy } from "valtio-y";
+import { createYjsProxy, VALTIO_Y_ORIGIN } from "valtio-y";
+import { proxy as valtioProxy } from "valtio";
 import type { AppState, SyncStatus } from "./types";
 
 // ============================================================================
@@ -196,43 +197,54 @@ export function getAwarenessUsers(): any[] {
 // UNDO/REDO MANAGER
 // ============================================================================
 
-let undoManager: Y.UndoManager | null = null;
-const undoRedoListeners: Set<() => void> = new Set();
+/**
+ * UI state proxy for reactive undo/redo state
+ * This is a Valtio proxy that components can subscribe to via useSnapshot()
+ */
+export const uiState = valtioProxy({
+  canUndo: false,
+  canRedo: false,
+});
 
-function notifyUndoRedoListeners() {
-  undoRedoListeners.forEach((listener) => listener());
+let undoManager: Y.UndoManager | null = null;
+
+/**
+ * Update the UI state with current undo/redo availability
+ */
+function updateUndoRedoState() {
+  uiState.canUndo = undoManager?.canUndo() ?? false;
+  uiState.canRedo = undoManager?.canRedo() ?? false;
 }
 
 /**
  * Initialize the undo manager for the drawing state
+ *
+ * IMPORTANT: We track VALTIO_Y_ORIGIN because all valtio-y changes
+ * use this origin. This ensures we only track local changes made
+ * through the valtio proxy, not remote changes from other clients.
  */
 export function initUndoManager() {
   const drawingStateMap = yDoc.getMap("drawingState");
 
   undoManager = new Y.UndoManager(drawingStateMap, {
-    trackedOrigins: new Set([yDoc.clientID]),
+    trackedOrigins: new Set([VALTIO_Y_ORIGIN]),
   });
 
-  // Listen to stack changes
+  // Listen to stack changes and update the reactive UI state
   undoManager.on("stack-item-added", () => {
-    notifyUndoRedoListeners();
+    console.log("[undo/redo] Stack item added, canUndo:", undoManager?.canUndo(), "canRedo:", undoManager?.canRedo());
+    updateUndoRedoState();
   });
 
   undoManager.on("stack-item-popped", () => {
-    notifyUndoRedoListeners();
+    console.log("[undo/redo] Stack item popped, canUndo:", undoManager?.canUndo(), "canRedo:", undoManager?.canRedo());
+    updateUndoRedoState();
   });
 
-  return undoManager;
-}
+  // Set initial state
+  updateUndoRedoState();
 
-/**
- * Subscribe to undo/redo stack changes
- */
-export function subscribeUndoRedo(listener: () => void): () => void {
-  undoRedoListeners.add(listener);
-  return () => {
-    undoRedoListeners.delete(listener);
-  };
+  return undoManager;
 }
 
 /**
@@ -241,7 +253,7 @@ export function subscribeUndoRedo(listener: () => void): () => void {
 export function undo() {
   if (undoManager && undoManager.canUndo()) {
     undoManager.undo();
-    notifyUndoRedoListeners();
+    updateUndoRedoState();
     return true;
   }
   return false;
@@ -253,24 +265,10 @@ export function undo() {
 export function redo() {
   if (undoManager && undoManager.canRedo()) {
     undoManager.redo();
-    notifyUndoRedoListeners();
+    updateUndoRedoState();
     return true;
   }
   return false;
-}
-
-/**
- * Check if undo is available
- */
-export function canUndo(): boolean {
-  return undoManager?.canUndo() ?? false;
-}
-
-/**
- * Check if redo is available
- */
-export function canRedo(): boolean {
-  return undoManager?.canRedo() ?? false;
 }
 
 // ============================================================================
