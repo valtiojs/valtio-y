@@ -127,8 +127,6 @@ The research branch relied on a combination of techniques to achieve reactivity 
 
 ### 1. Global Valtio Customization
 
-**File:** `valtio-y/src/core/valtio-y-integration.ts`
-
 We customize Valtio's internal `canProxy` function to never deep-proxy Y.js types:
 
 ```typescript
