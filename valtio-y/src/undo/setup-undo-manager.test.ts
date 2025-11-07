@@ -363,7 +363,9 @@ describe("setupUndoManager", () => {
     });
 
     it("maintains redo stack after multiple undos", () => {
-      const { manager, undoState } = setupUndoManager(yRoot, true);
+      const { manager, undoState } = setupUndoManager(yRoot, {
+        captureTimeout: 0,
+      });
 
       // Add operations
       doc.transact(() => {

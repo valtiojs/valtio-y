@@ -12,6 +12,10 @@ export interface UndoManagerOptions {
    *
    * @default 500
    *
+   * Use 0 when each change should be undoable individually (common for app
+   * state); increase it (for example 500-1000ms) to coalesce rapid edits such
+   * as typing or drawing.
+   *
    * @example
    * ```typescript
    * captureTimeout: 1000  // Group operations within 1 second

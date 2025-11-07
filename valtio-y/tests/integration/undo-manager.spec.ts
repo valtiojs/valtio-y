@@ -51,7 +51,9 @@ describe("UndoManager integration", () => {
         age?: number;
       }>(doc, {
         getRoot: (d) => d.getMap("state"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       proxy.name = "Alice";
@@ -83,7 +85,9 @@ describe("UndoManager integration", () => {
         user?: { name: string; email: string };
       }>(doc, {
         getRoot: (d) => d.getMap("state"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       proxy.user = { name: "Alice", email: "alice@example.com" };
@@ -107,7 +111,9 @@ describe("UndoManager integration", () => {
         temp?: string;
       }>(doc, {
         getRoot: (d) => d.getMap("state"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       proxy.temp = "value";
@@ -131,7 +137,9 @@ describe("UndoManager integration", () => {
     it("enables undo/redo for arrays", async () => {
       const { proxy, undo, redo, undoState } = createYjsProxy<string[]>(doc, {
         getRoot: (d) => d.getArray("items"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       expect(undoState.canUndo).toBe(false);
@@ -158,7 +166,9 @@ describe("UndoManager integration", () => {
     it("tracks array push operations", async () => {
       const { proxy, undo } = createYjsProxy<number[]>(doc, {
         getRoot: (d) => d.getArray("numbers"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       proxy.push(1, 2, 3);
@@ -175,7 +185,9 @@ describe("UndoManager integration", () => {
     it("tracks array splice operations", async () => {
       const { proxy, undo } = createYjsProxy<string[]>(doc, {
         getRoot: (d) => d.getArray("items"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       proxy.push("a", "b", "c");
@@ -195,7 +207,9 @@ describe("UndoManager integration", () => {
     it("tracks array pop operations", async () => {
       const { proxy, undo } = createYjsProxy<string[]>(doc, {
         getRoot: (d) => d.getArray("items"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       proxy.push("a", "b", "c");
@@ -216,7 +230,9 @@ describe("UndoManager integration", () => {
     it("tracks array index assignment", async () => {
       const { proxy, undo } = createYjsProxy<string[]>(doc, {
         getRoot: (d) => d.getArray("items"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       proxy.push("a", "b", "c");
@@ -510,7 +526,9 @@ describe("UndoManager integration", () => {
         };
       }>(doc, {
         getRoot: (d) => d.getMap("state"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       proxy.app = {
@@ -537,7 +555,9 @@ describe("UndoManager integration", () => {
 
       const { proxy, undo } = createYjsProxy<{ todos?: Todo[] }>(doc, {
         getRoot: (d) => d.getMap("state"),
-        undoManager: true,
+        undoManager: {
+          captureTimeout: 0,
+        },
       });
 
       proxy.todos = [];
