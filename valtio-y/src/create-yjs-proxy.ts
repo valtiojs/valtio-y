@@ -287,6 +287,15 @@ export function createYjsProxy<T extends object>(
       options.undoManager,
     );
 
+    // Warn if custom UndoManager instance is provided (scope validation)
+    if (options.undoManager instanceof Y.UndoManager) {
+      coordinator.logger.warn(
+        "UndoManager: Using custom instance. Ensure the UndoManager's scope matches the Y.Map/Y.Array " +
+          "returned by getRoot. Mismatched scopes will cause undo/redo to not work correctly. " +
+          "The scope is the first argument passed to new Y.UndoManager(scope, options).",
+      );
+    }
+
     // Dispose function that cleans up both sync and undo manager
     const disposeWithUndo = () => {
       disposeSync();

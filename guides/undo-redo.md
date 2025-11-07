@@ -142,10 +142,10 @@ const { proxy, undo, redo } = createYjsProxy(ydoc, {
 For advanced features like `deleteFilter`, create your own instance:
 
 ```typescript
-import { UndoManager } from "yjs";
+import * as Y from "yjs";
 import { VALTIO_Y_ORIGIN } from "valtio-y";
 
-const customUndoManager = new UndoManager(ydoc.getMap("state"), {
+const customUndoManager = new Y.UndoManager(ydoc.getMap("state"), {
   trackedOrigins: new Set([VALTIO_Y_ORIGIN]),
   deleteFilter: (item) => {
     // Exclude temporary data from undo
@@ -386,8 +386,8 @@ manager.on('stack-item-popped', (event) => {
 If you prefer manual control, you can create an `UndoManager` separately:
 
 ```typescript
-import { UndoManager } from "yjs";
-import { VALTIO_Y_ORIGIN } from "valtio-y";
+import * as Y from "yjs";
+import { createYjsProxy, VALTIO_Y_ORIGIN } from "valtio-y";
 
 const ydoc = new Y.Doc();
 const { proxy: state } = createYjsProxy<State>(ydoc, {
@@ -396,7 +396,7 @@ const { proxy: state } = createYjsProxy<State>(ydoc, {
 });
 
 // Create UndoManager manually
-const undoManager = new UndoManager(ydoc.getMap("state"), {
+const undoManager = new Y.UndoManager(ydoc.getMap("state"), {
   trackedOrigins: new Set([VALTIO_Y_ORIGIN]),
   captureTimeout: 500
 });
