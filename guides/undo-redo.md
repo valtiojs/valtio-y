@@ -7,6 +7,7 @@ Add undo/redo functionality to your collaborative app using Yjs's built-in `Undo
 The simplest way to add undo/redo is to enable it directly in `createYjsProxy`:
 
 ```typescript
+import * as Y from "yjs";
 import { createYjsProxy } from "valtio-y";
 import { useSnapshot } from "valtio";
 
@@ -16,9 +17,14 @@ type State = {
 
 // Create your Yjs document and proxy with undo/redo enabled
 const ydoc = new Y.Doc();
-const { proxy: state, undo, redo, undoState } = createYjsProxy<State>(ydoc, {
+const {
+  proxy: state,
+  undo,
+  redo,
+  undoState,
+} = createYjsProxy<State>(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
-  undoManager: true,  // ✨ Enable undo/redo
+  undoManager: true, // ✨ Enable undo/redo
 });
 
 // Make some changes
@@ -36,14 +42,19 @@ function MyComponent() {
 
   return (
     <>
-      <button onClick={undo} disabled={!canUndo}>Undo</button>
-      <button onClick={redo} disabled={!canRedo}>Redo</button>
+      <button onClick={undo} disabled={!canUndo}>
+        Undo
+      </button>
+      <button onClick={redo} disabled={!canRedo}>
+        Redo
+      </button>
     </>
   );
 }
 ```
 
 That's it! The `undoManager` option automatically:
+
 - Creates and configures a Yjs `UndoManager`
 - Tracks only local valtio-y changes (not remote users)
 - Provides reactive `undoState` for UI
@@ -58,15 +69,15 @@ When `undoManager` is enabled, `createYjsProxy` returns additional functions:
 ```typescript
 const {
   proxy: state,
-  undo,           // Perform undo
-  redo,           // Perform redo
-  undoState,      // Reactive state { canUndo, canRedo }
-  stopCapturing,  // Force new undo step
-  clearHistory,   // Clear all history
-  manager         // Raw Y.UndoManager instance
+  undo, // Perform undo
+  redo, // Perform redo
+  undoState, // Reactive state { canUndo, canRedo }
+  stopCapturing, // Force new undo step
+  clearHistory, // Clear all history
+  manager, // Raw Y.UndoManager instance
 } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
-  undoManager: true
+  undoManager: true,
 });
 
 // Undo the last change
@@ -118,9 +129,9 @@ Configure how operations are grouped and tracked:
 const { proxy, undo, redo } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
   undoManager: {
-    captureTimeout: 1000,  // Group operations within 1 second
-    trackedOrigins: new Set([VALTIO_Y_ORIGIN])  // Only local changes
-  }
+    captureTimeout: 1000, // Group operations within 1 second
+    trackedOrigins: new Set([VALTIO_Y_ORIGIN]), // Only local changes
+  },
 });
 ```
 
@@ -132,8 +143,8 @@ By default, only local changes are tracked. To undo everything:
 const { proxy, undo, redo } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
   undoManager: {
-    trackedOrigins: undefined  // Track ALL changes (including remote users)
-  }
+    trackedOrigins: undefined, // Track ALL changes (including remote users)
+  },
 });
 ```
 
@@ -149,13 +160,13 @@ const customUndoManager = new Y.UndoManager(ydoc.getMap("state"), {
   trackedOrigins: new Set([VALTIO_Y_ORIGIN]),
   deleteFilter: (item) => {
     // Exclude temporary data from undo
-    return item.content.type !== 'TemporaryData';
-  }
+    return item.content.type !== "TemporaryData";
+  },
 });
 
 const { proxy, undo, redo } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
-  undoManager: customUndoManager  // ⚠️ Scope must match getRoot!
+  undoManager: customUndoManager, // ⚠️ Scope must match getRoot!
 });
 ```
 
@@ -166,6 +177,7 @@ const { proxy, undo, redo } = createYjsProxy(ydoc, {
 ### Basic Example
 
 ```tsx
+import * as Y from "yjs";
 import { createYjsProxy } from "valtio-y";
 import { useSnapshot } from "valtio";
 
@@ -174,9 +186,14 @@ type State = {
 };
 
 const ydoc = new Y.Doc();
-const { proxy: state, undo, redo, undoState } = createYjsProxy<State>(ydoc, {
+const {
+  proxy: state,
+  undo,
+  redo,
+  undoState,
+} = createYjsProxy<State>(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
-  undoManager: true
+  undoManager: true,
 });
 
 function TodoApp() {
@@ -186,8 +203,12 @@ function TodoApp() {
   return (
     <div>
       <div>
-        <button onClick={undo} disabled={!canUndo}>Undo</button>
-        <button onClick={redo} disabled={!canRedo}>Redo</button>
+        <button onClick={undo} disabled={!canUndo}>
+          Undo
+        </button>
+        <button onClick={redo} disabled={!canRedo}>
+          Redo
+        </button>
       </div>
 
       {snap.todos?.map((todo, i) => (
@@ -205,50 +226,6 @@ function TodoApp() {
 }
 ```
 
-### Keyboard Shortcuts
-
-Add Cmd/Ctrl+Z shortcuts:
-
-```tsx
-import { useEffect } from "react";
-
-function useUndoKeyboardShortcuts() {
-  useEffect(() => {
-    const handleKeyDown = (e: KeyboardEvent) => {
-      const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-      const modKey = isMac ? e.metaKey : e.ctrlKey;
-
-      // Undo: Cmd/Ctrl+Z (without Shift)
-      if (modKey && e.key.toLowerCase() === 'z' && !e.shiftKey) {
-        const { canUndo } = undoState;
-        if (canUndo) {
-          e.preventDefault();
-          undo();
-        }
-      }
-
-      // Redo: Cmd/Ctrl+Shift+Z or Cmd/Ctrl+Y
-      if (modKey && ((e.shiftKey && e.key.toLowerCase() === 'z') || e.key.toLowerCase() === 'y')) {
-        const { canRedo } = undoState;
-        if (canRedo) {
-          e.preventDefault();
-          redo();
-        }
-      }
-    };
-
-    window.addEventListener('keydown', handleKeyDown);
-    return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
-}
-
-function App() {
-  useUndoKeyboardShortcuts();
-
-  return <YourUI />;
-}
-```
-
 ## Scoping Undo/Redo
 
 Track only specific parts of your state by creating multiple proxies with separate undo managers:
@@ -262,20 +239,20 @@ type State = {
 // Separate undo for canvas
 const { proxy: canvas, undo: undoCanvas } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getArray("canvas"),
-  undoManager: true
+  undoManager: true,
 });
 
 // Separate undo for chat
 const { proxy: chat, undo: undoChat } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getArray("chat"),
-  undoManager: true
+  undoManager: true,
 });
 
 // Canvas changes don't affect chat undo history and vice versa
-canvas.push({ type: 'rect', x: 0, y: 0 });
+canvas.push({ type: "rect", x: 0, y: 0 });
 undoCanvas(); // Only affects canvas
 
-chat.push({ user: 'Alice', message: 'Hello' });
+chat.push({ user: "Alice", message: "Hello" });
 undoChat(); // Only affects chat
 ```
 
@@ -315,30 +292,9 @@ Configure how long operations are grouped:
 const { proxy, undo, redo } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
   undoManager: {
-    captureTimeout: 1000  // Group operations within 1 second
-  }
+    captureTimeout: 1000, // Group operations within 1 second
+  },
 });
-```
-
-## Common Patterns
-
-### Limit Stack Size
-
-```typescript
-import { useEffect } from "react";
-
-function useLimitUndoStack(maxSize = 50) {
-  useEffect(() => {
-    const handleStackAdded = () => {
-      while (manager.undoStack.length > maxSize) {
-        manager.undoStack.shift();
-      }
-    };
-
-    manager.on('stack-item-added', handleStackAdded);
-    return () => manager.off('stack-item-added', handleStackAdded);
-  }, [maxSize]);
-}
 ```
 
 ### Track Only Local Changes (Multi-User)
@@ -350,7 +306,7 @@ import { VALTIO_Y_ORIGIN } from "valtio-y";
 
 const { proxy, undo } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
-  undoManager: true  // Default: trackedOrigins = new Set([VALTIO_Y_ORIGIN])
+  undoManager: true, // Default: trackedOrigins = new Set([VALTIO_Y_ORIGIN])
 });
 
 // When User A undoes, only User A's changes are undone
@@ -364,17 +320,17 @@ Use the raw `manager` for advanced features:
 ```typescript
 const { manager } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
-  undoManager: true
+  undoManager: true,
 });
 
 // Save cursor location when adding to undo stack
-manager.on('stack-item-added', (event) => {
-  event.stackItem.meta.set('cursor', getCursorPosition());
+manager.on("stack-item-added", (event) => {
+  event.stackItem.meta.set("cursor", getCursorPosition());
 });
 
 // Restore cursor when popping from stack
-manager.on('stack-item-popped', (event) => {
-  const cursor = event.stackItem.meta.get('cursor');
+manager.on("stack-item-popped", (event) => {
+  const cursor = event.stackItem.meta.get("cursor");
   if (cursor) {
     restoreCursorPosition(cursor);
   }
@@ -382,6 +338,8 @@ manager.on('stack-item-popped', (event) => {
 ```
 
 ## Manual Setup (Without createYjsProxy Option)
+
+> ℹ️ Internally, `createYjsProxy` does almost exactly what the following manual setup demonstrates: it creates a `Y.UndoManager`, wraps it with a small Valtio proxy for the reactive `undoState`, and wires up cleanup. The bare Yjs manager exposes `canUndo()` / `canRedo()` as plain methods—there’s no built-in reactive state—so we lean on Valtio to make those values update-friendly. You can always opt out by leaving `undoManager` undefined, then build a fully custom undo flow yourself—passing your own manager back into `createYjsProxy` is supported when you need something more specialized.
 
 If you prefer manual control, you can create an `UndoManager` separately:
 
@@ -391,14 +349,14 @@ import { createYjsProxy, VALTIO_Y_ORIGIN } from "valtio-y";
 
 const ydoc = new Y.Doc();
 const { proxy: state } = createYjsProxy<State>(ydoc, {
-  getRoot: (doc) => doc.getMap("state")
+  getRoot: (doc) => doc.getMap("state"),
   // No undoManager option
 });
 
 // Create UndoManager manually
 const undoManager = new Y.UndoManager(ydoc.getMap("state"), {
   trackedOrigins: new Set([VALTIO_Y_ORIGIN]),
-  captureTimeout: 500
+  captureTimeout: 500,
 });
 
 // Manual state management
@@ -411,9 +369,9 @@ const updateUndoState = () => {
   undoState.canRedo = undoManager.canRedo();
 };
 
-undoManager.on('stack-item-added', updateUndoState);
-undoManager.on('stack-item-popped', updateUndoState);
-undoManager.on('stack-cleared', updateUndoState);
+undoManager.on("stack-item-added", updateUndoState);
+undoManager.on("stack-item-popped", updateUndoState);
+undoManager.on("stack-cleared", updateUndoState);
 
 updateUndoState(); // Initial state
 
@@ -436,34 +394,8 @@ function MyComponent() {
 
 **Recommendation:** Use the `undoManager` option in `createYjsProxy` for simpler setup and automatic cleanup.
 
-## Limitations
-
-**What works:**
-
-- Object properties, arrays, nested updates, deletions
-- All standard array operations (push, pop, splice, etc.)
-- Deep nesting
-
-**What doesn't:**
-
-- Changes outside tracked Yjs types
-- Direct Yjs operations (bypass the proxy)
-- Changes before the UndoManager is created
-- Bootstrap operations (not tracked by default)
-
-**Multi-user:** Undo only affects tracked origins (usually your local changes). Remote changes are preserved.
-
 ## Further Reading
 
 - [Yjs UndoManager Documentation](https://docs.yjs.dev/api/undo-manager)
 - [valtio-y README](../README.md) - Core concepts and examples
 - [Structuring Your App](./structuring-your-app.md) - Using multiple roots for separate undo histories
-
-## Summary
-
-- **Quick start:** Add `undoManager: true` to `createYjsProxy` options
-- **Reactive UI:** Use `useSnapshot(undoState)` for button states
-- **Scoping:** Create multiple proxies with separate undo managers
-- **Grouping:** Operations within `captureTimeout` are merged (default 500ms)
-- **Multi-user:** Only local changes are tracked by default
-- **Advanced:** Access raw `manager` for custom features
