@@ -12,8 +12,15 @@ import {
   reconcileValtioArray,
   reconcileValtioMap,
 } from "./reconcile/reconciler";
-import { initializeValtioYjsIntegration } from "./core/valtio-y-integration";
 import type { LogLevel } from "./core/logger";
+import {
+  setupUndoManager,
+  type UndoManagerOptions,
+  type UndoRedoState,
+} from "./undo/setup-undo-manager";
+
+// Re-export for convenience
+export type { UndoManagerOptions, UndoRedoState };
 
 /**
  * Options for creating a Y.js-backed Valtio proxy.
@@ -76,6 +83,55 @@ export interface CreateYjsProxyOptions<_T> {
    * @see https://github.com/valtiojs/valtio-y/blob/main/guides/structuring-your-app.md
    */
   getRoot: (doc: Y.Doc) => Y.Map<unknown> | Y.Array<unknown>;
+
+  /**
+   * Enable undo/redo functionality.
+   *
+   * The UndoManager tracks changes to the same scope as `getRoot`.
+   * By default, only local valtio-y changes are tracked (not remote users).
+   *
+   * @default undefined (disabled)
+   *
+   * @example Enable with defaults
+   * ```typescript
+   * undoManager: true
+   * // Tracks: Only local valtio-y changes
+   * // Scope: Whatever getRoot returns
+   * // Timeout: 500ms
+   * ```
+   *
+   * @example Configure options
+   * ```typescript
+   * undoManager: {
+   *   captureTimeout: 1000,  // Group operations within 1 second
+   *   trackedOrigins: new Set([VALTIO_Y_ORIGIN])  // Only local changes
+   * }
+   * ```
+   *
+   * @example Track all changes (including remote)
+   * ```typescript
+   * undoManager: {
+   *   trackedOrigins: undefined  // Track ALL origins
+   * }
+   * ```
+   *
+   * @example Advanced: Provide your own UndoManager instance
+   * ```typescript
+   * const undoManager = new Y.UndoManager(ydoc.getMap("root"), {
+   *   deleteFilter: (item) => item.content.type !== 'temp'
+   * });
+   *
+   * createYjsProxy(ydoc, {
+   *   getRoot: (doc) => doc.getMap("root"),  // ⚠️ Must match UndoManager scope!
+   *   undoManager: undoManager
+   * });
+   * ```
+   *
+   * ⚠️ **WARNING:** When passing an UndoManager instance, YOU are responsible for ensuring
+   * the scope matches `getRoot`. We cannot validate this at runtime.
+   */
+  undoManager?: boolean | UndoManagerOptions | Y.UndoManager;
+
   logLevel?: LogLevel;
 }
 
@@ -89,14 +145,44 @@ export interface YjsProxy<T> {
   bootstrap: (data?: T) => void;
 }
 
+/**
+ * Extended return type when UndoManager is enabled.
+ * Includes undo/redo functionality in addition to the base proxy.
+ */
+export interface YjsProxyWithUndo<T> extends YjsProxy<T> {
+  /** Perform undo operation if available */
+  undo: () => void;
+  /** Perform redo operation if available */
+  redo: () => void;
+  /** Reactive Valtio proxy with canUndo/canRedo state. Use with useSnapshot(). */
+  undoState: UndoRedoState;
+  /** Stop capturing current operation (force new undo step) */
+  stopCapturing: () => void;
+  /** Clear all undo/redo history */
+  clearHistory: () => void;
+  /** The underlying Yjs UndoManager instance for advanced usage */
+  manager: Y.UndoManager;
+}
+
+// Overload: with undoManager
+export function createYjsProxy<T extends object>(
+  doc: Y.Doc,
+  options: CreateYjsProxyOptions<T> & {
+    undoManager: boolean | UndoManagerOptions | Y.UndoManager;
+  },
+): YjsProxyWithUndo<T>;
+
+// Overload: without undoManager
 export function createYjsProxy<T extends object>(
   doc: Y.Doc,
   options: CreateYjsProxyOptions<T>,
-): YjsProxy<T> {
-  // Initialize Valtio customizations for Y.js compatibility
-  // This must happen before any proxies are created
-  initializeValtioYjsIntegration();
+): YjsProxy<T>;
 
+// Implementation
+export function createYjsProxy<T extends object>(
+  doc: Y.Doc,
+  options: CreateYjsProxyOptions<T>,
+): YjsProxy<T> | YjsProxyWithUndo<T> {
   const { getRoot } = options;
   const yRoot = getRoot(doc);
 
@@ -189,7 +275,55 @@ export function createYjsProxy<T extends object>(
     }
   }
 
-  // 4. Return the proxy, dispose, and bootstrap function.
+  // 4. Set up UndoManager if requested
+  if (options.undoManager) {
+    const { manager, undoState, updateState, cleanup } = setupUndoManager(
+      yRoot,
+      options.undoManager,
+    );
+
+    // Warn if custom UndoManager instance is provided (scope validation)
+    if (options.undoManager instanceof Y.UndoManager) {
+      coordinator.logger.warn(
+        "UndoManager: Using custom instance. Ensure the UndoManager's scope matches the Y.Map/Y.Array " +
+          "returned by getRoot. Mismatched scopes will cause undo/redo to not work correctly. " +
+          "The scope is the first argument passed to new Y.UndoManager(scope, options).",
+      );
+    }
+
+    // Dispose function that cleans up both sync and undo manager
+    const disposeWithUndo = () => {
+      disposeSync();
+      coordinator.disposeAll();
+      cleanup();
+    };
+
+    // Return with undo/redo functionality
+    return {
+      proxy: stateProxy as T,
+      dispose: disposeWithUndo,
+      bootstrap,
+      undo: () => {
+        if (manager.canUndo()) {
+          manager.undo();
+        }
+      },
+      redo: () => {
+        if (manager.canRedo()) {
+          manager.redo();
+        }
+      },
+      undoState,
+      stopCapturing: () => manager.stopCapturing(),
+      clearHistory: () => {
+        manager.clear();
+        updateState();
+      },
+      manager,
+    };
+  }
+
+  // 5. Return the proxy, dispose, and bootstrap function (without undo).
   const dispose = () => {
     disposeSync();
     coordinator.disposeAll();

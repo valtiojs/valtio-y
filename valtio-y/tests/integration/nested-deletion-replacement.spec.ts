@@ -536,8 +536,14 @@ describe("Nested Deletion and Replacement: Elements with Children", () => {
       // Verify initial state
       expect(proxy1.users.user1.projects.proj1.name).toBe("Project Alpha");
       expect(proxy2.users.user1.projects.proj1.name).toBe("Project Alpha");
-      expect(Object.keys(proxy1.users as any)).toEqual(["user1", "user2"]);
-      expect(Object.keys(proxy2.users as any)).toEqual(["user1", "user2"]);
+      expect(Object.keys(proxy1.users as Record<string, unknown>)).toEqual([
+        "user1",
+        "user2",
+      ]);
+      expect(Object.keys(proxy2.users as Record<string, unknown>)).toEqual([
+        "user1",
+        "user2",
+      ]);
 
       // Delete user with all nested data
       delete proxy1.users.user1;
@@ -549,8 +555,12 @@ describe("Nested Deletion and Replacement: Elements with Children", () => {
       await waitMicrotask();
 
       // Verify deletion
-      expect(Object.keys(proxy1.users as any)).toEqual(["user2"]);
-      expect(Object.keys(proxy2.users as any)).toEqual(["user2"]);
+      expect(Object.keys(proxy1.users as Record<string, unknown>)).toEqual([
+        "user2",
+      ]);
+      expect(Object.keys(proxy2.users as Record<string, unknown>)).toEqual([
+        "user2",
+      ]);
       expect(proxy1.users.user1).toBeUndefined();
       expect(proxy2.users.user1).toBeUndefined();
 
@@ -1289,7 +1299,9 @@ describe("Nested Deletion and Replacement: Elements with Children", () => {
       // Verify initial cross-references
       expect(proxy1.nodes[0].connections).toEqual(["node2", "node3"]);
       expect(proxy2.nodes[0].connections).toEqual(["node2", "node3"]);
-      expect(Object.keys(proxy1.edges as any)).toHaveLength(3);
+      expect(Object.keys(proxy1.edges as Record<string, unknown>)).toHaveLength(
+        3,
+      );
 
       // Delete node2 and its related edges
       proxy1.nodes.splice(1, 1); // Remove node2

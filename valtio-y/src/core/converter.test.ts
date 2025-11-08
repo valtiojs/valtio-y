@@ -6,6 +6,7 @@ import {
   plainObjectToYType,
   yTypeToPlainObject,
   validateDeepForSharedState,
+  validateValueForSharedState,
 } from "./converter";
 import { SynchronizationState } from "./synchronization-state";
 import { createLogger } from "./logger";
@@ -69,6 +70,22 @@ describe("Converters: plainObjectToYType and yTypeToPlainObject", () => {
     const r = /abc/gi;
     expect(() => plainObjectToYType(r, state, logger)).toThrow(
       /Unable to convert non-plain object of type "RegExp"/,
+    );
+  });
+
+  it("rejects unsupported Yjs types like Y.Text", () => {
+    const state = new SynchronizationState();
+    const logger = createLogger();
+    const yText = new Y.Text();
+
+    expect(() => validateValueForSharedState(yText)).toThrow(
+      /Only Y\.Map and Y\.Array instances are supported in shared state/,
+    );
+    expect(() => validateDeepForSharedState(yText)).toThrow(
+      /Only Y\.Map and Y\.Array instances are supported in shared state/,
+    );
+    expect(() => plainObjectToYType(yText, state, logger)).toThrow(
+      /Only Y\.Map and Y\.Array instances are supported in shared state/,
     );
   });
 

@@ -1,7 +1,12 @@
 import * as Y from "yjs";
 import type { SynchronizationState } from "./synchronization-state";
 import type { Logger } from "./logger";
-import { isYArray, isYMap, isYAbstractType } from "./guards";
+import {
+  isYArray,
+  isYMap,
+  isYAbstractType,
+  isYSharedContainer,
+} from "./guards";
 import { isPlainObject } from "./types";
 import { ValtioYValidationError } from "./errors";
 
@@ -24,6 +29,9 @@ const ERROR_REPARENTING =
   "[valtio-y] Cannot re-assign a collaborative object that is already in the document. " +
   "If you intended to move or copy this object, you must explicitly create a deep clone of it " +
   "at the application layer before assigning it.";
+const ERROR_UNSUPPORTED_Y_TYPE =
+  "[valtio-y] Only Y.Map and Y.Array instances are supported in shared state. " +
+  "Convert other Y.js types to plain data before assigning them.";
 
 const createUnsupportedObjectError = (ctorName: string): string =>
   `[valtio-y] Unable to convert non-plain object of type "${ctorName}". ` +
@@ -63,8 +71,15 @@ export function yTypeToPlainObject(yValue: unknown): unknown {
 export function validateValueForSharedState(jsValue: unknown): void {
   // Check for re-parenting of existing Y types
   if (isYAbstractType(jsValue)) {
+    if (!isYSharedContainer(jsValue)) {
+      throw new ValtioYValidationError(
+        ERROR_UNSUPPORTED_Y_TYPE,
+        jsValue,
+        "unsupported-y-type",
+      );
+    }
     throwIfReparenting(jsValue);
-    return; // Y types are valid
+    return; // Supported Y types are valid
   }
 
   // Check primitive types
@@ -110,6 +125,13 @@ export function validateValueForSharedState(jsValue: unknown): void {
 export function validateDeepForSharedState(jsValue: unknown): void {
   // Y types are valid, but check for forbidden re-parenting
   if (isYAbstractType(jsValue)) {
+    if (!isYSharedContainer(jsValue)) {
+      throw new ValtioYValidationError(
+        ERROR_UNSUPPORTED_Y_TYPE,
+        jsValue,
+        "unsupported-y-type",
+      );
+    }
     throwIfReparenting(jsValue);
     return;
   }
@@ -173,6 +195,13 @@ export function plainObjectToYType(
 ): unknown {
   // Already a Yjs value: check for forbidden re-parenting
   if (isYAbstractType(jsValue)) {
+    if (!isYSharedContainer(jsValue)) {
+      throw new ValtioYValidationError(
+        ERROR_UNSUPPORTED_Y_TYPE,
+        jsValue,
+        "unsupported-y-type",
+      );
+    }
     throwIfReparenting(jsValue);
     return jsValue;
   }
@@ -206,6 +235,13 @@ export function plainObjectToYType(
     const underlyingYType = state.valtioProxyToYType.get(jsValue)!;
     // Check if the Y type is already attached to a document
     if (isYAbstractType(underlyingYType)) {
+      if (!isYSharedContainer(underlyingYType)) {
+        throw new ValtioYValidationError(
+          ERROR_UNSUPPORTED_Y_TYPE,
+          underlyingYType,
+          "unsupported-y-type",
+        );
+      }
       const yType = underlyingYType as Y.AbstractType<unknown>;
       if (yType.parent !== null) {
         // Y type is already in a document - clone it to prevent re-parenting
