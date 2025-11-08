@@ -514,6 +514,23 @@ describe("UndoManager integration", () => {
         undefined,
       );
     });
+
+    it("returns YjsProxy when undoManager is explicitly false", () => {
+      const result = createYjsProxy<{ count?: number }>(doc, {
+        getRoot: (d) => d.getMap("state"),
+        undoManager: false,
+      });
+
+      // Undo/redo should not be available
+      expect((result as unknown as { undo?: unknown }).undo).toBe(undefined);
+      expect((result as unknown as { redo?: unknown }).redo).toBe(undefined);
+      expect((result as unknown as { undoState?: unknown }).undoState).toBe(
+        undefined,
+      );
+      expect((result as unknown as { manager?: unknown }).manager).toBe(
+        undefined,
+      );
+    });
   });
 
   describe("Complex scenarios", () => {
@@ -657,6 +674,296 @@ describe("UndoManager integration", () => {
 
       expect(canvas).toHaveLength(0);
       expect(chat).toHaveLength(0);
+    });
+  });
+
+  describe("Error handling", () => {
+    it("handles undo when canUndo is false gracefully", async () => {
+      const { undo, undoState } = createYjsProxy<{ count?: number }>(doc, {
+        getRoot: (d) => d.getMap("state"),
+        undoManager: true,
+      });
+
+      expect(undoState.canUndo).toBe(false);
+
+      // Should not throw
+      expect(() => undo()).not.toThrow();
+    });
+
+    it("handles redo when canRedo is false gracefully", async () => {
+      const { redo, undoState } = createYjsProxy<{ count?: number }>(doc, {
+        getRoot: (d) => d.getMap("state"),
+        undoManager: true,
+      });
+
+      expect(undoState.canRedo).toBe(false);
+
+      // Should not throw
+      expect(() => redo()).not.toThrow();
+    });
+
+    it("handles multiple undo/redo cycles", async () => {
+      const { proxy, undo, redo, undoState } = createYjsProxy<{
+        count?: number;
+      }>(doc, {
+        getRoot: (d) => d.getMap("state"),
+        undoManager: { captureTimeout: 0 },
+      });
+
+      // Make changes
+      proxy.count = 1;
+      await waitMicrotask();
+
+      proxy.count = 2;
+      await waitMicrotask();
+
+      proxy.count = 3;
+      await waitMicrotask();
+
+      // Undo all
+      undo();
+      await waitMicrotask();
+      undo();
+      await waitMicrotask();
+      undo();
+      await waitMicrotask();
+
+      // Try to undo when nothing left
+      expect(() => undo()).not.toThrow();
+      expect(undoState.canUndo).toBe(false);
+
+      // Redo all
+      redo();
+      await waitMicrotask();
+      redo();
+      await waitMicrotask();
+      redo();
+      await waitMicrotask();
+
+      // Try to redo when nothing left
+      expect(() => redo()).not.toThrow();
+      expect(undoState.canRedo).toBe(false);
+
+      expect(proxy.count).toBe(3);
+    });
+  });
+
+  describe("Collaborative scenarios", () => {
+    it("undo does not affect remote user changes", async () => {
+      const doc1 = new Y.Doc();
+      const doc2 = new Y.Doc();
+
+      const { proxy: proxy1, undo: undo1 } = createYjsProxy<{ count?: number }>(
+        doc1,
+        {
+          getRoot: (d) => d.getMap("state"),
+          undoManager: { captureTimeout: 0 },
+        },
+      );
+
+      const { proxy: proxy2 } = createYjsProxy<{ count?: number }>(doc2, {
+        getRoot: (d) => d.getMap("state"),
+      });
+
+      // Sync initial state
+      const state1 = Y.encodeStateAsUpdate(doc1);
+      Y.applyUpdate(doc2, state1);
+
+      // User 1 makes a change
+      proxy1.count = 1;
+      await waitMicrotask();
+
+      // Sync to user 2
+      const update1 = Y.encodeStateAsUpdate(doc1);
+      Y.applyUpdate(doc2, update1);
+
+      expect(proxy2.count).toBe(1);
+
+      // User 2 makes a change
+      proxy2.count = 2;
+      await waitMicrotask();
+
+      // Sync back to user 1
+      const update2 = Y.encodeStateAsUpdate(doc2);
+      Y.applyUpdate(doc1, update2);
+
+      expect(proxy1.count).toBe(2);
+
+      // User 1 undoes their change
+      undo1();
+      await waitMicrotask();
+
+      // User 2's change should remain (since we only track VALTIO_Y_ORIGIN by default)
+      expect(proxy1.count).toBe(2);
+    });
+
+    it("tracks all changes when trackedOrigins is undefined", async () => {
+      const doc1 = new Y.Doc();
+      const doc2 = new Y.Doc();
+
+      const { proxy: proxy1, undo: undo1 } = createYjsProxy<{ count?: number }>(
+        doc1,
+        {
+          getRoot: (d) => d.getMap("state"),
+          undoManager: {
+            captureTimeout: 0,
+            trackedOrigins: undefined, // Track all origins
+          },
+        },
+      );
+
+      const { proxy: proxy2 } = createYjsProxy<{ count?: number }>(doc2, {
+        getRoot: (d) => d.getMap("state"),
+      });
+
+      // User 1 makes a change
+      proxy1.count = 1;
+      await waitMicrotask();
+
+      // Sync to user 2
+      const update1 = Y.encodeStateAsUpdate(doc1);
+      Y.applyUpdate(doc2, update1);
+
+      // User 2 makes a change
+      proxy2.count = 2;
+      await waitMicrotask();
+
+      // Sync back to user 1
+      const update2 = Y.encodeStateAsUpdate(doc2);
+      Y.applyUpdate(doc1, update2);
+
+      expect(proxy1.count).toBe(2);
+
+      // User 1 undo should now undo user 2's change (because trackedOrigins is undefined)
+      undo1();
+      await waitMicrotask();
+
+      expect(proxy1.count).toBe(1);
+    });
+  });
+
+  describe("Performance", () => {
+    it("handles large undo stacks efficiently", async () => {
+      const { proxy, undo, manager } = createYjsProxy<{ count?: number }>(doc, {
+        getRoot: (d) => d.getMap("state"),
+        undoManager: { captureTimeout: 0 },
+      });
+
+      const operationCount = 100;
+
+      // Create many undo items
+      for (let i = 0; i < operationCount; i++) {
+        proxy.count = i;
+        await waitMicrotask();
+      }
+
+      expect(manager.undoStack).toHaveLength(operationCount);
+
+      const startTime = performance.now();
+
+      // Undo all operations
+      for (let i = 0; i < operationCount; i++) {
+        undo();
+      }
+
+      const duration = performance.now() - startTime;
+
+      expect(proxy.count).toBe(undefined);
+      expect(duration).toBeLessThan(5000); // Should complete in reasonable time
+    });
+
+    it("handles rapid array operations efficiently", async () => {
+      const { proxy, undo } = createYjsProxy<number[]>(doc, {
+        getRoot: (d) => d.getArray("numbers"),
+        undoManager: { captureTimeout: 0 },
+      });
+
+      const operationCount = 50;
+
+      const startTime = performance.now();
+
+      // Rapidly push items
+      for (let i = 0; i < operationCount; i++) {
+        proxy.push(i);
+        await waitMicrotask();
+      }
+
+      const pushDuration = performance.now() - startTime;
+
+      expect(proxy).toHaveLength(operationCount);
+
+      const undoStartTime = performance.now();
+
+      // Undo all
+      for (let i = 0; i < operationCount; i++) {
+        undo();
+      }
+
+      const undoDuration = performance.now() - undoStartTime;
+
+      expect(proxy).toHaveLength(0);
+      expect(pushDuration).toBeLessThan(5000);
+      expect(undoDuration).toBeLessThan(5000);
+    });
+
+    it("handles deeply nested structure changes efficiently", async () => {
+      type DeepState = {
+        level1?: {
+          level2?: {
+            level3?: {
+              level4?: {
+                value: number;
+              };
+            };
+          };
+        };
+      };
+
+      const { proxy, undo } = createYjsProxy<DeepState>(doc, {
+        getRoot: (d) => d.getMap("state"),
+        undoManager: { captureTimeout: 0 },
+      });
+
+      const operationCount = 20;
+
+      const startTime = performance.now();
+
+      // Create deep structure
+      proxy.level1 = {
+        level2: {
+          level3: {
+            level4: {
+              value: 0,
+            },
+          },
+        },
+      };
+      await waitMicrotask();
+
+      // Modify deep value multiple times
+      for (let i = 0; i < operationCount; i++) {
+        proxy.level1!.level2!.level3!.level4!.value = i;
+        await waitMicrotask();
+      }
+
+      const modifyDuration = performance.now() - startTime;
+
+      expect(proxy.level1?.level2?.level3?.level4?.value).toBe(
+        operationCount - 1,
+      );
+
+      const undoStartTime = performance.now();
+
+      // Undo all modifications
+      for (let i = 0; i < operationCount; i++) {
+        undo();
+      }
+
+      const undoDuration = performance.now() - undoStartTime;
+
+      expect(proxy.level1?.level2?.level3?.level4?.value).toBe(0);
+      expect(modifyDuration).toBeLessThan(5000);
+      expect(undoDuration).toBeLessThan(5000);
     });
   });
 });

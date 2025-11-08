@@ -21,12 +21,26 @@ describe("setupUndoManager", () => {
       expect(undoState.canRedo).toBe(false);
     });
 
-    it("uses default captureTimeout of 500ms", () => {
+    it("uses default captureTimeout of 500ms to group operations", async () => {
       const { manager } = setupUndoManager(yRoot, true);
 
-      // Y.UndoManager doesn't expose captureTimeout directly,
-      // but we can verify it's created successfully
-      expect(manager).toBeInstanceOf(Y.UndoManager);
+      // Make rapid changes within captureTimeout window
+      doc.transact(() => yRoot.set("key1", "value1"), VALTIO_Y_ORIGIN);
+      doc.transact(() => yRoot.set("key2", "value2"), VALTIO_Y_ORIGIN);
+      doc.transact(() => yRoot.set("key3", "value3"), VALTIO_Y_ORIGIN);
+
+      // They should be grouped together (exact count depends on timing)
+      expect(manager.undoStack.length).toBeGreaterThan(0);
+      expect(manager.undoStack.length).toBeLessThanOrEqual(3);
+
+      // Wait for captureTimeout to expire
+      await new Promise((resolve) => setTimeout(resolve, 600));
+
+      // Make another change after timeout
+      doc.transact(() => yRoot.set("key4", "value4"), VALTIO_Y_ORIGIN);
+
+      // This should create a separate undo item
+      expect(manager.undoStack.length).toBeGreaterThan(1);
     });
 
     it("uses default trackedOrigins of VALTIO_Y_ORIGIN", () => {
@@ -295,8 +309,20 @@ describe("setupUndoManager", () => {
       expect(cleanup).toBeInstanceOf(Function);
     });
 
-    it("cleanup removes event listeners", () => {
+    it("cleanup removes event listeners and prevents state updates", () => {
       const { manager, undoState, cleanup } = setupUndoManager(yRoot, true);
+
+      // Make a change to verify listeners work before cleanup
+      doc.transact(() => {
+        yRoot.set("initialKey", "initialValue");
+      }, VALTIO_Y_ORIGIN);
+
+      expect(undoState.canUndo).toBe(true);
+
+      // Undo to reset state
+      manager.undo();
+      expect(undoState.canUndo).toBe(false);
+      expect(undoState.canRedo).toBe(true);
 
       // Cleanup
       cleanup();
@@ -307,7 +333,8 @@ describe("setupUndoManager", () => {
       }, VALTIO_Y_ORIGIN);
 
       // State should NOT update because listeners were removed
-      expect(undoState.canUndo).toBe(false); // Still false from initial state
+      expect(undoState.canUndo).toBe(false); // Still false from after undo
+      expect(undoState.canRedo).toBe(true); // Still true from after undo
       expect(manager.canUndo()).toBe(true); // Manager has undo available
     });
 
@@ -387,6 +414,67 @@ describe("setupUndoManager", () => {
 
       expect(undoState.canUndo).toBe(true);
       expect(undoState.canRedo).toBe(true);
+    });
+  });
+
+  describe("Error handling", () => {
+    it("handles undo when canUndo is false gracefully", () => {
+      const { manager, undoState } = setupUndoManager(yRoot, true);
+
+      expect(undoState.canUndo).toBe(false);
+
+      // Should not throw
+      expect(() => manager.undo()).not.toThrow();
+      expect(undoState.canUndo).toBe(false);
+    });
+
+    it("handles redo when canRedo is false gracefully", () => {
+      const { manager, undoState } = setupUndoManager(yRoot, true);
+
+      expect(undoState.canRedo).toBe(false);
+
+      // Should not throw
+      expect(() => manager.redo()).not.toThrow();
+      expect(undoState.canRedo).toBe(false);
+    });
+
+    it("handles multiple undo calls beyond available items", () => {
+      const { manager, undoState } = setupUndoManager(yRoot, true);
+
+      // Add one item
+      doc.transact(() => {
+        yRoot.set("key", "value");
+      }, VALTIO_Y_ORIGIN);
+
+      expect(undoState.canUndo).toBe(true);
+
+      // Undo once (should work)
+      manager.undo();
+      expect(undoState.canUndo).toBe(false);
+
+      // Try to undo again (nothing to undo)
+      expect(() => manager.undo()).not.toThrow();
+      expect(undoState.canUndo).toBe(false);
+    });
+
+    it("handles multiple redo calls beyond available items", () => {
+      const { manager, undoState } = setupUndoManager(yRoot, true);
+
+      // Add and undo one item
+      doc.transact(() => {
+        yRoot.set("key", "value");
+      }, VALTIO_Y_ORIGIN);
+
+      manager.undo();
+      expect(undoState.canRedo).toBe(true);
+
+      // Redo once (should work)
+      manager.redo();
+      expect(undoState.canRedo).toBe(false);
+
+      // Try to redo again (nothing to redo)
+      expect(() => manager.redo()).not.toThrow();
+      expect(undoState.canRedo).toBe(false);
     });
   });
 });
