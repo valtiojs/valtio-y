@@ -797,48 +797,50 @@ describe("UndoManager integration", () => {
       expect(proxy1.count).toBe(2);
     });
 
-    it("tracks all changes when trackedOrigins is undefined", async () => {
-      const doc1 = new Y.Doc();
-      const doc2 = new Y.Doc();
+    it("tracks all local transactions when trackedOrigins is undefined", async () => {
+      const yRoot = doc.getMap("state");
 
-      const { proxy: proxy1, undo: undo1 } = createYjsProxy<{ count?: number }>(
-        doc1,
-        {
-          getRoot: (d) => d.getMap("state"),
-          undoManager: {
-            captureTimeout: 0,
-            trackedOrigins: undefined, // Track all origins
-          },
-        },
-      );
-
-      const { proxy: proxy2 } = createYjsProxy<{ count?: number }>(doc2, {
+      const { proxy, undo, manager } = createYjsProxy<{ count?: number }>(doc, {
         getRoot: (d) => d.getMap("state"),
+        undoManager: {
+          captureTimeout: 0,
+          trackedOrigins: undefined, // Track all local origins
+        },
       });
 
-      // User 1 makes a change
-      proxy1.count = 1;
+      // Make a change with VALTIO_Y_ORIGIN
+      proxy.count = 1;
       await waitMicrotask();
 
-      // Sync to user 2
-      const update1 = Y.encodeStateAsUpdate(doc1);
-      Y.applyUpdate(doc2, update1);
-
-      // User 2 makes a change
-      proxy2.count = 2;
+      // Make a direct change with a different origin
+      doc.transact(() => {
+        yRoot.set("count", 2);
+      }, "custom-origin");
       await waitMicrotask();
 
-      // Sync back to user 1
-      const update2 = Y.encodeStateAsUpdate(doc2);
-      Y.applyUpdate(doc1, update2);
-
-      expect(proxy1.count).toBe(2);
-
-      // User 1 undo should now undo user 2's change (because trackedOrigins is undefined)
-      undo1();
+      // Make another change with no origin
+      doc.transact(() => {
+        yRoot.set("count", 3);
+      });
       await waitMicrotask();
 
-      expect(proxy1.count).toBe(1);
+      expect(proxy.count).toBe(3);
+
+      // With trackedOrigins: undefined, all local transactions are tracked
+      // We should be able to undo all 3 changes
+      expect(manager.undoStack.length).toBeGreaterThanOrEqual(3);
+
+      undo(); // Undo count=3
+      await waitMicrotask();
+      expect(proxy.count).toBe(2);
+
+      undo(); // Undo count=2
+      await waitMicrotask();
+      expect(proxy.count).toBe(1);
+
+      undo(); // Undo count=1
+      await waitMicrotask();
+      expect(proxy.count).toBe(undefined);
     });
   });
 
@@ -940,21 +942,19 @@ describe("UndoManager integration", () => {
       };
       await waitMicrotask();
 
-      // Modify deep value multiple times
-      for (let i = 0; i < operationCount; i++) {
+      // Modify deep value multiple times (starting from 1 to avoid no-op at 0)
+      for (let i = 1; i <= operationCount; i++) {
         proxy.level1!.level2!.level3!.level4!.value = i;
         await waitMicrotask();
       }
 
       const modifyDuration = performance.now() - startTime;
 
-      expect(proxy.level1?.level2?.level3?.level4?.value).toBe(
-        operationCount - 1,
-      );
+      expect(proxy.level1?.level2?.level3?.level4?.value).toBe(operationCount);
 
       const undoStartTime = performance.now();
 
-      // Undo all modifications
+      // Undo all modifications (not the initial creation)
       for (let i = 0; i < operationCount; i++) {
         undo();
       }
