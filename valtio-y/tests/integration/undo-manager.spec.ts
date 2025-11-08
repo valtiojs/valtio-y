@@ -800,7 +800,11 @@ describe("UndoManager integration", () => {
     it("tracks all local transactions when trackedOrigins is undefined", async () => {
       const yRoot = doc.getMap("state");
 
-      const { proxy, undo, manager } = createYjsProxy<{ count?: number }>(doc, {
+      const { proxy, undo } = createYjsProxy<{
+        count?: number;
+        value?: string;
+        flag?: boolean;
+      }>(doc, {
         getRoot: (d) => d.getMap("state"),
         undoManager: {
           captureTimeout: 0,
@@ -808,35 +812,38 @@ describe("UndoManager integration", () => {
         },
       });
 
-      // Make a change with VALTIO_Y_ORIGIN
+      // Make changes with different origins to different keys
+      // (different keys to ensure separate undo items)
+
+      // Change with VALTIO_Y_ORIGIN
       proxy.count = 1;
       await waitMicrotask();
 
-      // Make a direct change with a different origin
+      // Change with custom origin
       doc.transact(() => {
-        yRoot.set("count", 2);
+        yRoot.set("value", "custom");
       }, "custom-origin");
       await waitMicrotask();
 
-      // Make another change with no origin
+      // Change with no origin
       doc.transact(() => {
-        yRoot.set("count", 3);
+        yRoot.set("flag", true);
       });
       await waitMicrotask();
 
-      expect(proxy.count).toBe(3);
+      expect(proxy.count).toBe(1);
+      expect(proxy.value).toBe("custom");
+      expect(proxy.flag).toBe(true);
 
       // With trackedOrigins: undefined, all local transactions are tracked
       // We should be able to undo all 3 changes
-      expect(manager.undoStack.length).toBeGreaterThanOrEqual(3);
-
-      undo(); // Undo count=3
+      undo(); // Undo flag=true
       await waitMicrotask();
-      expect(proxy.count).toBe(2);
+      expect(proxy.flag).toBe(undefined);
 
-      undo(); // Undo count=2
+      undo(); // Undo value="custom"
       await waitMicrotask();
-      expect(proxy.count).toBe(1);
+      expect(proxy.value).toBe(undefined);
 
       undo(); // Undo count=1
       await waitMicrotask();
