@@ -103,7 +103,7 @@ export class StickyNotesRoom extends YServer<Env> {
       note5.set("color", "#e9d5ff"); // purple
       note5.set(
         "text",
-        "Demo mode ⏰\n\nThis room resets every 30 minutes to keep it clean.\n\nFeel free to experiment!",
+        "Demo mode ⏰\n\nThis room resets every minute to keep it clean.\n\nFeel free to experiment!",
       );
       note5.set("z", 4);
       yNotes.set(id5, note5);
@@ -146,7 +146,7 @@ export class StickyNotesRoom extends YServer<Env> {
 
     // Schedule the first alarm to clean the room
     const now = Date.now();
-    const cleanupIntervalMs = 6 * 1000; // 6 seconds for dev, use 30 * 60 * 1000 for production
+    const cleanupIntervalMs = 60 * 1000; // 1 minute for dev, use 30 * 60 * 1000 for production
     await this.ctx.storage.setAlarm(now + cleanupIntervalMs);
   }
 
@@ -160,7 +160,7 @@ export class StickyNotesRoom extends YServer<Env> {
 
     // Schedule the next alarm
     const now = Date.now();
-    const cleanupIntervalMs = 6 * 1000; // 6 seconds for dev, use 30 * 60 * 1000 for production
+    const cleanupIntervalMs = 60 * 1000; // 1 minute for dev, use 30 * 60 * 1000 for production
     await this.ctx.storage.setAlarm(now + cleanupIntervalMs);
   }
 

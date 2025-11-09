@@ -10,12 +10,13 @@ import {
   setSyncStatus,
   setLocalPresence,
 } from "./yjs-setup";
-import { Toolbar } from "./components/Toolbar";
-import { StickyNote } from "./components/StickyNote";
-import { Cursor } from "./components/Cursor";
+import { Toolbar } from "./components/toolbar";
+import { StickyNote } from "./components/sticky-note";
+import { Cursor } from "./components/cursor";
 import type { StickyNote as StickyNoteType, UserPresence } from "./types";
 
 export function App() {
+  const state = useSnapshot(proxy);
   const presenceStates = useSnapshot(presenceProxy);
   const syncStatus = useSnapshot(syncStatusProxy).status;
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
@@ -100,6 +101,28 @@ export function App() {
     });
   }, [selectedNoteId]);
 
+  // Handle keyboard shortcuts for deleting notes
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Delete or Backspace key, but not when typing in a textarea or input
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedNoteId &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !(e.target instanceof HTMLInputElement)
+      ) {
+        e.preventDefault();
+        if (proxy.notes && selectedNoteId in proxy.notes) {
+          delete proxy.notes[selectedNoteId];
+          setSelectedNoteId(null);
+        }
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [selectedNoteId]);
+
   const handleAddNote = () => {
     if (!proxy.notes) {
       proxy.notes = {};
@@ -182,19 +205,27 @@ export function App() {
 
       {/* Canvas with sticky notes */}
       <div className="w-full h-full overflow-hidden">
-        {proxy.notes &&
-          Object.entries(proxy.notes).map(([noteId, note]) => {
+        {state.notes &&
+          Object.keys(state.notes).map((noteId) => {
             const editState = noteEditStates.get(noteId);
             return (
               <StickyNote
                 key={noteId}
-                note={note}
+                note={proxy.notes![noteId]}
                 isSelected={selectedNoteId === noteId}
                 isEditedByOther={!!editState}
                 otherUserColor={editState?.color}
                 onSelect={() => handleSelectNote(noteId)}
                 onStartDrag={handleStartDrag}
                 onStartResize={handleStartResize}
+                onDelete={() => {
+                  if (proxy.notes && noteId in proxy.notes) {
+                    delete proxy.notes[noteId];
+                    if (selectedNoteId === noteId) {
+                      setSelectedNoteId(null);
+                    }
+                  }
+                }}
               />
             );
           })}
@@ -218,12 +249,16 @@ export function App() {
       </div>
 
       {/* Help text */}
-      {(!proxy.notes || Object.keys(proxy.notes).length === 0) && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-white/70 pointer-events-none">
-          <p className="text-2xl font-semibold mb-2">
-            Welcome to Sticky Notes!
-          </p>
-          <p className="text-lg">Click &quot;Add Note&quot; to get started</p>
+      {(!state.notes || Object.keys(state.notes).length === 0) && (
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
+          <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-xl">
+            <p className="text-3xl font-bold mb-2 text-gray-800">
+              Welcome to Sticky Notes
+            </p>
+            <p className="text-base text-gray-600">
+              Click &quot;Add Note&quot; to get started
+            </p>
+          </div>
         </div>
       )}
     </div>

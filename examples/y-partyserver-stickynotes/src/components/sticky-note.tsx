@@ -1,7 +1,7 @@
 import { useRef, useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
 import { motion, type PanInfo } from "motion/react";
-import { GripVertical } from "lucide-react";
+import { X } from "lucide-react";
 import type { StickyNote as StickyNoteType } from "../types";
 
 interface StickyNoteProps {
@@ -12,6 +12,7 @@ interface StickyNoteProps {
   onSelect: () => void;
   onStartDrag: () => void;
   onStartResize: () => void;
+  onDelete: () => void;
 }
 
 export function StickyNote({
@@ -22,6 +23,7 @@ export function StickyNote({
   onSelect,
   onStartDrag,
   onStartResize,
+  onDelete,
 }: StickyNoteProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -34,13 +36,23 @@ export function StickyNote({
   useEffect(() => {
     if (isEditing && textareaRef.current) {
       textareaRef.current.focus();
-      textareaRef.current.select();
+      // Place cursor at the end
+      const length = textareaRef.current.value.length;
+      textareaRef.current.setSelectionRange(length, length);
     }
   }, [isEditing]);
 
-  const handleDoubleClick = (e: React.MouseEvent) => {
+  const handleClick = (e: React.MouseEvent) => {
+    // Don't auto-edit if clicking on buttons or during drag
+    if (e.target instanceof HTMLButtonElement || isDragging) {
+      return;
+    }
+
     e.stopPropagation();
-    if (!isEditedByOther) {
+
+    // Select the note and enter edit mode immediately
+    onSelect();
+    if (!isEditedByOther && !isEditing) {
       setIsEditing(true);
     }
   };
@@ -131,13 +143,14 @@ export function StickyNote({
       dragElastic={0}
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
-      className={`absolute rounded-lg shadow-lg cursor-move select-none ${
-        isDragging ? "" : "transition-shadow"
+      whileHover={!isDragging ? { scale: 1.01 } : {}}
+      className={`group absolute rounded-xl select-none transition-shadow ${
+        isDragging ? "shadow-2xl" : ""
       } ${
         isSelected
-          ? "ring-2 ring-indigo-600 ring-offset-2 shadow-xl"
-          : "hover:shadow-xl"
-      } ${isEditedByOther ? "ring-2 ring-offset-2" : ""}`}
+          ? "ring-2 ring-indigo-500 ring-offset-4 shadow-2xl"
+          : "shadow-lg hover:shadow-xl"
+      } ${isEditedByOther ? "ring-2 ring-offset-4" : ""}`}
       style={{
         x: noteSnapshot.x,
         y: noteSnapshot.y,
@@ -146,13 +159,24 @@ export function StickyNote({
         backgroundColor: noteSnapshot.color,
         zIndex: noteSnapshot.z,
         borderColor: isEditedByOther ? otherUserColor : undefined,
+        boxShadow: isDragging
+          ? "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
+          : isSelected
+            ? "0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)"
+            : "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
       }}
-      onClick={onSelect}
     >
-      {/* Drag Handle */}
-      <div className="absolute top-2 right-2 text-gray-400 hover:text-gray-600 transition-colors">
-        <GripVertical size={20} />
-      </div>
+      {/* Delete Button */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onDelete();
+        }}
+        className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
+        title="Delete note"
+      >
+        <X size={14} strokeWidth={2.5} />
+      </button>
 
       {/* Editing indicator */}
       {isEditedByOther && (
@@ -165,21 +189,29 @@ export function StickyNote({
 
       {/* Content */}
       <div
-        className="w-full h-full p-6 overflow-hidden"
-        onDoubleClick={handleDoubleClick}
+        className="w-full h-full p-5 overflow-hidden relative cursor-text"
+        onClick={handleClick}
       >
+        {/* Paper texture overlay */}
+        <div
+          className="absolute inset-0 pointer-events-none opacity-[0.02]"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23000000' fill-opacity='1'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`,
+          }}
+        />
+
         {isEditing ? (
           <textarea
             ref={textareaRef}
             value={noteSnapshot.text}
             onChange={handleTextChange}
             onBlur={handleBlur}
-            className="w-full h-full bg-transparent border-none outline-none resize-none font-sans text-sm text-gray-800 leading-relaxed"
+            className="w-full h-full bg-transparent border-none outline-none resize-none font-sans text-base text-gray-800 leading-relaxed relative z-10"
             style={{ backgroundColor: noteSnapshot.color }}
             onMouseDown={(e) => e.stopPropagation()}
           />
         ) : (
-          <div className="w-full h-full font-sans text-sm text-gray-800 leading-relaxed whitespace-pre-wrap overflow-auto">
+          <div className="w-full h-full font-sans text-base text-gray-800 leading-relaxed whitespace-pre-wrap overflow-auto relative z-10">
             {noteSnapshot.text}
           </div>
         )}
@@ -188,10 +220,16 @@ export function StickyNote({
       {/* Resize Handle */}
       {isSelected && !isEditing && (
         <div
-          className="absolute bottom-0 right-0 w-6 h-6 cursor-se-resize"
+          className="absolute bottom-0 right-0 w-8 h-8 cursor-se-resize group"
           onMouseDown={handleResizeMouseDown}
         >
-          <div className="absolute bottom-1 right-1 w-3 h-3 border-r-2 border-b-2 border-gray-400 rounded-br" />
+          <div className="absolute bottom-2 right-2 opacity-40 group-hover:opacity-70 transition-opacity">
+            <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+              <circle cx="10" cy="10" r="1.5" fill="currentColor" />
+              <circle cx="10" cy="6" r="1.5" fill="currentColor" />
+              <circle cx="6" cy="10" r="1.5" fill="currentColor" />
+            </svg>
+          </div>
         </div>
       )}
     </motion.div>

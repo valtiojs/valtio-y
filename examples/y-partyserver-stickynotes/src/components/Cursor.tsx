@@ -18,13 +18,14 @@ export function Cursor({ x, y, color, name }: CursorProps) {
       }}
     >
       <MousePointer2
-        size={24}
+        size={20}
         style={{ color }}
-        className="drop-shadow-lg"
+        className="drop-shadow-md"
         fill={color}
+        strokeWidth={2}
       />
       <div
-        className="mt-1 ml-1 px-2 py-1 rounded-md text-white text-xs font-medium whitespace-nowrap shadow-lg"
+        className="mt-1 ml-2 px-2.5 py-1 rounded-full text-white text-xs font-semibold whitespace-nowrap shadow-lg opacity-90"
         style={{ backgroundColor: color }}
       >
         {name}
