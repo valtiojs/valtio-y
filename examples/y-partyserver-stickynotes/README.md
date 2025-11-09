@@ -40,23 +40,22 @@ bun install
 
 ### Development
 
-You'll need to run two processes:
+Start both the worker and client with a single command:
 
-**Terminal 1 - Start the Durable Object server:**
-```bash
-cd examples/y-partyserver-stickynotes
-bun run dev:worker
-```
-
-This starts the Cloudflare Workers dev server on port 8787.
-
-**Terminal 2 - Start the client:**
 ```bash
 cd examples/y-partyserver-stickynotes
 bun run dev
 ```
 
-This starts the Vite dev server. Open http://localhost:5173 in your browser.
+This starts:
+- Cloudflare Workers dev server on port 8787 (for the Durable Object backend)
+- Vite dev server (for the React frontend)
+
+Open http://localhost:5173 in your browser.
+
+**Note:** If you need to run them separately, you can use:
+- `bun run dev:worker` - Start only the worker server
+- `vite` - Start only the Vite dev server
 
 ### Testing Multi-User Collaboration
 

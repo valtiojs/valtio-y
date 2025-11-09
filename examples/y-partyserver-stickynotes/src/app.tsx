@@ -100,7 +100,15 @@ export function App() {
 
     const index = proxy.notes.findIndex((n) => n.id === id);
     if (index !== -1) {
-      Object.assign(proxy.notes[index], updates);
+      const note = proxy.notes[index];
+      // Use direct property assignment instead of Object.assign for better Valtio tracking
+      if (updates.x !== undefined) note.x = updates.x;
+      if (updates.y !== undefined) note.y = updates.y;
+      if (updates.width !== undefined) note.width = updates.width;
+      if (updates.height !== undefined) note.height = updates.height;
+      if (updates.color !== undefined) note.color = updates.color;
+      if (updates.text !== undefined) note.text = updates.text;
+      if (updates.z !== undefined) note.z = updates.z;
     }
   };
 

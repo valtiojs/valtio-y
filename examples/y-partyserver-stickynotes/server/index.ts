@@ -1,18 +1,13 @@
 /**
  * Cloudflare Durable Objects server for valtio-y Sticky Notes
  *
- * This server provides Yjs document synchronization using Cloudflare Durable Objects.
+ * This server provides Yjs document synchronization using y-partyserver.
  * Each room is a separate Durable Object instance that manages a Y.Doc and WebSocket connections.
  */
 
 import * as Y from "yjs";
-import * as encoding from "lib0/encoding";
-import * as decoding from "lib0/decoding";
-import * as syncProtocol from "y-protocols/sync";
-import * as awarenessProtocol from "y-protocols/awareness";
-
-const MESSAGE_SYNC = 0;
-const MESSAGE_AWARENESS = 1;
+import { YServer } from "y-partyserver";
+import { getServerByName } from "partyserver";
 
 interface Env {
   STICKYNOTES_DO: DurableObjectNamespace;
@@ -21,220 +16,131 @@ interface Env {
 /**
  * Durable Object that handles a single sticky notes room
  */
-export class StickyNotesRoom implements DurableObject {
-  private doc: Y.Doc;
-  private awareness: awarenessProtocol.Awareness;
-  private connections: Set<WebSocket>;
+export class StickyNotesRoom extends YServer<Env> {
+  /**
+   * Create fresh initial notes in the shared state
+   * This is called on initial load and every 5 minutes via alarm
+   */
+  private createInitialNotes(): void {
+    const sharedState = this.document.getMap("sharedState");
 
-  constructor(private state: DurableObjectState, private env: Env) {
-    this.doc = new Y.Doc();
-    this.awareness = new awarenessProtocol.Awareness(this.doc);
-    this.connections = new Set();
+    this.document.transact(() => {
+      // Clear existing notes if any
+      sharedState.delete("notes");
+      sharedState.delete("nextZ");
 
-    // Initialize with sample data if the document is empty
-    this.initializeDocument();
+      // Create a Y.Array for the notes
+      const yNotes = new Y.Array();
 
-    // Set up awareness cleanup
-    this.awareness.on("update", this.broadcastAwareness.bind(this));
+      // Create sample notes using Y.Map for each note
+      const note1 = new Y.Map();
+      note1.set("id", crypto.randomUUID());
+      note1.set("x", 100);
+      note1.set("y", 100);
+      note1.set("width", 200);
+      note1.set("height", 150);
+      note1.set("color", "#fef08a"); // yellow
+      note1.set("text", "Welcome to Sticky Notes! 📝\n\nClick and drag me around!");
+      note1.set("z", 0);
 
-    // Set up document update broadcasting
-    this.doc.on("update", (update: Uint8Array, origin: unknown) => {
-      // Don't broadcast updates that came from a client
-      if (origin === "network") return;
+      const note2 = new Y.Map();
+      note2.set("id", crypto.randomUUID());
+      note2.set("x", 350);
+      note2.set("y", 150);
+      note2.set("width", 200);
+      note2.set("height", 150);
+      note2.set("color", "#fecaca"); // red
+      note2.set("text", "Double-click to edit text ✏️\n\nChanges sync in real-time!");
+      note2.set("z", 1);
 
-      const encoder = encoding.createEncoder();
-      encoding.writeVarUint(encoder, MESSAGE_SYNC);
-      syncProtocol.writeUpdate(encoder, update);
-      const message = encoding.toUint8Array(encoder);
+      const note3 = new Y.Map();
+      note3.set("id", crypto.randomUUID());
+      note3.set("x", 600);
+      note3.set("y", 100);
+      note3.set("width", 200);
+      note3.set("height", 150);
+      note3.set("color", "#bfdbfe"); // blue
+      note3.set("text", "Drag the corner to resize 📏\n\nUse the toolbar to add more notes!");
+      note3.set("z", 2);
 
-      this.broadcast(message);
+      // Push the Y.Map notes into the Y.Array
+      yNotes.push([note1, note2, note3]);
+
+      // Set the Y.Array in the shared state
+      sharedState.set("notes", yNotes);
+      sharedState.set("nextZ", 3);
     });
   }
 
   /**
    * Initialize document with sample sticky notes if empty
+   * Called once when a client connects to the server
    */
-  private initializeDocument() {
-    const sharedState = this.doc.getMap("sharedState");
+  async onLoad(): Promise<void> {
+    const sharedState = this.document.getMap("sharedState");
 
-    if (sharedState.size === 0) {
-      // Create sample notes
-      const notes = [
-        {
-          id: crypto.randomUUID(),
-          x: 100,
-          y: 100,
-          width: 200,
-          height: 150,
-          color: "#fef08a", // yellow
-          text: "Welcome to Sticky Notes! 📝\n\nClick and drag me around!",
-          z: 0,
-        },
-        {
-          id: crypto.randomUUID(),
-          x: 350,
-          y: 150,
-          width: 200,
-          height: 150,
-          color: "#fecaca", // red
-          text: "Double-click to edit text ✏️\n\nChanges sync in real-time!",
-          z: 1,
-        },
-        {
-          id: crypto.randomUUID(),
-          x: 600,
-          y: 100,
-          width: 200,
-          height: 150,
-          color: "#bfdbfe", // blue
-          text: "Drag the corner to resize 📏\n\nUse the toolbar to add more notes!",
-          z: 2,
-        },
-      ];
+    // Check if we need to migrate from old plain-array format to Y.Array format
+    const existingNotes = sharedState.get("notes");
+    const needsMigration = existingNotes && !(existingNotes instanceof Y.Array);
 
-      sharedState.set("notes", notes);
-      sharedState.set("nextZ", 3);
-    }
-  }
-
-  /**
-   * Handle incoming HTTP requests
-   */
-  async fetch(request: Request): Promise<Response> {
-    const upgradeHeader = request.headers.get("Upgrade");
-
-    if (upgradeHeader !== "websocket") {
-      return new Response("Expected WebSocket", { status: 426 });
+    if (sharedState.size === 0 || needsMigration) {
+      this.createInitialNotes();
     }
 
-    const pair = new WebSocketPair();
-    const [client, server] = Object.values(pair);
-
-    this.handleWebSocket(server);
-
-    return new Response(null, {
-      status: 101,
-      webSocket: client,
-    });
+    // Schedule the first alarm to clean the room in 5 minutes
+    const now = Date.now();
+    const fiveMinutesMs = 5 * 60 * 1000;
+    await this.ctx.storage.setAlarm(now + fiveMinutesMs);
   }
 
   /**
-   * Handle WebSocket connection
+   * Alarm handler that cleans the room and creates fresh notes every 5 minutes
+   * This is called automatically by the Durable Objects runtime
    */
-  private handleWebSocket(ws: WebSocket) {
-    ws.accept();
-    this.connections.add(ws);
+  async alarm(): Promise<void> {
+    console.log("[StickyNotesRoom] Alarm triggered - cleaning room and creating fresh notes");
 
-    // Send initial sync
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.writeSyncStep1(encoder, this.doc);
-    ws.send(encoding.toUint8Array(encoder));
+    // Create fresh initial notes
+    this.createInitialNotes();
 
-    // Send initial awareness state
-    const awarenessEncoder = encoding.createEncoder();
-    encoding.writeVarUint(awarenessEncoder, MESSAGE_AWARENESS);
-    encoding.writeVarUint8Array(
-      awarenessEncoder,
-      awarenessProtocol.encodeAwarenessUpdate(
-        this.awareness,
-        Array.from(this.awareness.getStates().keys())
-      )
-    );
-    ws.send(encoding.toUint8Array(awarenessEncoder));
-
-    ws.addEventListener("message", (event) => {
-      try {
-        const data = new Uint8Array(event.data as ArrayBuffer);
-        const decoder = decoding.createDecoder(data);
-        const messageType = decoding.readVarUint(decoder);
-
-        if (messageType === MESSAGE_SYNC) {
-          const encoder = encoding.createEncoder();
-          encoding.writeVarUint(encoder, MESSAGE_SYNC);
-
-          syncProtocol.readSyncMessage(decoder, encoder, this.doc, "network");
-
-          const response = encoding.toUint8Array(encoder);
-          if (response.length > 1) {
-            ws.send(response);
-          }
-        } else if (messageType === MESSAGE_AWARENESS) {
-          awarenessProtocol.applyAwarenessUpdate(
-            this.awareness,
-            decoding.readVarUint8Array(decoder),
-            ws
-          );
-        }
-      } catch (error) {
-        console.error("Error handling message:", error);
-      }
-    });
-
-    ws.addEventListener("close", () => {
-      this.connections.delete(ws);
-
-      // Clean up awareness state
-      const awarenessStates = Array.from(this.awareness.getStates().keys());
-      awarenessProtocol.removeAwarenessStates(
-        this.awareness,
-        awarenessStates.filter((id) => {
-          return this.awareness.meta.get(id)?.ws === ws;
-        }),
-        ws
-      );
-    });
-
-    ws.addEventListener("error", () => {
-      this.connections.delete(ws);
-    });
+    // Schedule the next alarm for 5 minutes from now
+    const now = Date.now();
+    const fiveMinutesMs = 5 * 60 * 1000;
+    await this.ctx.storage.setAlarm(now + fiveMinutesMs);
   }
 
   /**
-   * Broadcast a message to all connected clients except the sender
+   * Error handler for WebSocket connection errors
+   * This is called when a connection encounters an error
    */
-  private broadcast(message: Uint8Array, except?: WebSocket) {
-    this.connections.forEach((conn) => {
-      if (conn !== except && conn.readyState === 1) {
-        conn.send(message);
-      }
+  onError(connection: any, error: Error): void {
+    console.error("[StickyNotesRoom] Connection error:", {
+      connectionId: connection?.id,
+      error: error.message,
+      retryable: (error as any).retryable,
     });
-  }
 
-  /**
-   * Broadcast awareness updates
-   */
-  private broadcastAwareness({ added, updated, removed }: {
-    added: number[];
-    updated: number[];
-    removed: number[];
-  }) {
-    const changedClients = added.concat(updated).concat(removed);
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_AWARENESS);
-    encoding.writeVarUint8Array(
-      encoder,
-      awarenessProtocol.encodeAwarenessUpdate(this.awareness, changedClients)
-    );
-    const message = encoding.toUint8Array(encoder);
-
-    this.broadcast(message);
+    // YServer handles the cleanup automatically, we just log the error
+    // The connection will be automatically removed from the active connections
   }
 }
 
 /**
  * Main Worker handler
+ * Routes requests to the appropriate Durable Object based on the room name
+ * Uses PartyServer's getServerByName to properly set up headers
  */
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
-
-    // Extract room ID from path
+    
+    // Extract room ID from path (e.g., /room-name -> room-name)
+    // Default to "default" if no room specified
     const roomId = url.pathname.slice(1) || "default";
 
-    // Get the Durable Object stub
-    const id = env.STICKYNOTES_DO.idFromName(roomId);
-    const stub = env.STICKYNOTES_DO.get(id);
+    // Use PartyServer's getServerByName to get the server stub
+    // This properly sets up the namespace and room headers that PartyServer expects
+    const stub = await getServerByName(env.STICKYNOTES_DO as any, roomId);
 
     // Forward the request to the Durable Object
     return stub.fetch(request);

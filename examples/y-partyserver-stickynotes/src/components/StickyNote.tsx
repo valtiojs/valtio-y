@@ -61,17 +61,46 @@ export function StickyNote({
     const startNoteX = note.x;
     const startNoteY = note.y;
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
+    let rafId: number | null = null;
+    let lastMoveEvent: MouseEvent | null = null;
 
-      onUpdate({
-        x: Math.max(0, startNoteX + deltaX),
-        y: Math.max(0, startNoteY + deltaY),
-      });
+    const updatePosition = () => {
+      if (lastMoveEvent) {
+        const deltaX = lastMoveEvent.clientX - startX;
+        const deltaY = lastMoveEvent.clientY - startY;
+
+        onUpdate({
+          x: Math.max(0, startNoteX + deltaX),
+          y: Math.max(0, startNoteY + deltaY),
+        });
+
+        lastMoveEvent = null;
+      }
+      rafId = null;
+    };
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      lastMoveEvent = moveEvent;
+
+      if (!rafId) {
+        rafId = requestAnimationFrame(updatePosition);
+      }
     };
 
     const handleMouseUp = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      // Final update to ensure position is accurate
+      if (lastMoveEvent) {
+        const deltaX = lastMoveEvent.clientX - startX;
+        const deltaY = lastMoveEvent.clientY - startY;
+
+        onUpdate({
+          x: Math.max(0, startNoteX + deltaX),
+          y: Math.max(0, startNoteY + deltaY),
+        });
+      }
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };
@@ -90,17 +119,46 @@ export function StickyNote({
     const startWidth = note.width;
     const startHeight = note.height;
 
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      const deltaX = moveEvent.clientX - startX;
-      const deltaY = moveEvent.clientY - startY;
+    let rafId: number | null = null;
+    let lastMoveEvent: MouseEvent | null = null;
 
-      onUpdate({
-        width: Math.max(150, startWidth + deltaX),
-        height: Math.max(100, startHeight + deltaY),
-      });
+    const updateSize = () => {
+      if (lastMoveEvent) {
+        const deltaX = lastMoveEvent.clientX - startX;
+        const deltaY = lastMoveEvent.clientY - startY;
+
+        onUpdate({
+          width: Math.max(150, startWidth + deltaX),
+          height: Math.max(100, startHeight + deltaY),
+        });
+
+        lastMoveEvent = null;
+      }
+      rafId = null;
+    };
+
+    const handleMouseMove = (moveEvent: MouseEvent) => {
+      lastMoveEvent = moveEvent;
+
+      if (!rafId) {
+        rafId = requestAnimationFrame(updateSize);
+      }
     };
 
     const handleMouseUp = () => {
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+      // Final update to ensure size is accurate
+      if (lastMoveEvent) {
+        const deltaX = lastMoveEvent.clientX - startX;
+        const deltaY = lastMoveEvent.clientY - startY;
+
+        onUpdate({
+          width: Math.max(150, startWidth + deltaX),
+          height: Math.max(100, startHeight + deltaY),
+        });
+      }
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
     };

@@ -1,20 +1,14 @@
 /**
- * Yjs Setup with Cloudflare Durable Objects WebSocket Provider
+ * Yjs Setup with y-partyserver Provider
  *
- * This file sets up valtio-y for real-time collaboration using a custom
- * WebSocket provider that connects to a Cloudflare Durable Object.
+ * This file sets up valtio-y for real-time collaboration using y-partyserver.
  */
 
 import * as Y from "yjs";
-import * as encoding from "lib0/encoding";
-import * as decoding from "lib0/decoding";
-import * as syncProtocol from "y-protocols/sync";
 import * as awarenessProtocol from "y-protocols/awareness";
+import YProvider from "y-partyserver/provider";
 import { createYjsProxy } from "valtio-y";
 import type { AppState, SyncStatus, UserPresence } from "./types";
-
-const MESSAGE_SYNC = 0;
-const MESSAGE_AWARENESS = 1;
 
 // ============================================================================
 // YJS DOCUMENT SETUP
@@ -27,8 +21,9 @@ export const awareness = new awarenessProtocol.Awareness(doc);
 // WEBSOCKET CONNECTION
 // ============================================================================
 
-let ws: WebSocket | null = null;
+let provider: YProvider | null = null;
 let syncStatus: SyncStatus = "connecting";
+let syncedInterval: ReturnType<typeof setInterval> | null = null;
 const syncListeners: Set<() => void> = new Set();
 
 const notifySyncListeners = () => {
@@ -41,89 +36,92 @@ const setSyncStatus = (status: SyncStatus) => {
 };
 
 /**
- * Connect to the Durable Object WebSocket
+ * Connect to the Durable Object via y-partyserver
  */
 export function connect(roomId: string = "default") {
-  if (ws?.readyState === WebSocket.OPEN) return;
+  if (provider) {
+    // Already connected, just return
+    return;
+  }
+
+  // Clean up any existing interval
+  if (syncedInterval) {
+    clearInterval(syncedInterval);
+    syncedInterval = null;
+  }
 
   setSyncStatus("connecting");
 
-  // Connect via Vite proxy
-  const wsUrl = `ws://${window.location.host}/api/${roomId}`;
-  ws = new WebSocket(wsUrl);
+  // Connect via Vite proxy (proxy forwards /api/* to localhost:8787)
+  // Our worker expects URLs like /room-name, so we use prefix to customize the path
+  const host = window.location.host;
+  const wsUrl = `ws://${host}/api`;
 
-  ws.binaryType = "arraybuffer";
+  console.log("[valtio-y debug] Creating YProvider", { wsUrl, roomId });
 
-  ws.onopen = () => {
-    setSyncStatus("connected");
+  provider = new YProvider(wsUrl, roomId, doc, {
+    awareness,
+    connect: true,
+    // Use empty prefix so YProvider constructs URL as /room-name instead of /parties/main/room-name
+    prefix: "",
+  });
+
+  console.log("[valtio-y debug] YProvider created, setting up listeners");
+
+  // Track sync status
+  // YProvider extends WebsocketProvider which extends Observable<string>
+  // It emits "status" events with connection status
+  // Note: wsconnected and wsconnecting are public properties but not in types
+  type ProviderWithConnectionState = YProvider & {
+    wsconnected: boolean;
+    wsconnecting: boolean;
   };
 
-  ws.onmessage = (event) => {
-    const data = new Uint8Array(event.data);
-    const decoder = decoding.createDecoder(data);
-    const messageType = decoding.readVarUint(decoder);
-
-    if (messageType === MESSAGE_SYNC) {
-      setSyncStatus("syncing");
-
-      const encoder = encoding.createEncoder();
-      encoding.writeVarUint(encoder, MESSAGE_SYNC);
-
-      syncProtocol.readSyncMessage(decoder, encoder, doc, null);
-
-      const response = encoding.toUint8Array(encoder);
-      if (response.length > 1 && ws?.readyState === WebSocket.OPEN) {
-        ws.send(response);
-      }
-
-      setSyncStatus("connected");
-    } else if (messageType === MESSAGE_AWARENESS) {
-      awarenessProtocol.applyAwarenessUpdate(
-        awareness,
-        decoding.readVarUint8Array(decoder),
-        null
-      );
+  const updateStatus = () => {
+    if (!provider) return;
+    
+    const providerWithState = provider as unknown as ProviderWithConnectionState;
+    
+    // Check connection and sync state
+    if (providerWithState.wsconnected) {
+      setSyncStatus(provider.synced ? "connected" : "syncing");
+    } else if (providerWithState.wsconnecting) {
+      setSyncStatus("connecting");
+    } else {
+      setSyncStatus("disconnected");
     }
   };
 
-  ws.onerror = () => {
-    setSyncStatus("disconnected");
-  };
-
-  ws.onclose = () => {
-    setSyncStatus("disconnected");
-
-    // Attempt to reconnect after 2 seconds
-    setTimeout(() => connect(roomId), 2000);
-  };
-
-  // Send local changes to server
-  doc.on("update", (update: Uint8Array, origin: unknown) => {
-    if (origin === "network" || !ws || ws.readyState !== WebSocket.OPEN) return;
-
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_SYNC);
-    syncProtocol.writeUpdate(encoder, update);
-    ws.send(encoding.toUint8Array(encoder));
+  // Listen to status changes (emitted as string events)
+  provider.on("status", (event: { status: string }) => {
+    console.log("[valtio-y debug] Provider status event", event);
+    updateStatus();
   });
 
-  // Send awareness updates
-  awareness.on("update", ({ added, updated, removed }: {
-    added: number[];
-    updated: number[];
-    removed: number[];
-  }) => {
-    if (!ws || ws.readyState !== WebSocket.OPEN) return;
-
-    const changedClients = added.concat(updated).concat(removed);
-    const encoder = encoding.createEncoder();
-    encoding.writeVarUint(encoder, MESSAGE_AWARENESS);
-    encoding.writeVarUint8Array(
-      encoder,
-      awarenessProtocol.encodeAwarenessUpdate(awareness, changedClients)
-    );
-    ws.send(encoding.toUint8Array(encoder));
+  // Listen for sync events
+  provider.on("sync", (isSynced: boolean) => {
+    console.log("[valtio-y debug] Provider sync event", { isSynced });
   });
+  
+  // Also periodically check synced state since there's no dedicated synced event
+  const checkSynced = () => {
+    if (!provider) return;
+    
+    const providerWithState = provider as unknown as ProviderWithConnectionState;
+    if (providerWithState.wsconnected) {
+      if (provider.synced) {
+        setSyncStatus("connected");
+      } else {
+        setSyncStatus("syncing");
+      }
+    }
+  };
+  
+  // Poll for synced state (every 200ms is reasonable)
+  syncedInterval = setInterval(checkSynced, 200);
+
+  // Update status immediately
+  updateStatus();
 }
 
 // ============================================================================
@@ -132,6 +130,28 @@ export function connect(roomId: string = "default") {
 
 export const { proxy, bootstrap } = createYjsProxy<AppState>(doc, {
   getRoot: (doc: Y.Doc) => doc.getMap("sharedState"),
+  logLevel: "debug", // Enable debug logging to help troubleshoot sync issues
+});
+
+// Debug: Log when local changes are made to the doc
+doc.on("update", (update: Uint8Array, origin: unknown) => {
+  console.log("[valtio-y debug] Doc update event", {
+    updateSize: update.length,
+    origin: origin?.toString(),
+    hasProvider: !!provider,
+  });
+});
+
+// Debug: Log when the shared state changes
+const sharedState = doc.getMap("sharedState");
+sharedState.observe(() => {
+  const notesValue = sharedState.get("notes");
+  console.log("[valtio-y debug] SharedState changed", {
+    notes: notesValue,
+    notesType: notesValue?.constructor?.name,
+    isYArray: notesValue instanceof Y.Array,
+    nextZ: sharedState.get("nextZ"),
+  });
 });
 
 // ============================================================================

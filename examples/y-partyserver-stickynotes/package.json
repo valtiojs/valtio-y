@@ -6,12 +6,14 @@
   "dependencies": {
     "lib0": "^0.2.98",
     "lucide-react": "^0.544.0",
+    "partyserver": "^0.0.75",
     "react": "latest",
     "react-dom": "latest",
     "valtio": "latest",
     "valtio-y": "workspace:*",
-    "yjs": "latest",
-    "y-protocols": "^1.0.6"
+    "y-partyserver": "^0.0.51",
+    "y-protocols": "^1.0.6",
+    "yjs": "latest"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20241218.0",
@@ -27,7 +29,7 @@
     "wrangler": "^3.95.0"
   },
   "scripts": {
-    "dev": "vite",
+    "dev": "wrangler dev --port 8787 & vite",
     "dev:worker": "wrangler dev --port 8787",
     "typecheck": "tsc --noEmit",
     "deploy": "wrangler deploy"
