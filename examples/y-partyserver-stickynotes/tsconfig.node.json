@@ -23,4 +23,3 @@
   },
   "include": ["vite.config.ts", "postcss.config.js"]
 }
-
