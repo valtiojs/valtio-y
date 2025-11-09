@@ -133,10 +133,10 @@ export function App() {
       id: crypto.randomUUID(),
       x: Math.random() * (window.innerWidth - 250) + 50,
       y: Math.random() * (window.innerHeight - 200) + 100,
-      width: 200,
-      height: 150,
+      width: 280,
+      height: 200,
       color: selectedColor,
-      text: "New note...",
+      text: "",
       z: proxy.nextZ,
     };
 
@@ -166,7 +166,6 @@ export function App() {
       proxy.nextZ += 1;
     }
   };
-
 
   const handleCanvasClick = () => {
     setSelectedNoteId(null);
@@ -207,14 +206,6 @@ export function App() {
                 isEditedByOther={!!editState}
                 otherUserColor={editState?.color}
                 onSelect={() => handleSelectNote(noteId)}
-                onDelete={() => {
-                  if (proxy.notes && noteId in proxy.notes) {
-                    delete proxy.notes[noteId];
-                    if (selectedNoteId === noteId) {
-                      setSelectedNoteId(null);
-                    }
-                  }
-                }}
               />
             );
           })}
@@ -237,19 +228,6 @@ export function App() {
         )}
       </div>
 
-      {/* Help text */}
-      {(!state.notes || Object.keys(state.notes).length === 0) && (
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center pointer-events-none">
-          <div className="bg-white/80 backdrop-blur-sm rounded-2xl px-8 py-6 shadow-xl">
-            <p className="text-3xl font-bold mb-2 text-gray-800">
-              Welcome to Sticky Notes
-            </p>
-            <p className="text-base text-gray-600">
-              Click &quot;Add Note&quot; to get started
-            </p>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

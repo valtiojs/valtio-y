@@ -28,30 +28,30 @@ export function Toolbar({
   hasSelection,
 }: ToolbarProps) {
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-white/90 backdrop-blur-md rounded-2xl shadow-xl px-4 py-3.5 flex items-center gap-3 z-50 border border-white/20">
+    <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl py-3 px-4 flex items-center gap-3 z-50 border border-gray-200/50">
       {/* Add Note Button */}
       <button
         onClick={onAddNote}
-        className="flex items-center gap-2 px-5 py-2.5 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all font-medium shadow-sm hover:shadow-md"
+        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all font-medium shadow-sm hover:shadow-md text-sm flex-shrink-0"
       >
         <Plus size={18} strokeWidth={2.5} />
         Add Note
       </button>
 
+      {/* Divider */}
+      <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
+
       {/* Color Selector */}
-      <div className="flex items-center gap-2.5 pl-4 border-l border-gray-200/60">
-        <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">
-          Color
-        </span>
+      <div className="flex items-center gap-1.5 px-2">
         <div className="flex gap-1.5">
           {COLORS.map((color) => (
             <button
               key={color.value}
               onClick={() => onColorChange(color.value)}
-              className={`w-7 h-7 rounded-lg transition-all hover:scale-110 shadow-sm ${
+              className={`w-7 h-7 rounded-lg transition-all hover:scale-105 shadow-sm flex-shrink-0 ${
                 selectedColor === color.value
-                  ? "ring-2 ring-offset-2 ring-indigo-500 scale-110 shadow-md"
-                  : "hover:shadow-md"
+                  ? "ring-2 ring-gray-800 scale-105"
+                  : "hover:shadow-md opacity-80 hover:opacity-100"
               }`}
               style={{ backgroundColor: color.value }}
               title={color.name}
@@ -60,11 +60,14 @@ export function Toolbar({
         </div>
       </div>
 
+      {/* Divider */}
+      <div className="w-px h-8 bg-gray-200" />
+
       {/* Delete Button */}
       <button
         onClick={onDeleteNote}
         disabled={!hasSelection}
-        className={`flex items-center gap-2 px-4 py-2.5 rounded-xl transition-all font-medium ${
+        className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium text-sm ${
           hasSelection
             ? "bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-sm hover:shadow-md"
             : "bg-gray-100 text-gray-400 cursor-not-allowed"
@@ -75,8 +78,11 @@ export function Toolbar({
         Delete
       </button>
 
+      {/* Divider */}
+      <div className="w-px h-8 bg-gray-200" />
+
       {/* Sync Status */}
-      <div className="flex items-center gap-2 pl-4 border-l border-gray-200/60">
+      <div className="flex items-center px-2">
         {syncStatus === "connected" ? (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg">
             <Wifi size={16} className="text-green-600" strokeWidth={2.5} />

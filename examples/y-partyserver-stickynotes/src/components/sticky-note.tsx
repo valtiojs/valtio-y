@@ -1,6 +1,5 @@
 import { useRef, useState, useEffect } from "react";
 import { motion, type PanInfo } from "motion/react";
-import { X } from "lucide-react";
 import type { StickyNote as StickyNoteType } from "../types";
 import { proxy } from "../yjs-setup";
 
@@ -11,7 +10,6 @@ interface StickyNoteProps {
   isEditedByOther: boolean;
   otherUserColor?: string;
   onSelect: () => void;
-  onDelete: () => void;
 }
 
 export function StickyNote({
@@ -21,7 +19,6 @@ export function StickyNote({
   isEditedByOther,
   otherUserColor,
   onSelect,
-  onDelete,
 }: StickyNoteProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -165,18 +162,6 @@ export function StickyNote({
             : "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
       }}
     >
-      {/* Delete Button */}
-      <button
-        onClick={(e) => {
-          e.stopPropagation();
-          onDelete();
-        }}
-        className="absolute top-2 right-2 w-7 h-7 flex items-center justify-center bg-red-500 hover:bg-red-600 text-white rounded-md opacity-0 group-hover:opacity-100 transition-opacity shadow-sm"
-        title="Delete note"
-      >
-        <X size={14} strokeWidth={2.5} />
-      </button>
-
       {/* Editing indicator */}
       {isEditedByOther && (
         <div
@@ -188,7 +173,7 @@ export function StickyNote({
 
       {/* Content */}
       <div
-        className="w-full h-full p-5 overflow-hidden relative cursor-text"
+        className="w-full h-full p-4 overflow-hidden relative cursor-text"
         onClick={handleClick}
       >
         {/* Paper texture overlay */}
@@ -205,13 +190,16 @@ export function StickyNote({
             value={note.text}
             onChange={handleTextChange}
             onBlur={handleBlur}
-            className="w-full h-full bg-transparent border-none outline-none resize-none font-sans text-base text-gray-800 leading-relaxed relative z-10"
+            placeholder="Type something..."
+            className="w-full h-full bg-transparent border-none outline-none resize-none font-sans text-base text-gray-800 leading-relaxed relative z-10 placeholder:text-gray-400"
             style={{ backgroundColor: note.color }}
             onMouseDown={(e) => e.stopPropagation()}
           />
         ) : (
           <div className="w-full h-full font-sans text-base text-gray-800 leading-relaxed whitespace-pre-wrap overflow-auto relative z-10">
-            {note.text}
+            {note.text || (
+              <span className="text-gray-400">Type something...</span>
+            )}
           </div>
         )}
       </div>
