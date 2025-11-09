@@ -42,52 +42,12 @@ export class RoomState {
 
   dispose(): void {
     this.disposeBridge();
-    this.awareness.destroy();
-    this.doc.destroy();
+    // Note: We don't destroy awareness/doc here because the provider
+    // might still be cleaning up. They'll be garbage collected naturally.
   }
 }
 
-interface CachedRoom {
-  state: RoomState;
-  refCount: number;
-  lastAccessed: number;
+export function createRoomState(): RoomState {
+  return new RoomState();
 }
 
-const roomCache = new Map<string, CachedRoom>();
-
-function ensureRoom(roomId: string): CachedRoom {
-  let entry = roomCache.get(roomId);
-  if (!entry) {
-    entry = {
-      state: new RoomState(),
-      refCount: 0,
-      lastAccessed: Date.now(),
-    };
-    roomCache.set(roomId, entry);
-  } else {
-    entry.lastAccessed = Date.now();
-  }
-  return entry;
-}
-
-export function acquireRoom(roomId: string): RoomState {
-  const entry = ensureRoom(roomId);
-  entry.refCount += 1;
-  entry.lastAccessed = Date.now();
-  return entry.state;
-}
-
-export function releaseRoom(roomId: string): void {
-  const entry = roomCache.get(roomId);
-  if (!entry) {
-    return;
-  }
-
-  entry.refCount = Math.max(0, entry.refCount - 1);
-  entry.lastAccessed = Date.now();
-
-  if (entry.refCount === 0) {
-    entry.state.dispose();
-    roomCache.delete(roomId);
-  }
-}

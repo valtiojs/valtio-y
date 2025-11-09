@@ -1,7 +1,7 @@
-import { useEffect, useRef, useState, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useSnapshot } from "valtio";
 import { useRoomProvider } from "./use-room-provider";
-import { acquireRoom, releaseRoom } from "./yjs-setup";
+import { RoomState } from "./yjs-setup";
 import { Toolbar } from "./components/toolbar";
 import { StickyNote } from "./components/sticky-note";
 import { Cursor } from "./components/cursor";
@@ -34,25 +34,7 @@ export function App() {
     return () => window.removeEventListener("hashchange", handleHashChange);
   }, []);
 
-  const roomIdRef = useRef(roomId);
-  const [room, setRoom] = useState(() => acquireRoom(roomId));
-
-  useEffect(() => {
-    if (roomIdRef.current === roomId) {
-      return;
-    }
-
-    releaseRoom(roomIdRef.current);
-    roomIdRef.current = roomId;
-    setRoom(acquireRoom(roomId));
-    setSelectedNoteId(null);
-  }, [roomId]);
-
-  useEffect(() => {
-    return () => {
-      releaseRoom(roomIdRef.current);
-    };
-  }, []);
+  const room = useMemo(() => new RoomState(), [roomId]);
 
   const { doc, awareness, proxy, setLocalPresence } = room;
 
@@ -61,22 +43,29 @@ export function App() {
   // Connect to PartyServer using useYProvider hook
   // Connect to /collab endpoint on the worker
   // Note: y-partyserver automatically uses the correct protocol based on the page
-  const providerOptions = useMemo(
-    () => ({
-      awareness,
-    }),
-    [awareness],
-  );
-
-  const wsPrefix = useMemo(() => `/collab/${roomId}`, [roomId]);
-
   const provider = useRoomProvider({
     host: window.location.host,
     room: roomId,
     doc,
-    prefix: wsPrefix,
-    options: providerOptions,
+    prefix: `/collab`,
+    options: useMemo(
+      () => ({
+        awareness,
+      }),
+      [awareness],
+    ),
   });
+
+  // Cleanup: dispose room when component unmounts or room changes
+  useEffect(() => {
+    setSelectedNoteId(null);
+    return () => {
+      // Provider cleanup happens first (in useRoomProvider)
+      // Then we dispose the room
+      room.dispose();
+    };
+  }, [room]);
+
 
   // Track sync status based on provider events
   useEffect(() => {
@@ -145,7 +134,10 @@ export function App() {
     setPresenceStates({});
 
     const updatePresence = () => {
-      const states = awareness.getStates();
+      const states = awareness.getStates() as Map<
+        number,
+        { user?: UserPresence }
+      >;
       const next: Record<number, UserPresence> = {};
 
       states.forEach((state, clientId) => {

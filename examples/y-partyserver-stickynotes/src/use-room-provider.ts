@@ -36,6 +36,8 @@ export function useRoomProvider({
         ? window.location.host
         : "dummy-domain.com");
 
+    console.log('[DEBUG] Creating provider with room:', room, 'prefix:', connectionOptions.prefix);
+
     return new YProvider(resolvedHost, room, doc, connectionOptions);
   }, [host, room, doc, connectionOptions]);
 
