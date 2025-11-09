@@ -18,8 +18,7 @@ export function App() {
   );
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState("#fef3c7");
-  const [syncStatus, setSyncStatusState] =
-    useState<SyncStatus>("connecting");
+  const [syncStatus, setSyncStatusState] = useState<SyncStatus>("connecting");
   const [presenceStates, setPresenceStates] = useState<
     Record<number, UserPresence>
   >({});

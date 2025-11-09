@@ -32,7 +32,9 @@ export function useRoomProvider({
   const provider = useMemo(() => {
     const resolvedHost =
       host ??
-      (typeof window !== "undefined" ? window.location.host : "dummy-domain.com");
+      (typeof window !== "undefined"
+        ? window.location.host
+        : "dummy-domain.com");
 
     return new YProvider(resolvedHost, room, doc, connectionOptions);
   }, [host, room, doc, connectionOptions]);
