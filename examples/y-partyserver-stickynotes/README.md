@@ -18,23 +18,25 @@ A collaborative sticky notes application built with `valtio-y`, demonstrating re
 This example demonstrates how to achieve smooth collaborative dragging using **Framer Motion + valtio-y**:
 
 **During drag:**
+
 - Motion handles the local drag animation with MotionValues
 - No document updates (butter smooth!)
 - No parent rerenders
 
 **On drag end:**
+
 - Final position is written to the **Yjs document** (persistent)
 - Single document update per drag operation
 - Motion automatically animates the position change for remote users
 
 **Key benefits:**
+
 1. **Motion** owns the animation during drag - no fighting with snapshot updates
 2. **Minimal updates** - only write to document on drag end
 3. **Smooth remote updates** - Motion animates changes from other users
 4. **Clean history** - single position update per drag in undo/redo
 
 The secret: Use Motion's `animate` prop instead of `style` for x/y positions. This lets Motion smoothly interpolate between document updates without fighting the drag gesture.
-
 
 ## Implementation
 
@@ -52,7 +54,7 @@ The secret: Use Motion's `animate` prop instead of `style` for x/y positions. Th
   transition={{ type: "tween", duration: 0.1 }}
 >
   {/* Note content */}
-</motion.div>
+</motion.div>;
 
 // On drag end - update document with final position
 const handleDragEnd = (info: PanInfo) => {
@@ -64,6 +66,7 @@ const handleDragEnd = (info: PanInfo) => {
 ```
 
 **Why this works:**
+
 - During drag, Motion controls the position via internal MotionValues
 - On drag end, we update the document (snapshot changes)
 - Motion sees the new animate values and smoothly interpolates
@@ -96,13 +99,14 @@ Open multiple browser windows to see real-time collaboration in action!
 
 This example demonstrates a clean separation:
 
-| Data | Storage | When Updated |
-|------|---------|--------------|
+| Data                 | Storage               | When Updated                             |
+| -------------------- | --------------------- | ---------------------------------------- |
 | **Cursor positions** | Awareness (ephemeral) | On every mouse move (throttled with RAF) |
-| **Note positions** | Document (persistent) | Only on drag end |
-| **Note content** | Document (persistent) | On text change |
+| **Note positions**   | Document (persistent) | Only on drag end                         |
+| **Note content**     | Document (persistent) | On text change                           |
 
 **Why it works:**
+
 - Cursors are ephemeral - no need to persist or sync via CRDT
 - Note positions are persistent - need to sync and support undo/redo
 - Motion bridges the gap by smoothly animating document updates
