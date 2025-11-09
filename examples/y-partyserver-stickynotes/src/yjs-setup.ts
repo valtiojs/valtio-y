@@ -79,9 +79,10 @@ export function connect(roomId: string = "default") {
 
   const updateStatus = () => {
     if (!provider) return;
-    
-    const providerWithState = provider as unknown as ProviderWithConnectionState;
-    
+
+    const providerWithState =
+      provider as unknown as ProviderWithConnectionState;
+
     // Check connection and sync state
     if (providerWithState.wsconnected) {
       setSyncStatus(provider.synced ? "connected" : "syncing");
@@ -102,12 +103,13 @@ export function connect(roomId: string = "default") {
   provider.on("sync", (isSynced: boolean) => {
     console.log("[valtio-y debug] Provider sync event", { isSynced });
   });
-  
+
   // Also periodically check synced state since there's no dedicated synced event
   const checkSynced = () => {
     if (!provider) return;
-    
-    const providerWithState = provider as unknown as ProviderWithConnectionState;
+
+    const providerWithState =
+      provider as unknown as ProviderWithConnectionState;
     if (providerWithState.wsconnected) {
       if (provider.synced) {
         setSyncStatus("connected");
@@ -116,7 +118,7 @@ export function connect(roomId: string = "default") {
       }
     }
   };
-  
+
   // Poll for synced state (every 200ms is reasonable)
   syncedInterval = setInterval(checkSynced, 200);
 

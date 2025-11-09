@@ -170,7 +170,9 @@ export function StickyNote({
   return (
     <div
       className={`absolute rounded-lg shadow-lg transition-all cursor-move select-none ${
-        isSelected ? "ring-2 ring-indigo-600 ring-offset-2 shadow-xl" : "hover:shadow-xl"
+        isSelected
+          ? "ring-2 ring-indigo-600 ring-offset-2 shadow-xl"
+          : "hover:shadow-xl"
       } ${isEditedByOther ? "ring-2 ring-offset-2" : ""}`}
       style={{
         left: note.x,

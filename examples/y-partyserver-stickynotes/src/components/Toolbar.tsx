@@ -83,17 +83,23 @@ export function Toolbar({
         ) : syncStatus === "syncing" ? (
           <>
             <Wifi size={18} className="text-blue-600 animate-pulse" />
-            <span className="text-sm font-medium text-gray-700">Syncing...</span>
+            <span className="text-sm font-medium text-gray-700">
+              Syncing...
+            </span>
           </>
         ) : syncStatus === "connecting" ? (
           <>
             <Wifi size={18} className="text-yellow-600 animate-pulse" />
-            <span className="text-sm font-medium text-gray-700">Connecting...</span>
+            <span className="text-sm font-medium text-gray-700">
+              Connecting...
+            </span>
           </>
         ) : (
           <>
             <WifiOff size={18} className="text-red-600" />
-            <span className="text-sm font-medium text-gray-700">Disconnected</span>
+            <span className="text-sm font-medium text-gray-700">
+              Disconnected
+            </span>
           </>
         )}
       </div>

@@ -18,7 +18,11 @@ export interface AppState {
   nextZ: number;
 }
 
-export type SyncStatus = "connecting" | "connected" | "syncing" | "disconnected";
+export type SyncStatus =
+  | "connecting"
+  | "connected"
+  | "syncing"
+  | "disconnected";
 
 export interface UserPresence {
   cursor?: { x: number; y: number };

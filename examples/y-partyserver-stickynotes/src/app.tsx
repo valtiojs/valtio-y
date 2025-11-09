@@ -19,9 +19,9 @@ export function App() {
   const [syncStatus, setSyncStatus] = useState(getSyncStatus());
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState("#fef08a");
-  const [presenceStates, setPresenceStates] = useState<Map<number, UserPresence>>(
-    new Map()
-  );
+  const [presenceStates, setPresenceStates] = useState<
+    Map<number, UserPresence>
+  >(new Map());
 
   // Connect to Durable Object on mount
   useEffect(() => {
@@ -199,7 +199,9 @@ export function App() {
       {/* Help text */}
       {(!state.notes || state.notes.length === 0) && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-white/70 pointer-events-none">
-          <p className="text-2xl font-semibold mb-2">Welcome to Sticky Notes!</p>
+          <p className="text-2xl font-semibold mb-2">
+            Welcome to Sticky Notes!
+          </p>
           <p className="text-lg">Click "Add Note" to get started</p>
         </div>
       )}
