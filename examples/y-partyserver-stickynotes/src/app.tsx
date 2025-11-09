@@ -16,7 +16,7 @@ import { Cursor } from "./components/cursor";
 import type { StickyNote as StickyNoteType, UserPresence } from "./types";
 
 export function App() {
-  const state = useSnapshot(proxy);
+  const state = useSnapshot(proxy, { sync: true });
   const presenceStates = useSnapshot(presenceProxy);
   const syncStatus = useSnapshot(syncStatusProxy).status;
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
@@ -208,10 +208,12 @@ export function App() {
         {state.notes &&
           Object.keys(state.notes).map((noteId) => {
             const editState = noteEditStates.get(noteId);
+            const note = state.notes[noteId];
             return (
               <StickyNote
                 key={noteId}
-                note={proxy.notes![noteId]}
+                note={note}
+                noteId={noteId}
                 isSelected={selectedNoteId === noteId}
                 isEditedByOther={!!editState}
                 otherUserColor={editState?.color}

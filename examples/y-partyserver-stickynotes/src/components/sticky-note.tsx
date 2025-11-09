@@ -1,11 +1,12 @@
 import { useRef, useState, useEffect } from "react";
-import { useSnapshot } from "valtio";
 import { motion, type PanInfo } from "motion/react";
 import { X } from "lucide-react";
 import type { StickyNote as StickyNoteType } from "../types";
+import { proxy } from "../yjs-setup";
 
 interface StickyNoteProps {
-  note: StickyNoteType; // The proxy object itself
+  note: StickyNoteType; // The snapshot value (already reactive from root useSnapshot)
+  noteId: string; // The note ID for mutations
   isSelected: boolean;
   isEditedByOther: boolean;
   otherUserColor?: string;
@@ -17,6 +18,7 @@ interface StickyNoteProps {
 
 export function StickyNote({
   note,
+  noteId,
   isSelected,
   isEditedByOther,
   otherUserColor,
@@ -29,9 +31,8 @@ export function StickyNote({
   const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  // Subscribe to ONLY this note - granular subscription!
-  // Try sync: true to prevent async batching cursor jumps (valtio issue #270)
-  const noteSnapshot = useSnapshot(note, { sync: true });
+  // Note: We don't need useSnapshot here since 'note' is already a snapshot value
+  // from the root useSnapshot(proxy, { sync: true }) call in App.tsx
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -58,8 +59,10 @@ export function StickyNote({
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    // Direct proxy mutation with sync: true should preserve cursor
-    note.text = e.target.value;
+    // Mutate via proxy since 'note' is a snapshot value (read-only)
+    if (proxy.notes && noteId in proxy.notes) {
+      proxy.notes[noteId].text = e.target.value;
+    }
   };
 
   const handleBlur = () => {
@@ -77,9 +80,11 @@ export function StickyNote({
     info: PanInfo,
   ) => {
     setIsDragging(false);
-    // Update proxy directly
-    note.x = Math.max(0, noteSnapshot.x + info.offset.x);
-    note.y = Math.max(0, noteSnapshot.y + info.offset.y);
+    // Update proxy directly since 'note' is a snapshot value (read-only)
+    if (proxy.notes && noteId in proxy.notes) {
+      proxy.notes[noteId].x = Math.max(0, note.x + info.offset.x);
+      proxy.notes[noteId].y = Math.max(0, note.y + info.offset.y);
+    }
   };
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
@@ -89,19 +94,19 @@ export function StickyNote({
 
     const startX = e.clientX;
     const startY = e.clientY;
-    const startWidth = noteSnapshot.width;
-    const startHeight = noteSnapshot.height;
+    const startWidth = note.width;
+    const startHeight = note.height;
 
     let rafId: number | null = null;
     let lastMoveEvent: MouseEvent | null = null;
 
     const updateSize = () => {
-      if (lastMoveEvent) {
+      if (lastMoveEvent && proxy.notes && noteId in proxy.notes) {
         const deltaX = lastMoveEvent.clientX - startX;
         const deltaY = lastMoveEvent.clientY - startY;
 
-        note.width = Math.max(150, startWidth + deltaX);
-        note.height = Math.max(100, startHeight + deltaY);
+        proxy.notes[noteId].width = Math.max(150, startWidth + deltaX);
+        proxy.notes[noteId].height = Math.max(100, startHeight + deltaY);
 
         lastMoveEvent = null;
       }
@@ -121,12 +126,12 @@ export function StickyNote({
         cancelAnimationFrame(rafId);
       }
       // Final update to ensure size is accurate
-      if (lastMoveEvent) {
+      if (lastMoveEvent && proxy.notes && noteId in proxy.notes) {
         const deltaX = lastMoveEvent.clientX - startX;
         const deltaY = lastMoveEvent.clientY - startY;
 
-        note.width = Math.max(150, startWidth + deltaX);
-        note.height = Math.max(100, startHeight + deltaY);
+        proxy.notes[noteId].width = Math.max(150, startWidth + deltaX);
+        proxy.notes[noteId].height = Math.max(100, startHeight + deltaY);
       }
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
@@ -152,12 +157,12 @@ export function StickyNote({
           : "shadow-lg hover:shadow-xl"
       } ${isEditedByOther ? "ring-2 ring-offset-4" : ""}`}
       style={{
-        x: noteSnapshot.x,
-        y: noteSnapshot.y,
-        width: noteSnapshot.width,
-        height: noteSnapshot.height,
-        backgroundColor: noteSnapshot.color,
-        zIndex: noteSnapshot.z,
+        x: note.x,
+        y: note.y,
+        width: note.width,
+        height: note.height,
+        backgroundColor: note.color,
+        zIndex: note.z,
         borderColor: isEditedByOther ? otherUserColor : undefined,
         boxShadow: isDragging
           ? "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
@@ -203,16 +208,16 @@ export function StickyNote({
         {isEditing ? (
           <textarea
             ref={textareaRef}
-            value={noteSnapshot.text}
+            value={note.text}
             onChange={handleTextChange}
             onBlur={handleBlur}
             className="w-full h-full bg-transparent border-none outline-none resize-none font-sans text-base text-gray-800 leading-relaxed relative z-10"
-            style={{ backgroundColor: noteSnapshot.color }}
+            style={{ backgroundColor: note.color }}
             onMouseDown={(e) => e.stopPropagation()}
           />
         ) : (
           <div className="w-full h-full font-sans text-base text-gray-800 leading-relaxed whitespace-pre-wrap overflow-auto relative z-10">
-            {noteSnapshot.text}
+            {note.text}
           </div>
         )}
       </div>
