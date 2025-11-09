@@ -1,3 +1,4 @@
+import { motion } from "motion/react";
 import { MousePointer2 } from "lucide-react";
 
 interface CursorProps {
@@ -9,12 +10,17 @@ interface CursorProps {
 
 export function Cursor({ x, y, color, name }: CursorProps) {
   return (
-    <div
-      className="absolute pointer-events-none transition-all duration-100 ease-out z-[9999]"
-      style={{
-        left: x,
-        top: y,
-        transform: "translate(-2px, -2px)",
+    <motion.div
+      className="absolute pointer-events-none z-[9999]"
+      animate={{
+        x: x - 2,
+        y: y - 2,
+      }}
+      transition={{
+        type: "spring",
+        damping: 30,
+        stiffness: 300,
+        mass: 0.5,
       }}
     >
       <MousePointer2
@@ -30,6 +36,6 @@ export function Cursor({ x, y, color, name }: CursorProps) {
       >
         {name}
       </div>
-    </div>
+    </motion.div>
   );
 }

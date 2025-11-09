@@ -7,8 +7,6 @@ interface StickyNoteProps {
   note: StickyNoteType; // The snapshot value (already reactive from root useSnapshot)
   noteId: string; // The note ID for mutations
   isSelected: boolean;
-  isEditedByOther: boolean;
-  otherUserColor?: string;
   onSelect: () => void;
 }
 
@@ -16,8 +14,6 @@ export function StickyNote({
   note,
   noteId,
   isSelected,
-  isEditedByOther,
-  otherUserColor,
   onSelect,
 }: StickyNoteProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -46,7 +42,7 @@ export function StickyNote({
 
     // Select the note and enter edit mode immediately
     onSelect();
-    if (!isEditedByOther && !isEditing) {
+    if (!isEditing) {
       setIsEditing(true);
     }
   };
@@ -146,7 +142,7 @@ export function StickyNote({
         isSelected
           ? "ring-2 ring-indigo-500 ring-offset-4 shadow-2xl"
           : "shadow-lg hover:shadow-xl"
-      } ${isEditedByOther ? "ring-2 ring-offset-4" : ""}`}
+      }`}
       style={{
         x: note.x,
         y: note.y,
@@ -154,7 +150,6 @@ export function StickyNote({
         height: note.height,
         backgroundColor: note.color,
         zIndex: note.z,
-        borderColor: isEditedByOther ? otherUserColor : undefined,
         boxShadow: isDragging
           ? "0 25px 50px -12px rgba(0, 0, 0, 0.25)"
           : isSelected
@@ -162,14 +157,6 @@ export function StickyNote({
             : "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
       }}
     >
-      {/* Editing indicator */}
-      {isEditedByOther && (
-        <div
-          className="absolute -top-2 -left-2 w-4 h-4 rounded-full animate-pulse"
-          style={{ backgroundColor: otherUserColor }}
-          title="Another user is editing this note"
-        />
-      )}
 
       {/* Content */}
       <div

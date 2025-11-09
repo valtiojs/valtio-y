@@ -82,24 +82,37 @@ export function App() {
     };
   }, [provider]);
 
-  // Track mouse position for presence
+  // Track mouse position for presence with throttling
   useEffect(() => {
+    let rafId: number | null = null;
+    let lastEvent: MouseEvent | null = null;
+
+    const updateCursor = () => {
+      if (lastEvent) {
+        setLocalPresence({
+          cursor: { x: lastEvent.clientX, y: lastEvent.clientY },
+        });
+        lastEvent = null;
+      }
+      rafId = null;
+    };
+
     const handleMouseMove = (e: MouseEvent) => {
-      setLocalPresence({
-        cursor: { x: e.clientX, y: e.clientY },
-      });
+      lastEvent = e;
+      if (!rafId) {
+        rafId = requestAnimationFrame(updateCursor);
+      }
     };
 
     window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (rafId) {
+        cancelAnimationFrame(rafId);
+      }
+    };
   }, []);
 
-  // Update presence when selection changes
-  useEffect(() => {
-    setLocalPresence({
-      selectedNoteId: selectedNoteId || undefined,
-    });
-  }, [selectedNoteId]);
 
   // Handle keyboard shortcuts for deleting notes
   useEffect(() => {
@@ -171,14 +184,6 @@ export function App() {
     setSelectedNoteId(null);
   };
 
-  // Find notes being edited by others
-  const noteEditStates = new Map<string, { color: string }>();
-  Object.values(presenceStates).forEach((presence: UserPresence) => {
-    if (presence.editingNoteId) {
-      noteEditStates.set(presence.editingNoteId, { color: presence.color });
-    }
-  });
-
   return (
     <div className="w-full h-full relative" onClick={handleCanvasClick}>
       {/* Toolbar */}
@@ -195,7 +200,6 @@ export function App() {
       <div className="w-full h-full overflow-hidden">
         {state.notes &&
           Object.keys(state.notes).map((noteId) => {
-            const editState = noteEditStates.get(noteId);
             const note = state.notes[noteId];
             return (
               <StickyNote
@@ -203,8 +207,6 @@ export function App() {
                 note={note}
                 noteId={noteId}
                 isSelected={selectedNoteId === noteId}
-                isEditedByOther={!!editState}
-                otherUserColor={editState?.color}
                 onSelect={() => handleSelectNote(noteId)}
               />
             );

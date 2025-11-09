@@ -26,8 +26,6 @@ export type SyncStatus =
 
 export interface UserPresence {
   cursor?: { x: number; y: number };
-  selectedNoteId?: string;
-  editingNoteId?: string;
   color: string;
   name: string;
 }
