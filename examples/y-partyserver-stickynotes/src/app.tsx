@@ -39,7 +39,6 @@ export function App() {
     },
   });
 
-
   // Track sync status based on provider events
   useEffect(() => {
     if (!provider) return;
