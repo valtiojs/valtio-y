@@ -56,7 +56,10 @@ export function StickyNote({
     onStartDrag();
   };
 
-  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+  const handleDragEnd = (
+    _event: MouseEvent | TouchEvent | PointerEvent,
+    info: PanInfo,
+  ) => {
     setIsDragging(false);
     // Update final position
     onUpdate({

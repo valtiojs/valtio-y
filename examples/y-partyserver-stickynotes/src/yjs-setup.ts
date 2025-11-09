@@ -123,7 +123,6 @@ export const { proxy, bootstrap } = createYjsProxy<AppState>(doc, {
   getRoot: (doc: Y.Doc) => doc.getMap("root"),
 });
 
-
 // ============================================================================
 // PRESENCE API
 // ============================================================================

@@ -162,19 +162,21 @@ export function App() {
         })}
 
         {/* Other users' cursors */}
-        {Object.entries(presenceStates).map(([clientId, presence]: [string, UserPresence]) => {
-          if (!presence.cursor) return null;
+        {Object.entries(presenceStates).map(
+          ([clientId, presence]: [string, UserPresence]) => {
+            if (!presence.cursor) return null;
 
-          return (
-            <Cursor
-              key={clientId}
-              x={presence.cursor.x}
-              y={presence.cursor.y}
-              color={presence.color}
-              name={presence.name}
-            />
-          );
-        })}
+            return (
+              <Cursor
+                key={clientId}
+                x={presence.cursor.x}
+                y={presence.cursor.y}
+                color={presence.color}
+                name={presence.name}
+              />
+            );
+          },
+        )}
       </div>
 
       {/* Help text */}
