@@ -167,17 +167,6 @@ export function App() {
     }
   };
 
-  const handleStartDrag = () => {
-    setLocalPresence({
-      selectedNoteId: selectedNoteId || undefined,
-    });
-  };
-
-  const handleStartResize = () => {
-    setLocalPresence({
-      selectedNoteId: selectedNoteId || undefined,
-    });
-  };
 
   const handleCanvasClick = () => {
     setSelectedNoteId(null);
@@ -218,8 +207,6 @@ export function App() {
                 isEditedByOther={!!editState}
                 otherUserColor={editState?.color}
                 onSelect={() => handleSelectNote(noteId)}
-                onStartDrag={handleStartDrag}
-                onStartResize={handleStartResize}
                 onDelete={() => {
                   if (proxy.notes && noteId in proxy.notes) {
                     delete proxy.notes[noteId];

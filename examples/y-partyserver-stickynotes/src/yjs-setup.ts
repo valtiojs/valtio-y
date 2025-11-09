@@ -34,7 +34,7 @@ export const setSyncStatus = (status: SyncStatus) => {
 // VALTIO-YJS PROXY CREATION
 // ============================================================================
 
-export const { proxy, bootstrap } = createYjsProxy<AppState>(doc, {
+export const { proxy } = createYjsProxy<AppState>(doc, {
   getRoot: (doc: Y.Doc) => doc.getMap("root"),
 });
 
@@ -81,18 +81,7 @@ const updatePresenceProxy = () => {
   // Add or update clients
   Object.entries(newPresence).forEach(([clientId, presence]) => {
     const id = Number(clientId);
-    if (presenceProxy[id]) {
-      // Update existing entry - assign each property individually for reactivity
-      const existing = presenceProxy[id];
-      existing.cursor = presence.cursor;
-      existing.selectedNoteId = presence.selectedNoteId;
-      existing.editingNoteId = presence.editingNoteId;
-      existing.color = presence.color;
-      existing.name = presence.name;
-    } else {
-      // Create new entry
-      presenceProxy[id] = { ...presence };
-    }
+    presenceProxy[id] = { ...presence };
   });
 };
 

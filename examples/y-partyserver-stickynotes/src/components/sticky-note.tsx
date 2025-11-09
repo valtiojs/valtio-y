@@ -11,8 +11,6 @@ interface StickyNoteProps {
   isEditedByOther: boolean;
   otherUserColor?: string;
   onSelect: () => void;
-  onStartDrag: () => void;
-  onStartResize: () => void;
   onDelete: () => void;
 }
 
@@ -23,8 +21,6 @@ export function StickyNote({
   isEditedByOther,
   otherUserColor,
   onSelect,
-  onStartDrag,
-  onStartResize,
   onDelete,
 }: StickyNoteProps) {
   const [isEditing, setIsEditing] = useState(false);
@@ -72,7 +68,6 @@ export function StickyNote({
   const handleDragStart = () => {
     setIsDragging(true);
     onSelect();
-    onStartDrag();
   };
 
   const handleDragEnd = (
@@ -90,7 +85,6 @@ export function StickyNote({
   const handleResizeMouseDown = (e: React.MouseEvent) => {
     e.stopPropagation();
     onSelect();
-    onStartResize();
 
     const startX = e.clientX;
     const startY = e.clientY;
