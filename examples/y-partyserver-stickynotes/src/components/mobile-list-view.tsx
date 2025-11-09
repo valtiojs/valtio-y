@@ -3,31 +3,33 @@ import { Trash2 } from "lucide-react";
 import {
   STICKY_NOTE_COLORS,
   type StickyNote as StickyNoteType,
+  type AppState,
 } from "../types";
-import { proxy } from "../yjs-setup";
 
 interface MobileListViewProps {
   notes: Record<string, StickyNoteType>;
   selectedColor: string;
   onColorChange: (color: string) => void;
+  stateProxy: AppState;
 }
 
 export function MobileListView({
   notes,
   selectedColor,
   onColorChange,
+  stateProxy,
 }: MobileListViewProps) {
   const [editingId, setEditingId] = useState<string | null>(null);
 
   const handleTextChange = (noteId: string, text: string) => {
-    if (proxy.notes && noteId in proxy.notes) {
-      proxy.notes[noteId].text = text;
+    if (stateProxy.notes && noteId in stateProxy.notes) {
+      stateProxy.notes[noteId].text = text;
     }
   };
 
   const handleDeleteNote = (noteId: string) => {
-    if (proxy.notes && noteId in proxy.notes) {
-      delete proxy.notes[noteId];
+    if (stateProxy.notes && noteId in stateProxy.notes) {
+      delete stateProxy.notes[noteId];
       if (editingId === noteId) {
         setEditingId(null);
       }
@@ -35,9 +37,9 @@ export function MobileListView({
   };
 
   const handleAddNote = () => {
-    if (!proxy.notes) {
-      proxy.notes = {};
-      proxy.nextZ = 0;
+    if (!stateProxy.notes) {
+      stateProxy.notes = {};
+      stateProxy.nextZ = 0;
     }
 
     // Use desktop viewport dimensions (1920x1080) for positioning
@@ -57,11 +59,11 @@ export function MobileListView({
       height: noteHeight,
       color: selectedColor,
       text: "",
-      z: proxy.nextZ,
+      z: stateProxy.nextZ,
     };
 
-    proxy.notes[newNote.id] = newNote;
-    proxy.nextZ += 1;
+    stateProxy.notes[newNote.id] = newNote;
+    stateProxy.nextZ += 1;
     setEditingId(newNote.id);
 
     // Scroll to bottom after a brief delay to let the DOM update

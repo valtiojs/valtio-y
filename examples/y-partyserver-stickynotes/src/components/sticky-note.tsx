@@ -1,13 +1,13 @@
 import { useRef, useState, useEffect } from "react";
 import { motion, type PanInfo } from "motion/react";
-import type { StickyNote as StickyNoteType } from "../types";
-import { proxy } from "../yjs-setup";
+import type { AppState, StickyNote as StickyNoteType } from "../types";
 
 interface StickyNoteProps {
   note: StickyNoteType; // The snapshot value (already reactive from root useSnapshot)
   noteId: string; // The note ID for mutations
   isSelected: boolean;
   onSelect: () => void;
+  stateProxy: AppState;
 }
 
 export function StickyNote({
@@ -15,6 +15,7 @@ export function StickyNote({
   noteId,
   isSelected,
   onSelect,
+  stateProxy,
 }: StickyNoteProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -49,8 +50,8 @@ export function StickyNote({
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     // Mutate via proxy since 'note' is a snapshot value (read-only)
-    if (proxy.notes && noteId in proxy.notes) {
-      proxy.notes[noteId].text = e.target.value;
+    if (stateProxy.notes && noteId in stateProxy.notes) {
+      stateProxy.notes[noteId].text = e.target.value;
     }
   };
 
@@ -71,9 +72,9 @@ export function StickyNote({
 
     // Update the actual document with final position
     // Motion handles the smooth animation, we just store the result
-    if (proxy.notes && noteId in proxy.notes) {
-      proxy.notes[noteId].x = Math.max(0, note.x + info.offset.x);
-      proxy.notes[noteId].y = Math.max(0, note.y + info.offset.y);
+    if (stateProxy.notes && noteId in stateProxy.notes) {
+      stateProxy.notes[noteId].x = Math.max(0, note.x + info.offset.x);
+      stateProxy.notes[noteId].y = Math.max(0, note.y + info.offset.y);
     }
   };
 
@@ -90,12 +91,12 @@ export function StickyNote({
     let lastMoveEvent: MouseEvent | null = null;
 
     const updateSize = () => {
-      if (lastMoveEvent && proxy.notes && noteId in proxy.notes) {
+      if (lastMoveEvent && stateProxy.notes && noteId in stateProxy.notes) {
         const deltaX = lastMoveEvent.clientX - startX;
         const deltaY = lastMoveEvent.clientY - startY;
 
-        proxy.notes[noteId].width = Math.max(150, startWidth + deltaX);
-        proxy.notes[noteId].height = Math.max(100, startHeight + deltaY);
+        stateProxy.notes[noteId].width = Math.max(150, startWidth + deltaX);
+        stateProxy.notes[noteId].height = Math.max(100, startHeight + deltaY);
 
         lastMoveEvent = null;
       }
@@ -115,12 +116,12 @@ export function StickyNote({
         cancelAnimationFrame(rafId);
       }
       // Final update to ensure size is accurate
-      if (lastMoveEvent && proxy.notes && noteId in proxy.notes) {
+      if (lastMoveEvent && stateProxy.notes && noteId in stateProxy.notes) {
         const deltaX = lastMoveEvent.clientX - startX;
         const deltaY = lastMoveEvent.clientY - startY;
 
-        proxy.notes[noteId].width = Math.max(150, startWidth + deltaX);
-        proxy.notes[noteId].height = Math.max(100, startHeight + deltaY);
+        stateProxy.notes[noteId].width = Math.max(150, startWidth + deltaX);
+        stateProxy.notes[noteId].height = Math.max(100, startHeight + deltaY);
       }
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);

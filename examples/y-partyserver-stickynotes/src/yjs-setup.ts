@@ -1,46 +1,7 @@
-/**
- * Yjs Setup with y-partyserver Provider
- *
- * This file sets up valtio-y for real-time collaboration using y-partyserver.
- */
-
 import * as Y from "yjs";
 import * as awarenessProtocol from "y-protocols/awareness";
-import { proxy as createProxy } from "valtio";
 import { createYjsProxy } from "valtio-y";
-import type { AppState, SyncStatus, UserPresence } from "./types";
-
-// ============================================================================
-// YJS DOCUMENT SETUP
-// ============================================================================
-
-export const doc = new Y.Doc();
-export const awareness = new awarenessProtocol.Awareness(doc);
-
-// ============================================================================
-// SYNC STATUS TRACKING
-// ============================================================================
-
-// Valtio proxy for sync status
-export const syncStatusProxy = createProxy<{ status: SyncStatus }>({
-  status: "connecting",
-});
-
-export const setSyncStatus = (status: SyncStatus) => {
-  syncStatusProxy.status = status;
-};
-
-// ============================================================================
-// VALTIO-YJS PROXY CREATION
-// ============================================================================
-
-export const { proxy } = createYjsProxy<AppState>(doc, {
-  getRoot: (doc: Y.Doc) => doc.getMap("root"),
-});
-
-// ============================================================================
-// PRESENCE API
-// ============================================================================
+import type { AppState, UserPresence } from "./types";
 
 const colors = [
   "#ef4444", // red
@@ -51,55 +12,82 @@ const colors = [
   "#ec4899", // pink
 ];
 
-let localClientId: number;
-const clientColor = colors[Math.floor(Math.random() * colors.length)];
+export class RoomState {
+  readonly doc: Y.Doc;
+  readonly awareness: awarenessProtocol.Awareness;
+  readonly proxy: AppState;
+  readonly setLocalPresence: (presence: Partial<UserPresence>) => void;
+  private readonly disposeBridge: () => void;
 
-// Valtio proxy for presence states
-// Maps clientId -> UserPresence (excluding local client)
-export const presenceProxy = createProxy<Record<number, UserPresence>>({});
+  constructor() {
+    this.doc = new Y.Doc();
+    this.awareness = new awarenessProtocol.Awareness(this.doc);
 
-// Update the presence proxy when awareness changes
-const updatePresenceProxy = () => {
-  const states = awareness.getStates();
-  const newPresence: Record<number, UserPresence> = {};
+    const { proxy, dispose } = createYjsProxy<AppState>(this.doc, {
+      getRoot: (document: Y.Doc) => document.getMap("root"),
+    });
 
-  states.forEach((state, clientId) => {
-    // Exclude local client from presence proxy
-    if (clientId !== doc.clientID && state.user) {
-      newPresence[clientId] = state.user;
-    }
-  });
+    this.proxy = proxy;
+    this.disposeBridge = dispose;
 
-  // Remove clients that are no longer present
-  Object.keys(presenceProxy).forEach((key) => {
-    const clientId = Number(key);
-    if (!(clientId in newPresence)) {
-      delete presenceProxy[clientId];
-    }
-  });
-
-  // Add or update clients
-  Object.entries(newPresence).forEach(([clientId, presence]) => {
-    const id = Number(clientId);
-    presenceProxy[id] = { ...presence };
-  });
-};
-
-// Listen to awareness changes and update proxy
-awareness.on("change", updatePresenceProxy);
-
-// Initialize presence proxy with current state
-updatePresenceProxy();
-
-// Set initial local user presence
-export function setLocalPresence(presence: Partial<UserPresence>) {
-  if (!localClientId) {
-    localClientId = doc.clientID;
+    const clientColor = colors[Math.floor(Math.random() * colors.length)];
+    this.setLocalPresence = (presence: Partial<UserPresence>) => {
+      this.awareness.setLocalStateField("user", {
+        color: clientColor,
+        name: `User ${this.doc.clientID}`,
+        ...presence,
+      });
+    };
   }
 
-  awareness.setLocalStateField("user", {
-    color: clientColor,
-    name: `User ${localClientId}`,
-    ...presence,
-  });
+  dispose(): void {
+    this.disposeBridge();
+    this.awareness.destroy();
+    this.doc.destroy();
+  }
+}
+
+interface CachedRoom {
+  state: RoomState;
+  refCount: number;
+  lastAccessed: number;
+}
+
+const roomCache = new Map<string, CachedRoom>();
+
+function ensureRoom(roomId: string): CachedRoom {
+  let entry = roomCache.get(roomId);
+  if (!entry) {
+    entry = {
+      state: new RoomState(),
+      refCount: 0,
+      lastAccessed: Date.now(),
+    };
+    roomCache.set(roomId, entry);
+  } else {
+    entry.lastAccessed = Date.now();
+  }
+  return entry;
+}
+
+export function acquireRoom(roomId: string): RoomState {
+  const entry = ensureRoom(roomId);
+  entry.refCount += 1;
+  entry.lastAccessed = Date.now();
+  return entry.state;
+}
+
+export function releaseRoom(roomId: string): void {
+  const entry = roomCache.get(roomId);
+  if (!entry) {
+    return;
+  }
+
+  entry.refCount = Math.max(0, entry.refCount - 1);
+  entry.lastAccessed = Date.now();
+
+  if (entry.refCount === 0) {
+    entry.state.dispose();
+    roomCache.delete(roomId);
+  }
 }

@@ -1,47 +1,89 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState, useMemo } from "react";
 import { useSnapshot } from "valtio";
-import useYProvider from "y-partyserver/react";
-import {
-  doc,
-  awareness,
-  proxy,
-  presenceProxy,
-  syncStatusProxy,
-  setSyncStatus,
-  setLocalPresence,
-} from "./yjs-setup";
+import { useRoomProvider } from "./use-room-provider";
+import { acquireRoom, releaseRoom } from "./yjs-setup";
 import { Toolbar } from "./components/toolbar";
 import { StickyNote } from "./components/sticky-note";
 import { Cursor } from "./components/cursor";
 import { MobileListView } from "./components/mobile-list-view";
-import type { StickyNote as StickyNoteType, UserPresence } from "./types";
+import type {
+  StickyNote as StickyNoteType,
+  UserPresence,
+  SyncStatus,
+} from "./types";
 
 export function App() {
-  const state = useSnapshot(proxy, { sync: true });
-  const presenceStates = useSnapshot(presenceProxy);
-  const syncStatus = useSnapshot(syncStatusProxy).status;
+  const [roomId, setRoomId] = useState<string>(
+    () => window.location.hash.slice(1) || "default",
+  );
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState("#fef3c7");
+  const [syncStatus, setSyncStatusState] =
+    useState<SyncStatus>("connecting");
+  const [presenceStates, setPresenceStates] = useState<
+    Record<number, UserPresence>
+  >({});
 
-  // Get room from URL hash
-  const roomId = window.location.hash.slice(1) || "default";
+  // React to hash changes so switching rooms updates state automatically
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hashRoom = window.location.hash.slice(1) || "default";
+      setRoomId(hashRoom);
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  const roomIdRef = useRef(roomId);
+  const [room, setRoom] = useState(() => acquireRoom(roomId));
+
+  useEffect(() => {
+    if (roomIdRef.current === roomId) {
+      return;
+    }
+
+    releaseRoom(roomIdRef.current);
+    roomIdRef.current = roomId;
+    setRoom(acquireRoom(roomId));
+    setSelectedNoteId(null);
+  }, [roomId]);
+
+  useEffect(() => {
+    return () => {
+      releaseRoom(roomIdRef.current);
+    };
+  }, []);
+
+  const { doc, awareness, proxy, setLocalPresence } = room;
+
+  const state = useSnapshot(proxy, { sync: true });
 
   // Connect to PartyServer using useYProvider hook
   // Connect to /collab endpoint on the worker
   // Note: y-partyserver automatically uses the correct protocol based on the page
-  const provider = useYProvider({
+  const providerOptions = useMemo(
+    () => ({
+      awareness,
+    }),
+    [awareness],
+  );
+
+  const wsPrefix = useMemo(() => `/collab/${roomId}`, [roomId]);
+
+  const provider = useRoomProvider({
     host: window.location.host,
     room: roomId,
     doc,
-    prefix: "/collab",
-    options: {
-      awareness,
-    },
+    prefix: wsPrefix,
+    options: providerOptions,
   });
 
   // Track sync status based on provider events
   useEffect(() => {
     if (!provider) return;
+
+    setSyncStatusState("connecting");
 
     type ProviderWithConnectionState = typeof provider & {
       wsconnected: boolean;
@@ -54,11 +96,11 @@ export function App() {
         provider as unknown as ProviderWithConnectionState;
 
       if (providerWithState.wsconnected) {
-        setSyncStatus(provider.synced ? "connected" : "syncing");
+        setSyncStatusState(provider.synced ? "connected" : "syncing");
       } else if (providerWithState.wsconnecting) {
-        setSyncStatus("connecting");
+        setSyncStatusState("connecting");
       } else {
-        setSyncStatus("disconnected");
+        setSyncStatusState("disconnected");
       }
     };
 
@@ -68,11 +110,11 @@ export function App() {
 
     // Handle connection errors (especially important for mobile Safari)
     provider.on("connection-error", () => {
-      setSyncStatus("disconnected");
+      setSyncStatusState("disconnected");
     });
 
     provider.on("connection-close", () => {
-      setSyncStatus("disconnected");
+      setSyncStatusState("disconnected");
     });
 
     // Update status immediately
@@ -84,7 +126,7 @@ export function App() {
         const providerWithState =
           provider as unknown as ProviderWithConnectionState;
         if (!providerWithState.wsconnected && providerWithState.shouldConnect) {
-          provider.connect();
+          void provider.connect();
         }
       }
     };
@@ -98,6 +140,36 @@ export function App() {
       document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [provider]);
+
+  // Track awareness presence states (excluding local client)
+  useEffect(() => {
+    setPresenceStates({});
+
+    const updatePresence = () => {
+      const states = awareness.getStates();
+      const next: Record<number, UserPresence> = {};
+
+      states.forEach((state, clientId) => {
+        if (clientId !== doc.clientID && state.user) {
+          next[clientId] = state.user;
+        }
+      });
+
+      setPresenceStates(next);
+    };
+
+    awareness.on("change", updatePresence);
+    updatePresence();
+
+    return () => {
+      awareness.off("change", updatePresence);
+    };
+  }, [awareness, doc]);
+
+  // Ensure local presence is initialized for the current room
+  useEffect(() => {
+    setLocalPresence({});
+  }, [setLocalPresence]);
 
   // Track mouse position for presence with throttling (only on desktop with mouse)
   useEffect(() => {
@@ -132,7 +204,7 @@ export function App() {
         cancelAnimationFrame(rafId);
       }
     };
-  }, []);
+  }, [setLocalPresence]);
 
   // Handle keyboard shortcuts for deleting notes
   useEffect(() => {
@@ -154,7 +226,7 @@ export function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNoteId]);
+  }, [selectedNoteId, proxy]);
 
   const handleAddNote = () => {
     if (!proxy.notes) {
@@ -219,6 +291,7 @@ export function App() {
           notes={state.notes || {}}
           selectedColor={selectedColor}
           onColorChange={setSelectedColor}
+          stateProxy={proxy}
         />
       </div>
 
@@ -249,6 +322,7 @@ export function App() {
                   noteId={noteId}
                   isSelected={selectedNoteId === noteId}
                   onSelect={() => handleSelectNote(noteId)}
+                  stateProxy={proxy}
                 />
               );
             })}
