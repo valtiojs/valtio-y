@@ -19,10 +19,10 @@ interface Env {
 export class StickyNotesRoom extends YServer<Env> {
   /**
    * Create fresh initial notes in the shared state
-   * This is called on initial load and every 5 minutes via alarm
+   * This is called on initial load and every 30 minutes via alarm
    */
   private createInitialNotes(): void {
-    const sharedState = this.document.getMap("sharedState");
+    const sharedState = this.document.getMap("root");
 
     this.document.transact(() => {
       // Clear existing notes if any
@@ -35,49 +35,88 @@ export class StickyNotesRoom extends YServer<Env> {
       // Create sample notes using Y.Map for each note
       const note1 = new Y.Map();
       note1.set("id", crypto.randomUUID());
-      note1.set("x", 100);
-      note1.set("y", 100);
-      note1.set("width", 200);
-      note1.set("height", 150);
+      note1.set("x", 80);
+      note1.set("y", 80);
+      note1.set("width", 260);
+      note1.set("height", 180);
       note1.set("color", "#fef08a"); // yellow
       note1.set(
         "text",
-        "Welcome to Sticky Notes! 📝\n\nClick and drag me around!",
+        "Welcome to valtio-y! ⚡\n\nReal-time collaborative sticky notes powered by Valtio + Yjs CRDTs.\n\nOpen this on 2 devices to see instant sync!",
       );
       note1.set("z", 0);
 
       const note2 = new Y.Map();
       note2.set("id", crypto.randomUUID());
-      note2.set("x", 350);
-      note2.set("y", 150);
-      note2.set("width", 200);
-      note2.set("height", 150);
+      note2.set("x", 370);
+      note2.set("y", 80);
+      note2.set("width", 260);
+      note2.set("height", 180);
       note2.set("color", "#fecaca"); // red
       note2.set(
         "text",
-        "Double-click to edit text ✏️\n\nChanges sync in real-time!",
+        "Try it out! 🎨\n\n• Double-click to edit\n• Drag to move\n• Drag corner to resize\n• Use toolbar to add notes",
       );
       note2.set("z", 1);
 
       const note3 = new Y.Map();
       note3.set("id", crypto.randomUUID());
-      note3.set("x", 600);
-      note3.set("y", 100);
-      note3.set("width", 200);
-      note3.set("height", 150);
+      note3.set("x", 660);
+      note3.set("y", 80);
+      note3.set("width", 260);
+      note3.set("height", 180);
       note3.set("color", "#bfdbfe"); // blue
       note3.set(
         "text",
-        "Drag the corner to resize 📏\n\nUse the toolbar to add more notes!",
+        "Want privacy? 🔒\n\nAdd #room-name to the URL!\n\nExample:\nlocalhost:5173#my-private-room\n\nEach room is separate.",
       );
       note3.set("z", 2);
 
+      const note4 = new Y.Map();
+      note4.set("id", crypto.randomUUID());
+      note4.set("x", 80);
+      note4.set("y", 300);
+      note4.set("width", 260);
+      note4.set("height", 160);
+      note4.set("color", "#d9f99d"); // lime
+      note4.set(
+        "text",
+        "How it works 🛠️\n\nValtio = Reactive state\nYjs = CRDT sync\nvaltio-y = Magic bridge\n\nConflict-free collaboration!",
+      );
+      note4.set("z", 3);
+
+      const note5 = new Y.Map();
+      note5.set("id", crypto.randomUUID());
+      note5.set("x", 370);
+      note5.set("y", 300);
+      note5.set("width", 260);
+      note5.set("height", 160);
+      note5.set("color", "#e9d5ff"); // purple
+      note5.set(
+        "text",
+        "Demo mode ⏰\n\nThis room resets every 30 minutes to keep it clean.\n\nFeel free to experiment!",
+      );
+      note5.set("z", 4);
+
+      const note6 = new Y.Map();
+      note6.set("id", crypto.randomUUID());
+      note6.set("x", 660);
+      note6.set("y", 300);
+      note6.set("width", 260);
+      note6.set("height", 160);
+      note6.set("color", "#fecdd3"); // pink
+      note6.set(
+        "text",
+        "Everyone sees this! 👀\n\nChanges you make here are visible to all users on this page.\n\nBe nice! ✨",
+      );
+      note6.set("z", 5);
+
       // Push the Y.Map notes into the Y.Array
-      yNotes.push([note1, note2, note3]);
+      yNotes.push([note1, note2, note3, note4, note5, note6]);
 
       // Set the Y.Array in the shared state
       sharedState.set("notes", yNotes);
-      sharedState.set("nextZ", 3);
+      sharedState.set("nextZ", 6);
     });
   }
 
@@ -86,7 +125,7 @@ export class StickyNotesRoom extends YServer<Env> {
    * Called once when a client connects to the server
    */
   async onLoad(): Promise<void> {
-    const sharedState = this.document.getMap("sharedState");
+    const sharedState = this.document.getMap("root");
 
     // Check if we need to migrate from old plain-array format to Y.Array format
     const existingNotes = sharedState.get("notes");
@@ -96,28 +135,24 @@ export class StickyNotesRoom extends YServer<Env> {
       this.createInitialNotes();
     }
 
-    // Schedule the first alarm to clean the room in 5 minutes
+    // Schedule the first alarm to clean the room
     const now = Date.now();
-    const fiveMinutesMs = 5 * 60 * 1000;
-    await this.ctx.storage.setAlarm(now + fiveMinutesMs);
+    const cleanupIntervalMs = 6 * 1000; // 6 seconds for dev, use 30 * 60 * 1000 for production
+    await this.ctx.storage.setAlarm(now + cleanupIntervalMs);
   }
 
   /**
-   * Alarm handler that cleans the room and creates fresh notes every 5 minutes
+   * Alarm handler that cleans the room and creates fresh notes
    * This is called automatically by the Durable Objects runtime
    */
   async alarm(): Promise<void> {
-    console.log(
-      "[StickyNotesRoom] Alarm triggered - cleaning room and creating fresh notes",
-    );
-
     // Create fresh initial notes
     this.createInitialNotes();
 
-    // Schedule the next alarm for 5 minutes from now
+    // Schedule the next alarm
     const now = Date.now();
-    const fiveMinutesMs = 5 * 60 * 1000;
-    await this.ctx.storage.setAlarm(now + fiveMinutesMs);
+    const cleanupIntervalMs = 6 * 1000; // 6 seconds for dev, use 30 * 60 * 1000 for production
+    await this.ctx.storage.setAlarm(now + cleanupIntervalMs);
   }
 
   /**
@@ -125,13 +160,19 @@ export class StickyNotesRoom extends YServer<Env> {
    * This is called when a connection encounters an error
    */
   onError(connection: any, error: Error): void {
-    console.error("[StickyNotesRoom] Connection error:", {
-      connectionId: connection?.id,
-      error: error.message,
-      retryable: (error as any).retryable,
-    });
+    // Suppress logging for retryable errors (client disconnects, page refreshes, etc.)
+    // These are normal and expected during development and don't indicate a problem
+    const isRetryable = (error as any).retryable;
 
-    // YServer handles the cleanup automatically, we just log the error
+    if (!isRetryable) {
+      // Only log non-retryable errors that might indicate real problems
+      console.error("[StickyNotesRoom] Non-retryable connection error:", {
+        connectionId: connection?.id,
+        error: error.message,
+      });
+    }
+
+    // YServer handles the cleanup automatically
     // The connection will be automatically removed from the active connections
   }
 }

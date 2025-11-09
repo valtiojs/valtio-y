@@ -2,12 +2,10 @@ import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
 import {
   proxy,
+  presenceProxy,
+  syncStatusProxy,
   connect,
-  subscribeSyncStatus,
-  getSyncStatus,
   setLocalPresence,
-  subscribePresence,
-  getPresenceStates,
 } from "./yjs-setup";
 import { Toolbar } from "./components/Toolbar";
 import { StickyNote } from "./components/StickyNote";
@@ -16,32 +14,15 @@ import type { StickyNote as StickyNoteType, UserPresence } from "./types";
 
 export function App() {
   const state = useSnapshot(proxy);
-  const [syncStatus, setSyncStatus] = useState(getSyncStatus());
+  const presenceStates = useSnapshot(presenceProxy);
+  const syncStatus = useSnapshot(syncStatusProxy).status;
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState("#fef08a");
-  const [presenceStates, setPresenceStates] = useState<
-    Map<number, UserPresence>
-  >(new Map());
 
   // Connect to Durable Object on mount
   useEffect(() => {
     const roomId = window.location.hash.slice(1) || "default";
     connect(roomId);
-
-    // Set up sync status listener
-    const unsubscribeSyncStatus = subscribeSyncStatus(() => {
-      setSyncStatus(getSyncStatus());
-    });
-
-    // Set up presence listener
-    const unsubscribePresence = subscribePresence(() => {
-      setPresenceStates(new Map(getPresenceStates()));
-    });
-
-    return () => {
-      unsubscribeSyncStatus();
-      unsubscribePresence();
-    };
   }, []);
 
   // Track mouse position for presence
@@ -143,7 +124,7 @@ export function App() {
 
   // Find notes being edited by others
   const noteEditStates = new Map<string, { color: string }>();
-  presenceStates.forEach((presence) => {
+  Object.values(presenceStates).forEach((presence: UserPresence) => {
     if (presence.editingNoteId) {
       noteEditStates.set(presence.editingNoteId, { color: presence.color });
     }
@@ -181,7 +162,7 @@ export function App() {
         })}
 
         {/* Other users' cursors */}
-        {Array.from(presenceStates.entries()).map(([clientId, presence]) => {
+        {Object.entries(presenceStates).map(([clientId, presence]: [string, UserPresence]) => {
           if (!presence.cursor) return null;
 
           return (
@@ -202,7 +183,7 @@ export function App() {
           <p className="text-2xl font-semibold mb-2">
             Welcome to Sticky Notes!
           </p>
-          <p className="text-lg">Click "Add Note" to get started</p>
+          <p className="text-lg">Click &quot;Add Note&quot; to get started</p>
         </div>
       )}
     </div>

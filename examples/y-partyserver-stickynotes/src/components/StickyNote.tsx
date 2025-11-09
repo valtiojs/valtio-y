@@ -1,4 +1,5 @@
 import { useRef, useState, useEffect } from "react";
+import { motion, type PanInfo } from "motion/react";
 import { GripVertical } from "lucide-react";
 import type { StickyNote as StickyNoteType } from "../types";
 
@@ -24,6 +25,7 @@ export function StickyNote({
   onStartResize,
 }: StickyNoteProps) {
   const [isEditing, setIsEditing] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
@@ -48,65 +50,19 @@ export function StickyNote({
     setIsEditing(false);
   };
 
-  const handleMouseDown = (e: React.MouseEvent) => {
-    if (e.button !== 0) return; // Only left click
-    if (isEditing) return;
-
-    e.stopPropagation();
+  const handleDragStart = () => {
+    setIsDragging(true);
     onSelect();
     onStartDrag();
+  };
 
-    const startX = e.clientX;
-    const startY = e.clientY;
-    const startNoteX = note.x;
-    const startNoteY = note.y;
-
-    let rafId: number | null = null;
-    let lastMoveEvent: MouseEvent | null = null;
-
-    const updatePosition = () => {
-      if (lastMoveEvent) {
-        const deltaX = lastMoveEvent.clientX - startX;
-        const deltaY = lastMoveEvent.clientY - startY;
-
-        onUpdate({
-          x: Math.max(0, startNoteX + deltaX),
-          y: Math.max(0, startNoteY + deltaY),
-        });
-
-        lastMoveEvent = null;
-      }
-      rafId = null;
-    };
-
-    const handleMouseMove = (moveEvent: MouseEvent) => {
-      lastMoveEvent = moveEvent;
-
-      if (!rafId) {
-        rafId = requestAnimationFrame(updatePosition);
-      }
-    };
-
-    const handleMouseUp = () => {
-      if (rafId) {
-        cancelAnimationFrame(rafId);
-      }
-      // Final update to ensure position is accurate
-      if (lastMoveEvent) {
-        const deltaX = lastMoveEvent.clientX - startX;
-        const deltaY = lastMoveEvent.clientY - startY;
-
-        onUpdate({
-          x: Math.max(0, startNoteX + deltaX),
-          y: Math.max(0, startNoteY + deltaY),
-        });
-      }
-      document.removeEventListener("mousemove", handleMouseMove);
-      document.removeEventListener("mouseup", handleMouseUp);
-    };
-
-    document.addEventListener("mousemove", handleMouseMove);
-    document.addEventListener("mouseup", handleMouseUp);
+  const handleDragEnd = (_event: MouseEvent | TouchEvent | PointerEvent, info: PanInfo) => {
+    setIsDragging(false);
+    // Update final position
+    onUpdate({
+      x: Math.max(0, note.x + info.offset.x),
+      y: Math.max(0, note.y + info.offset.y),
+    });
   };
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
@@ -168,22 +124,28 @@ export function StickyNote({
   };
 
   return (
-    <div
-      className={`absolute rounded-lg shadow-lg transition-all cursor-move select-none ${
+    <motion.div
+      drag={!isEditing}
+      dragMomentum={false}
+      dragElastic={0}
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
+      className={`absolute rounded-lg shadow-lg cursor-move select-none ${
+        isDragging ? "" : "transition-shadow"
+      } ${
         isSelected
           ? "ring-2 ring-indigo-600 ring-offset-2 shadow-xl"
           : "hover:shadow-xl"
       } ${isEditedByOther ? "ring-2 ring-offset-2" : ""}`}
       style={{
-        left: note.x,
-        top: note.y,
+        x: note.x,
+        y: note.y,
         width: note.width,
         height: note.height,
         backgroundColor: note.color,
         zIndex: note.z,
         borderColor: isEditedByOther ? otherUserColor : undefined,
       }}
-      onMouseDown={handleMouseDown}
       onClick={onSelect}
     >
       {/* Drag Handle */}
@@ -202,7 +164,7 @@ export function StickyNote({
 
       {/* Content */}
       <div
-        className="w-full h-full p-4 overflow-hidden"
+        className="w-full h-full p-6 overflow-hidden"
         onDoubleClick={handleDoubleClick}
       >
         {isEditing ? (
@@ -231,6 +193,6 @@ export function StickyNote({
           <div className="absolute bottom-1 right-1 w-3 h-3 border-r-2 border-b-2 border-gray-400 rounded-br" />
         </div>
       )}
-    </div>
+    </motion.div>
   );
 }

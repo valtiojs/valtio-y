@@ -7,6 +7,7 @@
 import * as Y from "yjs";
 import * as awarenessProtocol from "y-protocols/awareness";
 import YProvider from "y-partyserver/provider";
+import { proxy as createProxy } from "valtio";
 import { createYjsProxy } from "valtio-y";
 import type { AppState, SyncStatus, UserPresence } from "./types";
 
@@ -22,17 +23,15 @@ export const awareness = new awarenessProtocol.Awareness(doc);
 // ============================================================================
 
 let provider: YProvider | null = null;
-let syncStatus: SyncStatus = "connecting";
 let syncedInterval: ReturnType<typeof setInterval> | null = null;
-const syncListeners: Set<() => void> = new Set();
 
-const notifySyncListeners = () => {
-  syncListeners.forEach((listener) => listener());
-};
+// Valtio proxy for sync status
+export const syncStatusProxy = createProxy<{ status: SyncStatus }>({
+  status: "connecting",
+});
 
 const setSyncStatus = (status: SyncStatus) => {
-  syncStatus = status;
-  notifySyncListeners();
+  syncStatusProxy.status = status;
 };
 
 /**
@@ -57,16 +56,12 @@ export function connect(roomId: string = "default") {
   const host = window.location.host;
   const wsUrl = `ws://${host}/api`;
 
-  console.log("[valtio-y debug] Creating YProvider", { wsUrl, roomId });
-
   provider = new YProvider(wsUrl, roomId, doc, {
     awareness,
     connect: true,
     // Use empty prefix so YProvider constructs URL as /room-name instead of /parties/main/room-name
     prefix: "",
   });
-
-  console.log("[valtio-y debug] YProvider created, setting up listeners");
 
   // Track sync status
   // YProvider extends WebsocketProvider which extends Observable<string>
@@ -94,14 +89,8 @@ export function connect(roomId: string = "default") {
   };
 
   // Listen to status changes (emitted as string events)
-  provider.on("status", (event: { status: string }) => {
-    console.log("[valtio-y debug] Provider status event", event);
+  provider.on("status", () => {
     updateStatus();
-  });
-
-  // Listen for sync events
-  provider.on("sync", (isSynced: boolean) => {
-    console.log("[valtio-y debug] Provider sync event", { isSynced });
   });
 
   // Also periodically check synced state since there's no dedicated synced event
@@ -119,8 +108,8 @@ export function connect(roomId: string = "default") {
     }
   };
 
-  // Poll for synced state (every 200ms is reasonable)
-  syncedInterval = setInterval(checkSynced, 200);
+  // Poll for synced state (every 30 seconds)
+  syncedInterval = setInterval(checkSynced, 30000);
 
   // Update status immediately
   updateStatus();
@@ -131,45 +120,9 @@ export function connect(roomId: string = "default") {
 // ============================================================================
 
 export const { proxy, bootstrap } = createYjsProxy<AppState>(doc, {
-  getRoot: (doc: Y.Doc) => doc.getMap("sharedState"),
-  logLevel: "debug", // Enable debug logging to help troubleshoot sync issues
+  getRoot: (doc: Y.Doc) => doc.getMap("root"),
 });
 
-// Debug: Log when local changes are made to the doc
-doc.on("update", (update: Uint8Array, origin: unknown) => {
-  console.log("[valtio-y debug] Doc update event", {
-    updateSize: update.length,
-    origin: origin?.toString(),
-    hasProvider: !!provider,
-  });
-});
-
-// Debug: Log when the shared state changes
-const sharedState = doc.getMap("sharedState");
-sharedState.observe(() => {
-  const notesValue = sharedState.get("notes");
-  console.log("[valtio-y debug] SharedState changed", {
-    notes: notesValue,
-    notesType: notesValue?.constructor?.name,
-    isYArray: notesValue instanceof Y.Array,
-    nextZ: sharedState.get("nextZ"),
-  });
-});
-
-// ============================================================================
-// SYNC STATUS API
-// ============================================================================
-
-export function subscribeSyncStatus(listener: () => void): () => void {
-  syncListeners.add(listener);
-  return () => {
-    syncListeners.delete(listener);
-  };
-}
-
-export function getSyncStatus(): SyncStatus {
-  return syncStatus;
-}
 
 // ============================================================================
 // PRESENCE API
@@ -187,6 +140,54 @@ const colors = [
 let localClientId: number;
 const clientColor = colors[Math.floor(Math.random() * colors.length)];
 
+// Valtio proxy for presence states
+// Maps clientId -> UserPresence (excluding local client)
+export const presenceProxy = createProxy<Record<number, UserPresence>>({});
+
+// Update the presence proxy when awareness changes
+const updatePresenceProxy = () => {
+  const states = awareness.getStates();
+  const newPresence: Record<number, UserPresence> = {};
+
+  states.forEach((state, clientId) => {
+    // Exclude local client from presence proxy
+    if (clientId !== doc.clientID && state.user) {
+      newPresence[clientId] = state.user;
+    }
+  });
+
+  // Remove clients that are no longer present
+  Object.keys(presenceProxy).forEach((key) => {
+    const clientId = Number(key);
+    if (!(clientId in newPresence)) {
+      delete presenceProxy[clientId];
+    }
+  });
+
+  // Add or update clients
+  Object.entries(newPresence).forEach(([clientId, presence]) => {
+    const id = Number(clientId);
+    if (presenceProxy[id]) {
+      // Update existing entry - assign each property individually for reactivity
+      const existing = presenceProxy[id];
+      existing.cursor = presence.cursor;
+      existing.selectedNoteId = presence.selectedNoteId;
+      existing.editingNoteId = presence.editingNoteId;
+      existing.color = presence.color;
+      existing.name = presence.name;
+    } else {
+      // Create new entry
+      presenceProxy[id] = { ...presence };
+    }
+  });
+};
+
+// Listen to awareness changes and update proxy
+awareness.on("change", updatePresenceProxy);
+
+// Initialize presence proxy with current state
+updatePresenceProxy();
+
 // Set initial local user presence
 export function setLocalPresence(presence: Partial<UserPresence>) {
   if (!localClientId) {
@@ -198,23 +199,4 @@ export function setLocalPresence(presence: Partial<UserPresence>) {
     name: `User ${localClientId}`,
     ...presence,
   });
-}
-
-export function getPresenceStates(): Map<number, UserPresence> {
-  const states = new Map<number, UserPresence>();
-
-  awareness.getStates().forEach((state, clientId) => {
-    if (clientId !== doc.clientID && state.user) {
-      states.set(clientId, state.user);
-    }
-  });
-
-  return states;
-}
-
-export function subscribePresence(listener: () => void): () => void {
-  awareness.on("change", listener);
-  return () => {
-    awareness.off("change", listener);
-  };
 }
