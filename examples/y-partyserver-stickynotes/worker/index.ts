@@ -9,9 +9,7 @@ import { YServer } from "y-partyserver";
 import { routePartykitRequest } from "partyserver";
 import * as Y from "yjs";
 
-const CLEANUP_INTERVAL_MS = import.meta.env.DEV
-  ? 60 * 1000
-  : 30 * 60 * 1000;
+const CLEANUP_INTERVAL_MS = import.meta.env.DEV ? 60 * 1000 : 30 * 60 * 1000;
 
 /**
  * Durable Object that handles a single sticky notes room
