@@ -4,7 +4,6 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "lib0": "^0.2.98",
     "lucide-react": "^0.544.0",
     "motion": "^12.23.24",
     "partyserver": "^0.0.75",

@@ -1,10 +1,13 @@
 import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
+import useYProvider from "y-partyserver/react";
 import {
+  doc,
+  awareness,
   proxy,
   presenceProxy,
   syncStatusProxy,
-  connect,
+  setSyncStatus,
   setLocalPresence,
 } from "./yjs-setup";
 import { Toolbar } from "./components/Toolbar";
@@ -13,17 +16,70 @@ import { Cursor } from "./components/Cursor";
 import type { StickyNote as StickyNoteType, UserPresence } from "./types";
 
 export function App() {
-  const state = useSnapshot(proxy);
   const presenceStates = useSnapshot(presenceProxy);
   const syncStatus = useSnapshot(syncStatusProxy).status;
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
   const [selectedColor, setSelectedColor] = useState("#fef08a");
 
-  // Connect to Durable Object on mount
+  // Get room from URL hash
+  const roomId = window.location.hash.slice(1) || "default";
+
+  // Connect to PartyServer using useYProvider hook
+  // Connect directly to the worker (no proxy needed)
+  const provider = useYProvider({
+    host: "localhost:8787",
+    room: roomId,
+    doc,
+    prefix: "",
+    options: {
+      awareness,
+    },
+  });
+
+  console.log("[App] Provider initialized for room:", roomId);
+
+  // Track sync status based on provider events
   useEffect(() => {
-    const roomId = window.location.hash.slice(1) || "default";
-    connect(roomId);
-  }, []);
+    if (!provider) return;
+
+    type ProviderWithConnectionState = typeof provider & {
+      wsconnected: boolean;
+      wsconnecting: boolean;
+    };
+
+    const updateStatus = () => {
+      const providerWithState =
+        provider as unknown as ProviderWithConnectionState;
+
+      console.log("[App] Provider status:", {
+        wsconnected: providerWithState.wsconnected,
+        wsconnecting: providerWithState.wsconnecting,
+        synced: provider.synced,
+      });
+
+      if (providerWithState.wsconnected) {
+        setSyncStatus(provider.synced ? "connected" : "syncing");
+      } else if (providerWithState.wsconnecting) {
+        setSyncStatus("connecting");
+      } else {
+        setSyncStatus("disconnected");
+      }
+    };
+
+    // Listen to status changes
+    provider.on("status", updateStatus);
+    provider.on("sync", (isSynced: boolean) => {
+      console.log("[App] Sync event:", isSynced);
+      updateStatus();
+    });
+
+    // Update status immediately
+    updateStatus();
+
+    return () => {
+      provider.off("status", updateStatus);
+    };
+  }, [provider]);
 
   // Track mouse position for presence
   useEffect(() => {
@@ -46,7 +102,7 @@ export function App() {
 
   const handleAddNote = () => {
     if (!proxy.notes) {
-      proxy.notes = [];
+      proxy.notes = {};
       proxy.nextZ = 0;
     }
 
@@ -61,7 +117,7 @@ export function App() {
       z: proxy.nextZ,
     };
 
-    proxy.notes.push(newNote);
+    proxy.notes[newNote.id] = newNote;
     proxy.nextZ += 1;
     setSelectedNoteId(newNote.id);
   };
@@ -69,27 +125,9 @@ export function App() {
   const handleDeleteNote = () => {
     if (!selectedNoteId || !proxy.notes) return;
 
-    const index = proxy.notes.findIndex((n) => n.id === selectedNoteId);
-    if (index !== -1) {
-      proxy.notes.splice(index, 1);
+    if (selectedNoteId in proxy.notes) {
+      delete proxy.notes[selectedNoteId];
       setSelectedNoteId(null);
-    }
-  };
-
-  const handleUpdateNote = (id: string, updates: Partial<StickyNoteType>) => {
-    if (!proxy.notes) return;
-
-    const index = proxy.notes.findIndex((n) => n.id === id);
-    if (index !== -1) {
-      const note = proxy.notes[index];
-      // Use direct property assignment instead of Object.assign for better Valtio tracking
-      if (updates.x !== undefined) note.x = updates.x;
-      if (updates.y !== undefined) note.y = updates.y;
-      if (updates.width !== undefined) note.width = updates.width;
-      if (updates.height !== undefined) note.height = updates.height;
-      if (updates.color !== undefined) note.color = updates.color;
-      if (updates.text !== undefined) note.text = updates.text;
-      if (updates.z !== undefined) note.z = updates.z;
     }
   };
 
@@ -99,7 +137,7 @@ export function App() {
     // Bring to front
     if (!proxy.notes) return;
 
-    const note = proxy.notes.find((n) => n.id === id);
+    const note = proxy.notes[id];
     if (note) {
       note.z = proxy.nextZ;
       proxy.nextZ += 1;
@@ -144,22 +182,22 @@ export function App() {
 
       {/* Canvas with sticky notes */}
       <div className="w-full h-full overflow-hidden">
-        {state.notes?.map((note) => {
-          const editState = noteEditStates.get(note.id);
-          return (
-            <StickyNote
-              key={note.id}
-              note={note}
-              isSelected={selectedNoteId === note.id}
-              isEditedByOther={!!editState}
-              otherUserColor={editState?.color}
-              onSelect={() => handleSelectNote(note.id)}
-              onUpdate={(updates) => handleUpdateNote(note.id, updates)}
-              onStartDrag={handleStartDrag}
-              onStartResize={handleStartResize}
-            />
-          );
-        })}
+        {proxy.notes &&
+          Object.entries(proxy.notes).map(([noteId, note]) => {
+            const editState = noteEditStates.get(noteId);
+            return (
+              <StickyNote
+                key={noteId}
+                note={note}
+                isSelected={selectedNoteId === noteId}
+                isEditedByOther={!!editState}
+                otherUserColor={editState?.color}
+                onSelect={() => handleSelectNote(noteId)}
+                onStartDrag={handleStartDrag}
+                onStartResize={handleStartResize}
+              />
+            );
+          })}
 
         {/* Other users' cursors */}
         {Object.entries(presenceStates).map(
@@ -180,7 +218,7 @@ export function App() {
       </div>
 
       {/* Help text */}
-      {(!state.notes || state.notes.length === 0) && (
+      {(!proxy.notes || Object.keys(proxy.notes).length === 0) && (
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center text-white/70 pointer-events-none">
           <p className="text-2xl font-semibold mb-2">
             Welcome to Sticky Notes!

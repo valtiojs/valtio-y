@@ -1,15 +1,15 @@
 import { useRef, useState, useEffect } from "react";
+import { useSnapshot } from "valtio";
 import { motion, type PanInfo } from "motion/react";
 import { GripVertical } from "lucide-react";
 import type { StickyNote as StickyNoteType } from "../types";
 
 interface StickyNoteProps {
-  note: StickyNoteType;
+  note: StickyNoteType; // The proxy object itself
   isSelected: boolean;
   isEditedByOther: boolean;
   otherUserColor?: string;
   onSelect: () => void;
-  onUpdate: (updates: Partial<StickyNoteType>) => void;
   onStartDrag: () => void;
   onStartResize: () => void;
 }
@@ -20,13 +20,16 @@ export function StickyNote({
   isEditedByOther,
   otherUserColor,
   onSelect,
-  onUpdate,
   onStartDrag,
   onStartResize,
 }: StickyNoteProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Subscribe to ONLY this note - granular subscription!
+  // Try sync: true to prevent async batching cursor jumps (valtio issue #270)
+  const noteSnapshot = useSnapshot(note, { sync: true });
 
   useEffect(() => {
     if (isEditing && textareaRef.current) {
@@ -43,7 +46,8 @@ export function StickyNote({
   };
 
   const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    onUpdate({ text: e.target.value });
+    // Direct proxy mutation with sync: true should preserve cursor
+    note.text = e.target.value;
   };
 
   const handleBlur = () => {
@@ -61,11 +65,9 @@ export function StickyNote({
     info: PanInfo,
   ) => {
     setIsDragging(false);
-    // Update final position
-    onUpdate({
-      x: Math.max(0, note.x + info.offset.x),
-      y: Math.max(0, note.y + info.offset.y),
-    });
+    // Update proxy directly
+    note.x = Math.max(0, noteSnapshot.x + info.offset.x);
+    note.y = Math.max(0, noteSnapshot.y + info.offset.y);
   };
 
   const handleResizeMouseDown = (e: React.MouseEvent) => {
@@ -75,8 +77,8 @@ export function StickyNote({
 
     const startX = e.clientX;
     const startY = e.clientY;
-    const startWidth = note.width;
-    const startHeight = note.height;
+    const startWidth = noteSnapshot.width;
+    const startHeight = noteSnapshot.height;
 
     let rafId: number | null = null;
     let lastMoveEvent: MouseEvent | null = null;
@@ -86,10 +88,8 @@ export function StickyNote({
         const deltaX = lastMoveEvent.clientX - startX;
         const deltaY = lastMoveEvent.clientY - startY;
 
-        onUpdate({
-          width: Math.max(150, startWidth + deltaX),
-          height: Math.max(100, startHeight + deltaY),
-        });
+        note.width = Math.max(150, startWidth + deltaX);
+        note.height = Math.max(100, startHeight + deltaY);
 
         lastMoveEvent = null;
       }
@@ -113,10 +113,8 @@ export function StickyNote({
         const deltaX = lastMoveEvent.clientX - startX;
         const deltaY = lastMoveEvent.clientY - startY;
 
-        onUpdate({
-          width: Math.max(150, startWidth + deltaX),
-          height: Math.max(100, startHeight + deltaY),
-        });
+        note.width = Math.max(150, startWidth + deltaX);
+        note.height = Math.max(100, startHeight + deltaY);
       }
       document.removeEventListener("mousemove", handleMouseMove);
       document.removeEventListener("mouseup", handleMouseUp);
@@ -141,12 +139,12 @@ export function StickyNote({
           : "hover:shadow-xl"
       } ${isEditedByOther ? "ring-2 ring-offset-2" : ""}`}
       style={{
-        x: note.x,
-        y: note.y,
-        width: note.width,
-        height: note.height,
-        backgroundColor: note.color,
-        zIndex: note.z,
+        x: noteSnapshot.x,
+        y: noteSnapshot.y,
+        width: noteSnapshot.width,
+        height: noteSnapshot.height,
+        backgroundColor: noteSnapshot.color,
+        zIndex: noteSnapshot.z,
         borderColor: isEditedByOther ? otherUserColor : undefined,
       }}
       onClick={onSelect}
@@ -173,16 +171,16 @@ export function StickyNote({
         {isEditing ? (
           <textarea
             ref={textareaRef}
-            value={note.text}
+            value={noteSnapshot.text}
             onChange={handleTextChange}
             onBlur={handleBlur}
             className="w-full h-full bg-transparent border-none outline-none resize-none font-sans text-sm text-gray-800 leading-relaxed"
-            style={{ backgroundColor: note.color }}
+            style={{ backgroundColor: noteSnapshot.color }}
             onMouseDown={(e) => e.stopPropagation()}
           />
         ) : (
           <div className="w-full h-full font-sans text-sm text-gray-800 leading-relaxed whitespace-pre-wrap overflow-auto">
-            {note.text}
+            {noteSnapshot.text}
           </div>
         )}
       </div>

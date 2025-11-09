@@ -14,7 +14,7 @@ export interface StickyNote {
 }
 
 export interface AppState {
-  notes: StickyNote[];
+  notes: Record<string, StickyNote>;
   nextZ: number;
 }
 

@@ -81,7 +81,7 @@ The application state is stored in a Yjs document with the following structure:
 
 ```typescript
 interface AppState {
-  notes: StickyNote[];
+  notes: Record<string, StickyNote>;  // Map of note ID → note
   nextZ: number;  // For z-index management
 }
 
@@ -103,13 +103,29 @@ The Yjs document is wrapped with valtio-y, allowing you to work with it like a n
 
 ```typescript
 // Add a note
-proxy.notes.push(newNote);
+proxy.notes[newNote.id] = newNote;
 
 // Update a note
-proxy.notes[0].text = "Updated text";
+proxy.notes[noteId].text = "Updated text";
 
 // Delete a note
-proxy.notes.splice(index, 1);
+delete proxy.notes[noteId];
+```
+
+**Why Record instead of Array?**
+
+Using `Record<string, StickyNote>` instead of `StickyNote[]` enables true granular reactivity:
+- Each note gets its own Valtio proxy (via valtio-y's nested Y.Map support)
+- Updating one note only re-renders that specific note component
+- Prevents unnecessary re-renders and cursor position issues
+- Better performance with large numbers of notes
+
+When iterating in React, use `Object.entries()` and pass the proxy object directly:
+
+```typescript
+{Object.entries(proxy.notes).map(([noteId, note]) => (
+  <StickyNote key={noteId} note={note} />  // Pass proxy, not snapshot!
+))}
 ```
 
 All changes are automatically:
@@ -202,6 +218,44 @@ The Yjs Awareness protocol tracks ephemeral user state:
 - User names and colors
 
 This state is temporary and not persisted in the CRDT.
+
+## Important Implementation Details
+
+### Preventing Cursor Jumps in Text Inputs
+
+When building collaborative editors with Valtio, you may encounter **cursor position jumping to the end** when typing in controlled inputs. This is caused by Valtio's default async batching behavior.
+
+**The solution: Use `sync: true` option (No workarounds needed!)**
+
+```typescript
+// Add sync: true to useSnapshot for text inputs
+const noteSnapshot = useSnapshot(note, { sync: true });
+
+// Now you can use standard controlled input pattern
+const handleTextChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+  note.text = e.target.value;  // Direct proxy mutation works perfectly!
+};
+
+<textarea value={noteSnapshot.text} onChange={handleTextChange} />
+```
+
+**Why this works:**
+
+- Valtio's default batching uses microtasks (async), which causes React to treat updates as separate operations
+- This breaks cursor position tracking in controlled inputs
+- `sync: true` forces synchronous updates, keeping cursor position intact
+- Real-time character-by-character sync works perfectly!
+- **No local state buffering needed** - this is the clean, simple solution
+
+**What this enables:**
+- ✅ Standard controlled input pattern (no workarounds)
+- ✅ Direct proxy mutations on every keystroke
+- ✅ Real-time collaboration with perfect cursor tracking
+- ✅ Automatic sync via valtio-y + Yjs
+
+**References:**
+- See [Valtio Issue #270](https://github.com/pmndrs/valtio/issues/270) for the original discussion
+- Implementation in `src/components/StickyNote.tsx`
 
 ## Learn More
 

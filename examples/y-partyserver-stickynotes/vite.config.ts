@@ -10,7 +10,8 @@ export default defineConfig({
         target: "http://localhost:8787",
         changeOrigin: true,
         ws: true,
-        rewrite: (path) => path.replace(/^\/api/, ""),
+        // Strip /api/parties/main/ prefix and forward just the room name
+        rewrite: (path) => path.replace(/^\/api(?:\/parties\/main)?/, ""),
       },
     },
   },

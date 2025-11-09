@@ -169,6 +169,15 @@ function TodoList() {
 
 valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Solid, and vanilla JavaScript.
 
+**Note for text inputs:** When using controlled text inputs (like `<input>` or `<textarea>`), add `{ sync: true }` to prevent cursor jumping:
+
+```jsx
+const snap = useSnapshot(state, { sync: true });
+<input value={snap.text} onChange={(e) => (state.text = e.target.value)} />
+```
+
+This forces synchronous updates instead of Valtio's default async batching. See [Valtio issue #270](https://github.com/pmndrs/valtio/issues/270) for details.
+
 ---
 
 ## Guides
