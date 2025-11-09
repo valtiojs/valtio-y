@@ -7,7 +7,7 @@
 
 import * as Y from "yjs";
 import { YServer } from "y-partyserver";
-import { getServerByName, routePartykitRequest } from "partyserver";
+import { routePartykitRequest } from "partyserver";
 
 /**
  * Durable Object that handles a single sticky notes room
@@ -132,11 +132,7 @@ export class StickyNotesRoom extends YServer<Env> {
   async onLoad(): Promise<void> {
     const sharedState = this.document.getMap("root");
 
-    // Check if we need to migrate from old formats (plain array or Y.Array) to Y.Map
-    const existingNotes = sharedState.get("notes");
-    const needsMigration = existingNotes && !(existingNotes instanceof Y.Map);
-
-    if (sharedState.size === 0 || needsMigration) {
+    if (sharedState.size === 0) {
       this.createInitialNotes();
     }
 
@@ -159,27 +155,6 @@ export class StickyNotesRoom extends YServer<Env> {
     const cleanupIntervalMs = 60 * 1000; // 1 minute for dev, use 30 * 60 * 1000 for production
     await this.ctx.storage.setAlarm(now + cleanupIntervalMs);
   }
-
-  /**
-   * Error handler for WebSocket connection errors
-   * This is called when a connection encounters an error
-   */
-  onError(connection: any, error: Error): void {
-    // Suppress logging for retryable errors (client disconnects, page refreshes, etc.)
-    // These are normal and expected during development and don't indicate a problem
-    const isRetryable = (error as any).retryable;
-
-    if (!isRetryable) {
-      // Only log non-retryable errors that might indicate real problems
-      console.error("[StickyNotesRoom] Non-retryable connection error:", {
-        connectionId: connection?.id,
-        error: error.message,
-      });
-    }
-
-    // YServer handles the cleanup automatically
-    // The connection will be automatically removed from the active connections
-  }
 }
 
 /**
@@ -189,60 +164,13 @@ export class StickyNotesRoom extends YServer<Env> {
  */
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
-    const url = new URL(request.url);
-
-    // Health check endpoint
-    if (url.pathname === "/api/health") {
-      return Response.json({ status: "ok" });
+    const envForPartyServer = env as unknown as Record<string, unknown>;
+    const response = await routePartykitRequest(request, envForPartyServer);
+    if (response) {
+      return response;
     }
 
-    // Handle /collab and /collab/* paths for Yjs WebSocket connections
-    if (url.pathname.startsWith("/parties/")) {
-      console.log("[Worker] Incoming collab request", {
-        url: request.url,
-        method: request.method,
-        upgrade: request.headers.get("Upgrade"),
-      });
-
-      const routed = await routePartykitRequest(request, env);
-      if (routed) {
-        console.log("[Worker] routePartykitRequest handled request", {
-          url: request.url,
-          status: routed.status,
-        });
-        return routed;
-      }
-
-      console.warn(
-        "[Worker] routePartykitRequest miss, falling back to manual routing for URL:",
-        request.url,
-      );
-
-      const [, namespace, roomSegment] = url.pathname
-        .split("/")
-        .filter(Boolean);
-
-      const resolvedNamespace = namespace ?? "stickynotes-do";
-      const roomId =
-        roomSegment ??
-        url.searchParams.get("room") ??
-        request.headers.get("x-partykit-room") ??
-        "default";
-
-      const headers = new Headers(request.headers);
-      headers.set("x-partykit-room", roomId);
-      headers.set("x-partykit-namespace", resolvedNamespace);
-
-      const stub = await getServerByName(env.STICKYNOTES_DO, roomId);
-      console.log("[Worker] Fallback routing to room", {
-        namespace: resolvedNamespace,
-        roomId,
-      });
-      return stub.fetch(new Request(request, { headers }));
-    }
-
-    // For all other routes, return 404 to fall through to static assets
-    // The assets config in wrangler.jsonc will serve the React app
+    // All other paths fall through to static assets served by Vite.
     return new Response(null, { status: 404 });
   },
 } satisfies ExportedHandler<Env>;
