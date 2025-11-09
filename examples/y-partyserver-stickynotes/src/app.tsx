@@ -13,6 +13,7 @@ import {
 import { Toolbar } from "./components/toolbar";
 import { StickyNote } from "./components/sticky-note";
 import { Cursor } from "./components/cursor";
+import { MobileListView } from "./components/mobile-list-view";
 import type { StickyNote as StickyNoteType, UserPresence } from "./types";
 
 export function App() {
@@ -20,7 +21,7 @@ export function App() {
   const presenceStates = useSnapshot(presenceProxy);
   const syncStatus = useSnapshot(syncStatusProxy).status;
   const [selectedNoteId, setSelectedNoteId] = useState<string | null>(null);
-  const [selectedColor, setSelectedColor] = useState("#fef08a");
+  const [selectedColor, setSelectedColor] = useState("#fef3c7");
 
   // Get room from URL hash
   const roomId = window.location.hash.slice(1) || "default";
@@ -82,8 +83,12 @@ export function App() {
     };
   }, [provider]);
 
-  // Track mouse position for presence with throttling
+  // Track mouse position for presence with throttling (only on desktop with mouse)
   useEffect(() => {
+    // Only track cursor on devices with a mouse (fine pointer = mouse/trackpad)
+    const hasMouse = window.matchMedia("(pointer: fine)").matches;
+    if (!hasMouse) return;
+
     let rafId: number | null = null;
     let lastEvent: MouseEvent | null = null;
 
@@ -141,12 +146,19 @@ export function App() {
       proxy.nextZ = 0;
     }
 
+    // Use responsive sizing based on screen size
+    const isMobile = window.innerWidth < 768;
+    const noteWidth = isMobile ? Math.min(window.innerWidth - 40, 280) : 280;
+    const noteHeight = isMobile ? 180 : 200;
+    const maxX = window.innerWidth - noteWidth - 20;
+    const maxY = window.innerHeight - noteHeight - 20;
+
     const newNote: StickyNoteType = {
       id: crypto.randomUUID(),
-      x: Math.random() * (window.innerWidth - 250) + 50,
-      y: Math.random() * (window.innerHeight - 200) + 100,
-      width: 280,
-      height: 200,
+      x: Math.max(20, Math.random() * maxX),
+      y: Math.max(120, Math.random() * maxY),
+      width: noteWidth,
+      height: noteHeight,
       color: selectedColor,
       text: "",
       z: proxy.nextZ,
@@ -184,50 +196,65 @@ export function App() {
   };
 
   return (
-    <div className="w-full h-full relative" onClick={handleCanvasClick}>
-      {/* Toolbar */}
-      <Toolbar
-        onAddNote={handleAddNote}
-        onDeleteNote={handleDeleteNote}
-        selectedColor={selectedColor}
-        onColorChange={setSelectedColor}
-        syncStatus={syncStatus}
-        hasSelection={selectedNoteId !== null}
-      />
-
-      {/* Canvas with sticky notes */}
-      <div className="w-full h-full overflow-hidden">
-        {state.notes &&
-          Object.keys(state.notes).map((noteId) => {
-            const note = state.notes[noteId];
-            return (
-              <StickyNote
-                key={noteId}
-                note={note}
-                noteId={noteId}
-                isSelected={selectedNoteId === noteId}
-                onSelect={() => handleSelectNote(noteId)}
-              />
-            );
-          })}
-
-        {/* Other users' cursors */}
-        {Object.entries(presenceStates).map(
-          ([clientId, presence]: [string, UserPresence]) => {
-            if (!presence.cursor) return null;
-
-            return (
-              <Cursor
-                key={clientId}
-                x={presence.cursor.x}
-                y={presence.cursor.y}
-                color={presence.color}
-                name={presence.name}
-              />
-            );
-          },
-        )}
+    <>
+      {/* Mobile List View (visible on mobile only) */}
+      <div className="block md:hidden w-full h-full">
+        <MobileListView
+          notes={state.notes || {}}
+          selectedColor={selectedColor}
+          onColorChange={setSelectedColor}
+        />
       </div>
-    </div>
+
+      {/* Desktop Canvas View (visible on desktop only) */}
+      <div
+        className="hidden md:block w-full h-full relative"
+        onClick={handleCanvasClick}
+      >
+        {/* Toolbar */}
+        <Toolbar
+          onAddNote={handleAddNote}
+          onDeleteNote={handleDeleteNote}
+          selectedColor={selectedColor}
+          onColorChange={setSelectedColor}
+          syncStatus={syncStatus}
+          hasSelection={selectedNoteId !== null}
+        />
+
+        {/* Canvas with sticky notes */}
+        <div className="w-full h-full overflow-hidden">
+          {state.notes &&
+            Object.keys(state.notes).map((noteId) => {
+              const note = state.notes[noteId];
+              return (
+                <StickyNote
+                  key={noteId}
+                  note={note}
+                  noteId={noteId}
+                  isSelected={selectedNoteId === noteId}
+                  onSelect={() => handleSelectNote(noteId)}
+                />
+              );
+            })}
+
+          {/* Other users' cursors */}
+          {Object.entries(presenceStates).map(
+            ([clientId, presence]: [string, UserPresence]) => {
+              if (!presence.cursor) return null;
+
+              return (
+                <Cursor
+                  key={clientId}
+                  x={presence.cursor.x}
+                  y={presence.cursor.y}
+                  color={presence.color}
+                  name={presence.name}
+                />
+              );
+            },
+          )}
+        </div>
+      </div>
+    </>
   );
 }

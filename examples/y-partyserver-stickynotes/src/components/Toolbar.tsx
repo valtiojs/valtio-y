@@ -1,5 +1,5 @@
 import { Plus, Trash2, WifiOff, Wifi } from "lucide-react";
-import type { SyncStatus } from "../types";
+import { STICKY_NOTE_COLORS, type SyncStatus } from "../types";
 
 interface ToolbarProps {
   onAddNote: () => void;
@@ -9,15 +9,6 @@ interface ToolbarProps {
   syncStatus: SyncStatus;
   hasSelection: boolean;
 }
-
-const COLORS = [
-  { name: "Yellow", value: "#fef3c7" },
-  { name: "Peach", value: "#fed7aa" },
-  { name: "Blue", value: "#dbeafe" },
-  { name: "Green", value: "#d1fae5" },
-  { name: "Purple", value: "#e9d5ff" },
-  { name: "Pink", value: "#fce7f3" },
-];
 
 export function Toolbar({
   onAddNote,
@@ -44,7 +35,7 @@ export function Toolbar({
       {/* Color Selector */}
       <div className="flex items-center gap-1.5 px-2">
         <div className="flex gap-1.5">
-          {COLORS.map((color) => (
+          {STICKY_NOTE_COLORS.map((color) => (
             <button
               key={color.value}
               onClick={() => onColorChange(color.value)}
@@ -55,6 +46,7 @@ export function Toolbar({
               }`}
               style={{ backgroundColor: color.value }}
               title={color.name}
+              aria-label={`Select ${color.name} color`}
             />
           ))}
         </div>
@@ -73,6 +65,7 @@ export function Toolbar({
             : "bg-gray-100 text-gray-400 cursor-not-allowed"
         }`}
         title="Delete selected note"
+        aria-label="Delete selected note"
       >
         <Trash2 size={18} strokeWidth={2.5} />
         Delete

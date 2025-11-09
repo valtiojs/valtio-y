@@ -29,3 +29,12 @@ export interface UserPresence {
   color: string;
   name: string;
 }
+
+export const STICKY_NOTE_COLORS = [
+  { name: "Yellow", value: "#fef3c7" },
+  { name: "Peach", value: "#fed7aa" },
+  { name: "Blue", value: "#dbeafe" },
+  { name: "Green", value: "#d1fae5" },
+  { name: "Purple", value: "#e9d5ff" },
+  { name: "Pink", value: "#fce7f3" },
+] as const;

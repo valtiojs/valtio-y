@@ -37,7 +37,7 @@ export class StickyNotesRoom extends YServer<Env> {
       const note1 = new Y.Map();
       note1.set("id", id1);
       note1.set("x", 80);
-      note1.set("y", 80);
+      note1.set("y", 120);
       note1.set("width", 280);
       note1.set("height", 200);
       note1.set("color", "#fef08a"); // yellow
@@ -52,7 +52,7 @@ export class StickyNotesRoom extends YServer<Env> {
       const note2 = new Y.Map();
       note2.set("id", id2);
       note2.set("x", 390);
-      note2.set("y", 80);
+      note2.set("y", 120);
       note2.set("width", 280);
       note2.set("height", 200);
       note2.set("color", "#fecaca"); // red
@@ -67,7 +67,7 @@ export class StickyNotesRoom extends YServer<Env> {
       const note3 = new Y.Map();
       note3.set("id", id3);
       note3.set("x", 700);
-      note3.set("y", 80);
+      note3.set("y", 120);
       note3.set("width", 280);
       note3.set("height", 200);
       note3.set("color", "#bfdbfe"); // blue
@@ -82,7 +82,7 @@ export class StickyNotesRoom extends YServer<Env> {
       const note4 = new Y.Map();
       note4.set("id", id4);
       note4.set("x", 80);
-      note4.set("y", 310);
+      note4.set("y", 350);
       note4.set("width", 280);
       note4.set("height", 200);
       note4.set("color", "#d9f99d"); // lime
@@ -97,7 +97,7 @@ export class StickyNotesRoom extends YServer<Env> {
       const note5 = new Y.Map();
       note5.set("id", id5);
       note5.set("x", 390);
-      note5.set("y", 310);
+      note5.set("y", 350);
       note5.set("width", 280);
       note5.set("height", 200);
       note5.set("color", "#e9d5ff"); // purple
@@ -112,7 +112,7 @@ export class StickyNotesRoom extends YServer<Env> {
       const note6 = new Y.Map();
       note6.set("id", id6);
       note6.set("x", 700);
-      note6.set("y", 310);
+      note6.set("y", 350);
       note6.set("width", 280);
       note6.set("height", 200);
       note6.set("color", "#fecdd3"); // pink
