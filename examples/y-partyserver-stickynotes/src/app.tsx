@@ -41,13 +41,12 @@ export function App() {
   const state = useSnapshot(proxy, { sync: true });
 
   // Connect to PartyServer using useYProvider hook
-  // Connect to /collab endpoint on the worker
-  // Note: y-partyserver automatically uses the correct protocol based on the page
+  // Connect using y-partyserver defaults: /parties/:party/:room.
   const provider = useRoomProvider({
     host: window.location.host,
     room: roomId,
+    party: "stickynotes-do",
     doc,
-    prefix: `/collab`,
     options: useMemo(
       () => ({
         awareness,
@@ -65,7 +64,6 @@ export function App() {
       room.dispose();
     };
   }, [room]);
-
 
   // Track sync status based on provider events
   useEffect(() => {

@@ -50,4 +50,3 @@ export class RoomState {
 export function createRoomState(): RoomState {
   return new RoomState();
 }
-

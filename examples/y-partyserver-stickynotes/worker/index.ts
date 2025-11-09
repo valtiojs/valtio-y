@@ -7,7 +7,7 @@
 
 import * as Y from "yjs";
 import { YServer } from "y-partyserver";
-import { getServerByName } from "partyserver";
+import { getServerByName, routePartykitRequest } from "partyserver";
 
 /**
  * Durable Object that handles a single sticky notes room
@@ -197,23 +197,48 @@ export default {
     }
 
     // Handle /collab and /collab/* paths for Yjs WebSocket connections
-    if (url.pathname === "/collab" || url.pathname.startsWith("/collab/")) {
-      // Extract room ID from path
-      // /collab -> "default"
-      // /collab/ -> "default"
-      // /collab/room-name -> "room-name"
-      let roomId = "default";
-      if (url.pathname.startsWith("/collab/")) {
-        const extracted = url.pathname.slice(8); // Remove "/collab/"
-        roomId = extracted || "default";
+    if (url.pathname.startsWith("/parties/")) {
+      console.log("[Worker] Incoming collab request", {
+        url: request.url,
+        method: request.method,
+        upgrade: request.headers.get("Upgrade"),
+      });
+
+      const routed = await routePartykitRequest(request, env);
+      if (routed) {
+        console.log("[Worker] routePartykitRequest handled request", {
+          url: request.url,
+          status: routed.status,
+        });
+        return routed;
       }
 
-      // Use PartyServer's getServerByName to get the server stub
-      // This properly sets up the namespace and room headers that PartyServer expects
-      const stub = await getServerByName(env.STICKYNOTES_DO, roomId);
+      console.warn(
+        "[Worker] routePartykitRequest miss, falling back to manual routing for URL:",
+        request.url,
+      );
 
-      // Forward the request to the Durable Object
-      return stub.fetch(request);
+      const [, namespace, roomSegment] = url.pathname
+        .split("/")
+        .filter(Boolean);
+
+      const resolvedNamespace = namespace ?? "stickynotes-do";
+      const roomId =
+        roomSegment ??
+        url.searchParams.get("room") ??
+        request.headers.get("x-partykit-room") ??
+        "default";
+
+      const headers = new Headers(request.headers);
+      headers.set("x-partykit-room", roomId);
+      headers.set("x-partykit-namespace", resolvedNamespace);
+
+      const stub = await getServerByName(env.STICKYNOTES_DO, roomId);
+      console.log("[Worker] Fallback routing to room", {
+        namespace: resolvedNamespace,
+        roomId,
+      });
+      return stub.fetch(new Request(request, { headers }));
     }
 
     // For all other routes, return 404 to fall through to static assets
