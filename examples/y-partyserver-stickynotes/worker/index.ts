@@ -5,9 +5,13 @@
  * Each room is a separate Durable Object instance that manages a Y.Doc and WebSocket connections.
  */
 
-import * as Y from "yjs";
 import { YServer } from "y-partyserver";
 import { routePartykitRequest } from "partyserver";
+import * as Y from "yjs";
+
+const CLEANUP_INTERVAL_MS = import.meta.env.DEV
+  ? 60 * 1000
+  : 30 * 60 * 1000;
 
 /**
  * Durable Object that handles a single sticky notes room
@@ -138,8 +142,7 @@ export class StickyNotesRoom extends YServer<Env> {
 
     // Schedule the first alarm to clean the room
     const now = Date.now();
-    const cleanupIntervalMs = 60 * 1000; // 1 minute for dev, use 30 * 60 * 1000 for production
-    await this.ctx.storage.setAlarm(now + cleanupIntervalMs);
+    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
   }
 
   /**
@@ -152,8 +155,7 @@ export class StickyNotesRoom extends YServer<Env> {
 
     // Schedule the next alarm
     const now = Date.now();
-    const cleanupIntervalMs = 60 * 1000; // 1 minute for dev, use 30 * 60 * 1000 for production
-    await this.ctx.storage.setAlarm(now + cleanupIntervalMs);
+    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
   }
 }
 
