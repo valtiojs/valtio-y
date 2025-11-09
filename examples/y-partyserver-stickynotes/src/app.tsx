@@ -28,6 +28,7 @@ export function App() {
 
   // Connect to PartyServer using useYProvider hook
   // Connect to /collab endpoint on the worker
+  // Note: y-partyserver automatically uses the correct protocol based on the page
   const provider = useYProvider({
     host: window.location.host,
     room: roomId,
@@ -38,7 +39,6 @@ export function App() {
     },
   });
 
-  console.log("[App] Provider initialized for room:", roomId);
 
   // Track sync status based on provider events
   useEffect(() => {
@@ -47,17 +47,12 @@ export function App() {
     type ProviderWithConnectionState = typeof provider & {
       wsconnected: boolean;
       wsconnecting: boolean;
+      shouldConnect: boolean;
     };
 
     const updateStatus = () => {
       const providerWithState =
         provider as unknown as ProviderWithConnectionState;
-
-      console.log("[App] Provider status:", {
-        wsconnected: providerWithState.wsconnected,
-        wsconnecting: providerWithState.wsconnecting,
-        synced: provider.synced,
-      });
 
       if (providerWithState.wsconnected) {
         setSyncStatus(provider.synced ? "connected" : "syncing");
@@ -70,16 +65,38 @@ export function App() {
 
     // Listen to status changes
     provider.on("status", updateStatus);
-    provider.on("sync", (isSynced: boolean) => {
-      console.log("[App] Sync event:", isSynced);
-      updateStatus();
+    provider.on("sync", updateStatus);
+
+    // Handle connection errors (especially important for mobile Safari)
+    provider.on("connection-error", () => {
+      setSyncStatus("disconnected");
+    });
+
+    provider.on("connection-close", () => {
+      setSyncStatus("disconnected");
     });
 
     // Update status immediately
     updateStatus();
 
+    // Handle iOS Safari backgrounding - reconnect when page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const providerWithState =
+          provider as unknown as ProviderWithConnectionState;
+        if (!providerWithState.wsconnected && providerWithState.shouldConnect) {
+          provider.connect();
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
     return () => {
       provider.off("status", updateStatus);
+      provider.off("connection-error", () => {});
+      provider.off("connection-close", () => {});
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
     };
   }, [provider]);
 

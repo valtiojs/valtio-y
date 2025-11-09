@@ -20,7 +20,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["StickyNotesRoom"]
+      "new_sqlite_classes": ["StickyNotesRoom"]
     }
   ]
 }

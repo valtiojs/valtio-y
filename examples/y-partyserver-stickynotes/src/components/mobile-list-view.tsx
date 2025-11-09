@@ -40,12 +40,21 @@ export function MobileListView({
       proxy.nextZ = 0;
     }
 
+    // Use desktop viewport dimensions (1920x1080) for positioning
+    // This ensures notes created on mobile will appear correctly on desktop
+    const desktopWidth = 1920;
+    const desktopHeight = 1080;
+    const noteWidth = 280;
+    const noteHeight = 200;
+    const maxX = desktopWidth - noteWidth - 20;
+    const maxY = desktopHeight - noteHeight - 20;
+
     const newNote: StickyNoteType = {
       id: crypto.randomUUID(),
-      x: 0,
-      y: 0,
-      width: 280,
-      height: 200,
+      x: Math.max(20, Math.random() * maxX),
+      y: Math.max(120, Math.random() * maxY),
+      width: noteWidth,
+      height: noteHeight,
       color: selectedColor,
       text: "",
       z: proxy.nextZ,

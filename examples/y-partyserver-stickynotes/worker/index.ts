@@ -191,9 +191,9 @@ export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Debug endpoint to verify worker is running
+    // Health check endpoint
     if (url.pathname === "/api/health") {
-      return Response.json({ status: "ok", worker: "running" });
+      return Response.json({ status: "ok" });
     }
 
     // Handle /collab and /collab/* paths for Yjs WebSocket connections
@@ -207,8 +207,6 @@ export default {
         const extracted = url.pathname.slice(8); // Remove "/collab/"
         roomId = extracted || "default";
       }
-
-      console.log(`[Worker] Routing to Durable Object room: ${roomId}`);
 
       // Use PartyServer's getServerByName to get the server stub
       // This properly sets up the namespace and room headers that PartyServer expects

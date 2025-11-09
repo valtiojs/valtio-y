@@ -121,6 +121,52 @@ bun run deploy
 2. Look for WebSocket connection to `/collab/[room]`
 3. Check for upgrade errors or connection refused
 
+### iOS Safari not syncing? (Mobile Issues)
+
+iOS Safari has aggressive WebSocket management. Here's how to debug:
+
+1. **Check the connection status** - Look at the toolbar (shows connection state)
+
+2. **Open Safari Remote Debugging** (on Mac):
+
+   ```bash
+   # On Mac: Safari → Develop → [Your iPhone] → [Page]
+   # Check console for these messages:
+   [App] 🔗 Connected to room: [room-name]
+   [App] Provider status: { wsconnected: true, ... }
+   ```
+
+3. **Common iOS Safari issues:**
+
+   - ❌ **Different room IDs**: Desktop on `#roomA`, phone on `#roomB`
+   - ❌ **Background disconnection**: Safari closes WebSocket when app backgrounds
+   - ❌ **Mixed http/https**: Ensure both use same protocol
+   - ❌ **Aggressive tab management**: iOS kills inactive tabs
+
+4. **Test with same room:**
+
+   ```bash
+   # Desktop: https://your-app.com#test123
+   # Phone:   https://your-app.com#test123 (exact same URL!)
+   ```
+
+5. **Watch for reconnection**:
+
+   - The app now auto-reconnects when page becomes visible again
+   - Check console for: `[App] 🔄 Reconnecting...`
+
+6. **Verify WebSocket upgrade**:
+
+   ```bash
+   # Look in worker logs for:
+   [Worker] WebSocket request for room: test123 { isIOS: true, isWebSocket: true }
+   ```
+
+7. **If still not working**:
+   - Try adding to Home Screen (runs in standalone mode)
+   - Check iOS Settings → Safari → Advanced → Experimental Features
+   - Ensure "NSURLSession WebSocket" is enabled
+
 ### TypeScript errors?
 
 ```bash
