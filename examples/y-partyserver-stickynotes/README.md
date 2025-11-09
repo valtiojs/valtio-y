@@ -1,112 +1,139 @@
-# Sticky Notes with Real-Time Collaboration
+# Sticky Notes Example - Cloudflare Workers + Durable Objects
 
-A collaborative sticky notes application built with `valtio-y`, demonstrating real-time synchronization using PartyServer.
+Real-time collaborative sticky notes powered by valtio-y, running on Cloudflare Workers.
 
-## Features
+## Architecture
 
-- **Real-time collaboration** - Multiple users can edit simultaneously
-- **Awareness-based dragging** - Smooth, real-time drag updates without document overhead
-- **Cursor tracking** - See other users' cursors in real-time
-- **Sticky notes** - Create, edit, resize, and drag notes
-- **Color picker** - Choose from multiple note colors
-- **Z-index management** - Notes automatically come to front when selected
+This example uses a **unified Cloudflare Worker** that serves both:
 
-## Architecture Highlights
+- **React App**: Static assets via Cloudflare's `assets` config
+- **Yjs Server**: WebSocket connections at `/collab/*` using Durable Objects
 
-### Smooth Dragging with Motion
-
-This example demonstrates how to achieve smooth collaborative dragging using **Framer Motion + valtio-y**:
-
-**During drag:**
-
-- Motion handles the local drag animation with MotionValues
-- No document updates (butter smooth!)
-- No parent rerenders
-
-**On drag end:**
-
-- Final position is written to the **Yjs document** (persistent)
-- Single document update per drag operation
-- Motion automatically animates the position change for remote users
-
-**Key benefits:**
-
-1. **Motion** owns the animation during drag - no fighting with snapshot updates
-2. **Minimal updates** - only write to document on drag end
-3. **Smooth remote updates** - Motion animates changes from other users
-4. **Clean history** - single position update per drag in undo/redo
-
-The secret: Use Motion's `animate` prop instead of `style` for x/y positions. This lets Motion smoothly interpolate between document updates without fighting the drag gesture.
-
-## Implementation
-
-```tsx
-// Key: Use animate prop instead of style for x/y
-// This lets Motion smoothly interpolate without fighting the drag
-<motion.div
-  drag={!isEditing}
-  dragMomentum={false}
-  dragElastic={0}
-  onDragEnd={handleDragEnd}
-  // Use initial/animate instead of style={{ x, y }}
-  initial={{ x: note.x, y: note.y }}
-  animate={{ x: note.x, y: note.y }}
-  transition={{ type: "tween", duration: 0.1 }}
->
-  {/* Note content */}
-</motion.div>;
-
-// On drag end - update document with final position
-const handleDragEnd = (info: PanInfo) => {
-  if (proxy.notes && noteId in proxy.notes) {
-    proxy.notes[noteId].x = Math.max(0, note.x + info.offset.x);
-    proxy.notes[noteId].y = Math.max(0, note.y + info.offset.y);
-  }
-};
-```
-
-**Why this works:**
-
-- During drag, Motion controls the position via internal MotionValues
-- On drag end, we update the document (snapshot changes)
-- Motion sees the new animate values and smoothly interpolates
-- No jank because we're not overriding Motion during the gesture!
-
-## Running the Example
+## Development
 
 ```bash
 # Install dependencies
 bun install
 
-# Start the development server
+# Start dev server (runs both React app and Worker)
 bun run dev
 
-# In a separate terminal, start the PartyServer
-bun run server
+# Test if worker is running
+# Open browser to: http://localhost:5173/api/health
+# Should see: {"status":"ok","worker":"running"}
 ```
 
-Open multiple browser windows to see real-time collaboration in action!
+## Testing the Connection
 
-## Technical Stack
+1. **Verify Worker Health**:
 
-- **valtio-y** - Valtio + Yjs synchronization
-- **PartyServer** - WebSocket server for collaboration
-- **Framer Motion** - Smooth animations and drag interactions
-- **React** - UI framework
-- **TypeScript** - Type safety
+   ```bash
+   curl http://localhost:5173/api/health
+   # Should return: {"status":"ok","worker":"running"}
+   ```
 
-## Pattern: Awareness for Cursors, Document for State
+2. **Check WebSocket Endpoint**:
+   The app connects to: `ws://localhost:5173/collab/[room-name]`
+3. **View Logs**:
+   The worker logs appear in the terminal running `bun run dev`
 
-This example demonstrates a clean separation:
+## Routes
 
-| Data                 | Storage               | When Updated                             |
-| -------------------- | --------------------- | ---------------------------------------- |
-| **Cursor positions** | Awareness (ephemeral) | On every mouse move (throttled with RAF) |
-| **Note positions**   | Document (persistent) | Only on drag end                         |
-| **Note content**     | Document (persistent) | On text change                           |
+- `/` - React app (SPA)
+- `/collab` - Yjs WebSocket server (default room)
+- `/collab/[room]` - Yjs WebSocket server (specific room)
+- `/api/health` - Health check endpoint
 
-**Why it works:**
+## Deployment
 
-- Cursors are ephemeral - no need to persist or sync via CRDT
-- Note positions are persistent - need to sync and support undo/redo
-- Motion bridges the gap by smoothly animating document updates
+```bash
+# Build and deploy to Cloudflare
+bun run deploy
+
+# Your app will be available at:
+# https://valtio-y-stickynotes.YOUR_ACCOUNT.workers.dev
+```
+
+## Project Structure
+
+```
+├── src/                # React application
+│   ├── app.tsx        # Main app component
+│   ├── yjs-setup.ts   # Yjs and valtio-y configuration
+│   └── components/    # React components
+├── worker/            # Cloudflare Worker
+│   └── index.ts       # Worker + Durable Object
+├── wrangler.jsonc     # Cloudflare configuration
+├── vite.config.ts     # Vite + Cloudflare plugin
+└── tsconfig.*.json    # TypeScript project references
+```
+
+## How It Works
+
+### Development Mode (`bun run dev`)
+
+1. **Vite** starts on port 5173
+2. **@cloudflare/vite-plugin** automatically:
+   - Reads `wrangler.jsonc`
+   - Starts a local Worker
+   - Proxies `/collab/*` and `/api/*` to the Worker
+3. **Worker** routes `/collab/*` to Durable Objects
+4. **Durable Objects** handle Yjs sync and WebSocket connections
+
+### Production Mode (deployed)
+
+1. Single Worker handles all requests
+2. `/collab/*` → Durable Objects (Yjs sync)
+3. All other routes → Static assets (React app)
+
+## Troubleshooting
+
+### Worker not responding in dev mode?
+
+1. Check if the health endpoint works:
+
+   ```bash
+   curl http://localhost:5173/api/health
+   ```
+
+2. If not working, try:
+
+   ```bash
+   # Kill any existing processes
+   pkill -f wrangler
+   pkill -f vite
+
+   # Regenerate types
+   bun run cf-typegen
+
+   # Rebuild
+   bun run build
+
+   # Start fresh
+   bun run dev
+   ```
+
+3. Check terminal logs for errors
+
+### WebSocket connection failing?
+
+1. Open browser DevTools → Network tab → WS filter
+2. Look for WebSocket connection to `/collab/[room]`
+3. Check for upgrade errors or connection refused
+
+### TypeScript errors?
+
+```bash
+# Regenerate Cloudflare types
+bun run cf-typegen
+
+# Type check
+tsc -b
+```
+
+## Notes
+
+- The example uses ephemeral Durable Objects (resets every minute in dev)
+- For production, adjust the cleanup interval in `worker/index.ts`
+- Each room is a separate Durable Object instance
+- WebSocket connections are managed by `y-partyserver`

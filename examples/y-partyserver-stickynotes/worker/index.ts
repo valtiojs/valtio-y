@@ -9,10 +9,6 @@ import * as Y from "yjs";
 import { YServer } from "y-partyserver";
 import { getServerByName } from "partyserver";
 
-interface Env {
-  STICKYNOTES_DO: DurableObjectNamespace;
-}
-
 /**
  * Durable Object that handles a single sticky notes room
  */
@@ -188,22 +184,42 @@ export class StickyNotesRoom extends YServer<Env> {
 
 /**
  * Main Worker handler
- * Routes requests to the appropriate Durable Object based on the room name
- * Uses PartyServer's getServerByName to properly set up headers
+ * Routes /collab requests to the Durable Object for Yjs sync
+ * All other requests fall through to static assets (React app)
  */
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     const url = new URL(request.url);
 
-    // Extract room ID from path (e.g., /room-name -> room-name)
-    // Default to "default" if no room specified
-    const roomId = url.pathname.slice(1) || "default";
+    // Debug endpoint to verify worker is running
+    if (url.pathname === "/api/health") {
+      return Response.json({ status: "ok", worker: "running" });
+    }
 
-    // Use PartyServer's getServerByName to get the server stub
-    // This properly sets up the namespace and room headers that PartyServer expects
-    const stub = await getServerByName(env.STICKYNOTES_DO as any, roomId);
+    // Handle /collab and /collab/* paths for Yjs WebSocket connections
+    if (url.pathname === "/collab" || url.pathname.startsWith("/collab/")) {
+      // Extract room ID from path
+      // /collab -> "default"
+      // /collab/ -> "default"
+      // /collab/room-name -> "room-name"
+      let roomId = "default";
+      if (url.pathname.startsWith("/collab/")) {
+        const extracted = url.pathname.slice(8); // Remove "/collab/"
+        roomId = extracted || "default";
+      }
 
-    // Forward the request to the Durable Object
-    return stub.fetch(request);
+      console.log(`[Worker] Routing to Durable Object room: ${roomId}`);
+
+      // Use PartyServer's getServerByName to get the server stub
+      // This properly sets up the namespace and room headers that PartyServer expects
+      const stub = await getServerByName(env.STICKYNOTES_DO, roomId);
+
+      // Forward the request to the Durable Object
+      return stub.fetch(request);
+    }
+
+    // For all other routes, return 404 to fall through to static assets
+    // The assets config in wrangler.jsonc will serve the React app
+    return new Response(null, { status: 404 });
   },
-};
+} satisfies ExportedHandler<Env>;

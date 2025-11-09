@@ -16,6 +16,7 @@
     "yjs": "latest"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.14.0",
     "@cloudflare/workers-types": "^4.20241218.0",
     "@tailwindcss/vite": "^4.1.14",
     "@types/react": "latest",
@@ -26,12 +27,13 @@
     "tailwindcss": "^4.1.14",
     "typescript": "latest",
     "vite": "latest",
-    "wrangler": "^3.95.0"
+    "wrangler": "^4.46.0"
   },
   "scripts": {
-    "dev": "wrangler dev --port 8787 & vite",
-    "dev:worker": "wrangler dev --port 8787",
-    "typecheck": "tsc --noEmit",
-    "deploy": "wrangler deploy"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "bun run build && vite preview",
+    "deploy": "bun run build && wrangler deploy",
+    "cf-typegen": "wrangler types"
   }
 }

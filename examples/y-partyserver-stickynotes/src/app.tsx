@@ -27,12 +27,12 @@ export function App() {
   const roomId = window.location.hash.slice(1) || "default";
 
   // Connect to PartyServer using useYProvider hook
-  // Connect directly to the worker (no proxy needed)
+  // Connect to /collab endpoint on the worker
   const provider = useYProvider({
-    host: "localhost:8787",
+    host: window.location.host,
     room: roomId,
     doc,
-    prefix: "",
+    prefix: "/collab",
     options: {
       awareness,
     },
