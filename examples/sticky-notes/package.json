@@ -7,13 +7,13 @@
     "lucide-react": "^0.544.0",
     "motion": "^12.23.24",
     "partyserver": "^0.0.75",
-    "react": "latest",
-    "react-dom": "latest",
-    "valtio": "latest",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "valtio": "^2.2.0",
     "valtio-y": "workspace:*",
     "y-partyserver": "^0.0.51",
     "y-protocols": "^1.0.6",
-    "yjs": "latest"
+    "yjs": "^13.6.27"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.14.0",
@@ -21,12 +21,10 @@
     "@tailwindcss/vite": "^4.1.17",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@vitejs/plugin-react": "latest",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.6",
+    "@vitejs/plugin-react": "^5.1.0",
     "tailwindcss": "^4.1.17",
     "typescript": "latest",
-    "vite": "latest",
+    "vite": "^7.2.2",
     "wrangler": "^4.46.0"
   },
   "scripts": {

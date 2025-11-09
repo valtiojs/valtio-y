@@ -4,19 +4,19 @@
   "private": true,
   "type": "module",
   "dependencies": {
-    "react": "latest",
-    "react-dom": "latest",
-    "valtio": "latest",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "valtio": "catalog:",
     "valtio-y": "workspace:*",
     "y-websocket": "latest",
-    "yjs": "latest"
+    "yjs": "catalog:"
   },
   "devDependencies": {
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@y/websocket-server": "latest",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "catalog:"
   },
   "scripts": {
     "dev": "HOST=localhost PORT=1234 npx y-websocket & vite",
