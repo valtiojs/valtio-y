@@ -113,7 +113,6 @@ export function App() {
     };
   }, []);
 
-
   // Handle keyboard shortcuts for deleting notes
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {

@@ -68,7 +68,9 @@ export function StickyNote({
     info: PanInfo,
   ) => {
     setIsDragging(false);
-    // Update proxy directly since 'note' is a snapshot value (read-only)
+
+    // Update the actual document with final position
+    // Motion handles the smooth animation, we just store the result
     if (proxy.notes && noteId in proxy.notes) {
       proxy.notes[noteId].x = Math.max(0, note.x + info.offset.x);
       proxy.notes[noteId].y = Math.max(0, note.y + info.offset.y);
@@ -136,6 +138,11 @@ export function StickyNote({
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       whileHover={!isDragging ? { scale: 1.01 } : {}}
+      // Motion controls x/y during drag via MotionValues for smooth animation
+      // Document updates on drag end are automatically animated by Motion
+      initial={{ x: note.x, y: note.y }}
+      animate={{ x: note.x, y: note.y }}
+      transition={{ type: "tween", duration: 0.1 }}
       className={`group absolute rounded-xl select-none transition-shadow ${
         isDragging ? "shadow-2xl" : ""
       } ${
@@ -144,8 +151,6 @@ export function StickyNote({
           : "shadow-lg hover:shadow-xl"
       }`}
       style={{
-        x: note.x,
-        y: note.y,
         width: note.width,
         height: note.height,
         backgroundColor: note.color,
@@ -157,7 +162,6 @@ export function StickyNote({
             : "0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)",
       }}
     >
-
       {/* Content */}
       <div
         className="w-full h-full p-4 overflow-hidden relative cursor-text"
