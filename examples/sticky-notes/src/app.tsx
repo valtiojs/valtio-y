@@ -217,6 +217,13 @@ export function App() {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [selectedNoteId, proxy]);
 
+  // Update selected note color when toolbar color changes
+  useEffect(() => {
+    if (selectedNoteId && proxy.notes && selectedNoteId in proxy.notes) {
+      proxy.notes[selectedNoteId].color = selectedColor;
+    }
+  }, [selectedColor, selectedNoteId, proxy]);
+
   const handleAddNote = () => {
     if (!proxy.notes) {
       proxy.notes = {};
