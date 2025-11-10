@@ -12,6 +12,7 @@ import { useSnapshot } from "valtio";
 import getStroke from "perfect-freehand";
 import { Eraser } from "lucide-react";
 import { trackOperation, getAwarenessUsers } from "../yjs-setup";
+import { Cursor } from "./cursor";
 import type { Point, Tool, Shape, PathShape, AppState } from "../types";
 import type * as awarenessProtocol from "y-protocols/awareness";
 
@@ -52,6 +53,7 @@ export function Canvas({
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
   const [eraserScreenPos, setEraserScreenPos] = useState<Point | null>(null);
+  const [canvasOffset, setCanvasOffset] = useState<Point>({ x: 0, y: 0 });
   const eraserRadius = 20; // Size of the eraser cursor
 
   // Update awareness users on change
@@ -67,6 +69,43 @@ export function Canvas({
       awareness.off("change", updateUsers);
     };
   }, [awareness]);
+
+  // Update canvas offset for cursor positioning (updates on zoom/resize/scroll)
+  useEffect(() => {
+    const updateOffset = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+
+      const rect = canvas.getBoundingClientRect();
+      const parentRect = canvas.parentElement?.getBoundingClientRect();
+      if (!parentRect) return;
+
+      setCanvasOffset({
+        x: rect.left - parentRect.left,
+        y: rect.top - parentRect.top,
+      });
+    };
+
+    updateOffset();
+
+    // Update on resize, scroll, and zoom changes
+    window.addEventListener("resize", updateOffset);
+    window.addEventListener("scroll", updateOffset, true);
+    
+    const canvas = canvasRef.current;
+    const parent = canvas?.parentElement;
+    if (!canvas || !parent) return;
+
+    const resizeObserver = new ResizeObserver(updateOffset);
+    resizeObserver.observe(canvas);
+    resizeObserver.observe(parent);
+
+    return () => {
+      window.removeEventListener("resize", updateOffset);
+      window.removeEventListener("scroll", updateOffset, true);
+      resizeObserver.disconnect();
+    };
+  }, [zoom]);
 
   // Convert screen coordinates to canvas coordinates
   const getCanvasPoint = useCallback(
@@ -540,14 +579,7 @@ export function Canvas({
       renderShape(ctx, ghostShape);
       ctx.restore();
     }
-
-    // Layer 3: Cursors from awareness (ephemeral)
-    awarenessUsers.forEach((user) => {
-      if (user.cursor) {
-        renderCursor(ctx, user.cursor, user.color, user.name);
-      }
-    });
-  }, [snap.shapes, ghostShape, awarenessUsers, selectedShapeId]);
+  }, [snap.shapes, ghostShape, selectedShapeId]);
 
   const hasShapes = snap.shapes && snap.shapes.length > 0;
 
@@ -674,6 +706,28 @@ export function Canvas({
           </div>
         </div>
       )}
+
+      {/* Other users' cursors - React-based with animation */}
+      {awarenessUsers.map((user) => {
+        if (!user.cursor) return null;
+
+        const scale = zoom / 100;
+
+        // Convert canvas coordinates (0-1200, 0-800) to coordinates relative to parent div
+        // Account for canvas position within parent and zoom scaling
+        const x = canvasOffset.x + user.cursor.x * scale;
+        const y = canvasOffset.y + user.cursor.y * scale;
+
+        return (
+          <Cursor
+            key={user.id}
+            x={x}
+            y={y}
+            color={user.color}
+            name={user.name}
+          />
+        );
+      })}
     </div>
   );
 }
@@ -746,24 +800,6 @@ function renderCircle(ctx: CanvasRenderingContext2D, shape: any) {
   }
 
   ctx.stroke();
-}
-
-function renderCursor(
-  ctx: CanvasRenderingContext2D,
-  point: Point,
-  color: string,
-  name: string,
-) {
-  // Draw cursor circle
-  ctx.fillStyle = color;
-  ctx.beginPath();
-  ctx.arc(point.x, point.y, 6, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Draw name label
-  ctx.fillStyle = color;
-  ctx.font = "12px sans-serif";
-  ctx.fillText(name, point.x + 10, point.y - 10);
 }
 
 // Type definitions for ghost shapes

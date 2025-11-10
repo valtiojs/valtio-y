@@ -68,9 +68,7 @@ export function App() {
     room: roomId,
     party: PARTY_NAME,
     doc,
-    options: {
-      awareness,
-    },
+    awareness,
   });
 
   // Cleanup: dispose room when component unmounts or room changes
