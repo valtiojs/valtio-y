@@ -1,24 +1,25 @@
-# Y-PartyServer Todo Example
+# Y-PartyServer Drawing Demo
 
-A collaborative text editing application demonstrating real-time synchronization using Yjs and y-partyserver on Cloudflare Workers.
+A collaborative drawing application demonstrating real-time synchronization using valtio-y, Yjs, and y-partyserver on Cloudflare Workers.
 
 ## Features
 
-- 🚀 Real-time collaborative text editing
+- 🚀 Real-time collaborative drawing
 - ⚡️ Powered by Yjs CRDTs for conflict-free synchronization
 - 🔄 y-partyserver backend on Cloudflare Durable Objects
 - 🔒 TypeScript by default
 - 🎉 TailwindCSS for styling
-- 📦 React Router for frontend routing
+- 📦 Simple Vite + React setup
 
 ## Architecture
 
-This example demonstrates:
-- **Y-Party Worker**: Separate Cloudflare Worker hosting the YServer Durable Object
-- **YServer (Durable Object)**: A y-partyserver instance that hosts Yjs documents
-- **WebSocket Connection**: Real-time bidirectional communication to `ws://localhost:8788/party/:room`
-- **Client Provider**: YProvider connects directly to the Y-Party worker and syncs local Yjs documents
-- **React Component**: CollaborativeTextBox uses Yjs for collaborative text editing
+This example demonstrates a unified worker architecture:
+
+- **Single Cloudflare Worker**: `workers/app.ts` hosts both the React app and the Durable Object
+- **YServer (Durable Object)**: `YDocServer` extends `y-partyserver`'s `YServer` to host Yjs documents
+- **WebSocket Connection**: Real-time sync over `/parties/:party/:room` on the same origin as the app
+- **Client Provider**: `YProvider` connects to the Durable Object through the shared worker
+- **React Components**: Drawing canvas with real-time collaboration
 
 ## Getting Started
 
@@ -32,30 +33,13 @@ bun install
 
 ### Development
 
-This example uses **two separate workers**:
-1. **Main worker**: React Router app (port 5173) - serves the UI
-2. **Y-Party worker**: Durable Objects for WebSocket connections (port 8788) - handles Yjs sync
-
-**Start both workers with one command**:
+Run the unified dev server:
 
 ```bash
 bun run dev
 ```
 
-This runs both workers in parallel:
-- Y-Party worker on `http://localhost:8788`
-- React Router app on `http://localhost:5173`
-
-**Why two workers?** React Router 7 doesn't properly handle WebSocket upgrades when Durable Objects are in the same worker. The client connects directly to the Y-Party worker on port 8788 for WebSocket sync.
-
-Alternatively, you can run them separately in different terminals:
-```bash
-# Terminal 1
-bun run dev:y-party
-
-# Terminal 2
-bun run dev:app
-```
+This starts Vite dev server with the Cloudflare plugin. The worker and Durable Object run alongside the frontend on the same origin (default `http://localhost:5173`), and WebSocket connections are proxied automatically.
 
 ## Previewing the Production Build
 
@@ -77,27 +61,30 @@ bun run build
 
 ### Server Setup
 
-The example includes a YServer Durable Object (`workers/y-server.ts`) that:
-- Extends the `YServer` class from y-partyserver
+The example includes a YServer Durable Object (`workers/app.ts`) that:
+
+- Extends the `YDocServer` class from `y-partyserver`
 - Hosts Yjs documents in Cloudflare Durable Objects
 - Handles WebSocket connections for real-time sync
-- Routes requests via `/party/:room` paths
+- Routes requests via `/parties/:party/:room` paths
+- Saves document snapshots periodically
 
 ### Client Setup
 
-The CollaborativeTextBox component (`app/components/collaborative-text-box.tsx`):
-- Creates a Yjs document with a Y.Text type
+The drawing app (`src/app.tsx`):
+
+- Creates a Yjs document with valtio-y proxy
 - Connects to the YServer using YProvider
-- Observes changes to the Yjs document and updates the UI
-- Sends local changes to the server for synchronization
+- Uses valtio-y for reactive state management
+- Syncs drawing operations in real-time
 
 ### Testing Collaboration
 
 1. Start the dev server with `bun run dev`
 2. Open `http://localhost:5173` in multiple browser windows
-3. Type in one window and watch the text appear in the others in real-time!
+3. Draw in one window and watch it appear in the others in real-time!
 
-**Note:** The WebSocket connections to `/party/:room` are handled by the Cloudflare Workers runtime via the `@cloudflare/vite-plugin`.
+**Note:** The WebSocket connections to `/parties/:party/:room` are handled by the Cloudflare Workers runtime via the `@cloudflare/vite-plugin`.
 
 ## Deployment
 
@@ -125,7 +112,6 @@ npx wrangler versions deploy
 
 - [y-partyserver documentation](https://github.com/threepointone/partyserver/tree/main/packages/y-partyserver)
 - [Yjs documentation](https://docs.yjs.dev/)
-- [React Router documentation](https://reactrouter.com/)
 - [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)
 
 ## Styling
@@ -134,4 +120,4 @@ This template comes with [Tailwind CSS](https://tailwindcss.com/) already config
 
 ---
 
-Built with ❤️ using React Router, Yjs, and y-partyserver.
+Built with ❤️ using Vite, React, Yjs, and y-partyserver.

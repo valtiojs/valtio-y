@@ -1,5 +1,5 @@
 /**
- * Collaborative Drawing App - Main Route
+ * Collaborative Drawing App
  *
  * This demo showcases valtio-y's unique selling points:
  * 1. **Batching**: Draw with the pen to see hundreds of points batched efficiently
@@ -9,7 +9,6 @@
  */
 
 import { useEffect, useState, useCallback } from "react";
-import type { Route } from "./+types/home";
 import {
   Undo2,
   Redo2,
@@ -20,11 +19,11 @@ import {
   Maximize2,
   HelpCircle,
 } from "lucide-react";
-import { Canvas } from "../components/canvas";
-import { Toolbar } from "../components/toolbar";
-import { LayersPanel } from "../components/layers-panel";
-import { PerformanceStats } from "../components/performance-stats";
-import { KeyboardShortcutsModal } from "../components/keyboard-shortcuts-modal";
+import { Canvas } from "./components/canvas";
+import { Toolbar } from "./components/toolbar";
+import { LayersPanel } from "./components/layers-panel";
+import { PerformanceStats } from "./components/performance-stats";
+import { KeyboardShortcutsModal } from "./components/keyboard-shortcuts-modal";
 import useYProvider from "y-partyserver/react";
 import {
   yDoc,
@@ -36,9 +35,9 @@ import {
   cleanupUser,
   proxy,
   initUndoManager,
-} from "../yjs-setup";
-import type { Tool } from "../types";
-import { useUndoRedo, useSyncStatus } from "../hooks";
+} from "./yjs-setup";
+import type { Tool } from "./types";
+import { useUndoRedo, useSyncStatus } from "./hooks";
 
 // Generate a random user ID and color for this session
 const USER_ID = `user-${Math.random().toString(36).substr(2, 9)}`;
@@ -54,18 +53,7 @@ const USER_COLORS = [
 ];
 const USER_COLOR = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
 
-export function meta({}: Route.MetaArgs) {
-  return [
-    { title: "valtio-y Drawing Demo - Collaborative Whiteboard" },
-    {
-      name: "description",
-      content:
-        "Real-time collaborative drawing with valtio-y and Y-PartyServer",
-    },
-  ];
-}
-
-export default function Home() {
+export function App() {
   const [initialized, setInitialized] = useState(false);
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState("#000000");
@@ -80,11 +68,9 @@ export default function Home() {
   const syncStatus = useSyncStatus();
 
   // Initialize Yjs provider using the hook
+  // Connects to same host (unified worker handles both frontend and Y-PartyServer)
   const provider = useYProvider({
-    host:
-      typeof window !== "undefined" && window.location.hostname === "localhost"
-        ? "localhost:8788"
-        : undefined,
+    host: typeof window !== "undefined" ? window.location.host : undefined,
     room: ROOM_NAME,
     party: PARTY_NAME,
     doc: yDoc,
@@ -346,7 +332,7 @@ export default function Home() {
                   >
                     <ZoomOut size={18} />
                   </button>
-                  <span className="text-sm font-medium text-gray-700 min-w-[4rem] text-center">
+                  <span className="text-sm font-medium text-gray-700 min-w-16 text-center">
                     {zoom}%
                   </span>
                   <button
@@ -469,3 +455,4 @@ export default function Home() {
     </div>
   );
 }
+

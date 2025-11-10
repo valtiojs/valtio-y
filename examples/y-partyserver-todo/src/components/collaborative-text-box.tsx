@@ -18,8 +18,8 @@ export function CollaborativeTextBox() {
     // Get or create a Y.Text type for our text content
     const yText = yDoc.getText("content");
 
-    // Connect to the Y-Party worker on port 8788
-    const yPartyHost = "localhost:8788";
+    // Connect to unified worker (same host handles both frontend and Y-PartyServer)
+    const yPartyHost = typeof window !== "undefined" ? window.location.host : undefined;
     const roomName = "shared-text-document";
     // PartyServer automatically converts YDocServer -> y-doc-server (kebab-case)
     const partyName = "y-doc-server";
@@ -31,6 +31,11 @@ export function CollaborativeTextBox() {
 
     // Create the provider to connect to our YServer
     // URL will be: /parties/y-doc-server/shared-text-document
+    if (!yPartyHost) {
+      console.error("[Client] Cannot create provider: no host available");
+      return;
+    }
+    
     const newProvider = new YProvider(yPartyHost, roomName, yDoc, {
       connect: true,
       party: partyName,

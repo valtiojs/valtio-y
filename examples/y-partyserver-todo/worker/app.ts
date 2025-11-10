@@ -1,16 +1,12 @@
-/**
- * Standalone worker for Y-PartyServer
- * Combines the YServer definition and fetch handler in one file
- */
-
 import { routePartykitRequest } from "partyserver";
 import { YServer } from "y-partyserver";
+import * as Y from "yjs";
 
 /**
  * YDocServer is a durable object that hosts Yjs documents.
  * YServer handles all routing, WebSocket upgrades, and synchronization automatically.
  */
-export class YDocServer extends YServer {
+export class YDocServer extends YServer<Env> {
   // Configure periodic snapshots - saves every 2s or after 10s max
   static callbackOptions = {
     debounceWait: 2000, // Wait 2s after last update
@@ -22,7 +18,6 @@ export class YDocServer extends YServer {
   async onLoad() {
     const stored = await this.ctx.storage.get<Uint8Array>("document");
     if (stored) {
-      const Y = await import("yjs");
       Y.applyUpdate(this.document, stored);
       console.log(`[YDocServer] Loaded snapshot: ${stored.byteLength} bytes`);
     }
@@ -30,7 +25,6 @@ export class YDocServer extends YServer {
 
   // Save document state to Durable Object storage (called automatically)
   async onSave() {
-    const Y = await import("yjs");
     const state = Y.encodeStateAsUpdate(this.document);
     await this.ctx.storage.put("document", state);
 
@@ -42,18 +36,20 @@ export class YDocServer extends YServer {
   }
 }
 
-interface YPartyEnv extends Record<string, unknown> {
-  YDocServer: DurableObjectNamespace;
-}
-
-// Default fetch handler - routes requests to the YDocServer Durable Object
+/**
+ * Main Worker handler
+ * Routes /parties/* requests to the Durable Object for Yjs sync
+ * All other requests fall through to static assets served by Vite
+ */
 export default {
-  async fetch(request: Request, env: YPartyEnv): Promise<Response> {
-    // Use PartyServer's routePartykitRequest to automatically route
-    // URLs like /parties/ydocserver/room-name to the YDocServer Durable Object
-    return (
-      (await routePartykitRequest(request, env)) ||
-      new Response("Not Found", { status: 404 })
-    );
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const envForPartyServer = env as unknown as Record<string, unknown>;
+    const response = await routePartykitRequest(request, envForPartyServer);
+    if (response) {
+      return response;
+    }
+
+    // All other paths fall through to static assets served by Vite
+    return new Response(null, { status: 404 });
   },
-} satisfies ExportedHandler<YPartyEnv>;
+} satisfies ExportedHandler<Env>;
