@@ -150,7 +150,7 @@
         "wrangler": "^4.46.0",
       },
     },
-    "examples/y-partyserver-todo": {
+    "examples/whiteboard": {
       "name": "y-partyserver-todo",
       "version": "0.0.0",
       "dependencies": {
@@ -165,6 +165,7 @@
         "valtio": "^2.2.0",
         "valtio-y": "workspace:*",
         "y-partyserver": "^0.0.51",
+        "y-protocols": "^1.0.6",
         "yjs": "^13.6.27",
       },
       "devDependencies": {
@@ -1285,7 +1286,7 @@
 
     "y-partyserver": ["y-partyserver@0.0.51", "", { "dependencies": { "lib0": "^0.2.114", "lodash.debounce": "^4.0.8", "nanoid": "^5.1.6", "y-protocols": "^1.0.6" }, "peerDependencies": { "@cloudflare/workers-types": "^4.20240729.0", "partyserver": "^0.0.75", "yjs": "^13.6.14" } }, "sha512-t1xfRax3BKTWNapcwzcgcALl1jEWb280XXMO1h/ZBZyJ3vfIfeJ+uY4RfF5969tvC7G71XwI4+63HvbIhneEuw=="],
 
-    "y-partyserver-todo": ["y-partyserver-todo@workspace:examples/y-partyserver-todo"],
+    "y-partyserver-todo": ["y-partyserver-todo@workspace:examples/whiteboard"],
 
     "y-protocols": ["y-protocols@1.0.6", "", { "dependencies": { "lib0": "^0.2.85" }, "peerDependencies": { "yjs": "^13.0.0" } }, "sha512-vHRF2L6iT3rwj1jub/K5tYcTT/mEYDUppgNPXwp8fmLpui9f7Yeq3OEtTLVF012j39QnV+KEQpNqoN7CWU7Y9Q=="],
 
