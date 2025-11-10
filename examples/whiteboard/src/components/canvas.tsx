@@ -585,7 +585,11 @@ export function Canvas({
                 Collaborative Whiteboard Demo
               </h3>
               <p className="text-base text-gray-600">
-                Powered by <strong className="font-semibold text-blue-600">valtio-y</strong>, Yjs, and CRDTs
+                Powered by{" "}
+                <strong className="font-semibold text-blue-600">
+                  valtio-y
+                </strong>
+                , Yjs, and CRDTs
               </p>
             </div>
 
@@ -598,7 +602,8 @@ export function Canvas({
               </p>
 
               <p className="text-sm text-gray-600">
-                👥 Open this page in two browser windows to see real-time sync in action!
+                👥 Open this page in two browser windows to see real-time sync
+                in action!
               </p>
             </div>
 
@@ -614,11 +619,15 @@ export function Canvas({
                 </div>
                 <div className="bg-white/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-gray-200">
                   <p className="font-bold text-gray-900 mb-1">Rectangle (R)</p>
-                  <p className="text-gray-600 text-xs">Click to place, drag to size</p>
+                  <p className="text-gray-600 text-xs">
+                    Click to place, drag to size
+                  </p>
                 </div>
                 <div className="bg-white/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-gray-200">
                   <p className="font-bold text-gray-900 mb-1">Circle (C)</p>
-                  <p className="text-gray-600 text-xs">Click to place, drag to size</p>
+                  <p className="text-gray-600 text-xs">
+                    Click to place, drag to size
+                  </p>
                 </div>
               </div>
             </div>
@@ -626,7 +635,12 @@ export function Canvas({
             {/* Tip */}
             <div className="inline-block">
               <p className="text-sm text-gray-600">
-                💡 <strong className="font-semibold">Pro tip:</strong> Use the URL hash to create your own private room (e.g., <code className="bg-gray-200/70 px-2 py-1 rounded text-xs font-mono">#my-room</code>)
+                💡 <strong className="font-semibold">Pro tip:</strong> Use the
+                URL hash to create your own private room (e.g.,{" "}
+                <code className="bg-gray-200/70 px-2 py-1 rounded text-xs font-mono">
+                  #my-room
+                </code>
+                )
               </p>
             </div>
           </div>
