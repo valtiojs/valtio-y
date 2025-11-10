@@ -12,18 +12,14 @@ import { useEffect, useState } from "react";
 import { useSnapshot } from "valtio";
 import {
   Activity,
-  Zap,
   Hash,
-  Wifi,
-  WifiOff,
   Globe,
   Clock,
   Database,
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { getSyncStatus, subscribeSyncStatus } from "../yjs-setup";
-import type { SyncStatus, AppState } from "../types";
+import type { AppState } from "../types";
 import * as Y from "yjs";
 
 interface PerformanceStatsProps {
@@ -33,7 +29,6 @@ interface PerformanceStatsProps {
 
 export function PerformanceStats({ proxy, doc }: PerformanceStatsProps) {
   const snap = useSnapshot(proxy);
-  const [syncStatus, setSyncStatus] = useState<SyncStatus>("offline");
   const [colo, setColo] = useState<string>("--");
   const [rtt, setRtt] = useState<number>(0);
   const [snapshotSize, setSnapshotSize] = useState<number>(0);
@@ -90,18 +85,6 @@ export function PerformanceStats({ proxy, doc }: PerformanceStatsProps) {
     return () => clearInterval(interval);
   }, [doc]);
 
-  // Subscribe to sync status
-  useEffect(() => {
-    setSyncStatus(getSyncStatus());
-
-    const unsubscribe = subscribeSyncStatus(() => {
-      setSyncStatus(getSyncStatus());
-    });
-
-    return unsubscribe;
-  }, []);
-
-  const stats = snap.stats;
   const shapes = snap.shapes || [];
 
   return (

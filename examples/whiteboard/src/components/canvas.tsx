@@ -51,7 +51,6 @@ export function Canvas({
   const commitTimerRef = useRef<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
-  const [eraserPos, setEraserPos] = useState<Point | null>(null);
   const [eraserScreenPos, setEraserScreenPos] = useState<Point | null>(null);
   const eraserRadius = 20; // Size of the eraser cursor
 
@@ -137,7 +136,7 @@ export function Canvas({
   }, [ghostShape, proxy]);
 
   // Check if a point is inside a shape
-  const isPointInShape = useCallback((point: Point, shape: Shape): boolean => {
+  const isPointInShape = useCallback((point: Point, shape: Readonly<Shape>): boolean => {
     if (shape.type === "rect") {
       const x1 = Math.min(shape.x, shape.x + shape.width);
       const x2 = Math.max(shape.x, shape.x + shape.width);
@@ -165,7 +164,7 @@ export function Canvas({
 
   // Check if a shape intersects with a circle (for eraser)
   const shapeIntersectsCircle = useCallback(
-    (shape: Shape, center: Point, radius: number): boolean => {
+    (shape: Readonly<Shape>, center: Point, radius: number): boolean => {
       if (shape.type === "rect") {
         // Check if rectangle intersects with circle
         const x1 = Math.min(shape.x, shape.x + shape.width);
@@ -209,11 +208,11 @@ export function Canvas({
       if (tool === "select") {
         // Check if clicking on a shape (iterate in reverse to check top shapes first)
         const shapes = snap.shapes || [];
-        let foundShape: Shape | undefined;
+        let foundShape: Readonly<Shape> | undefined;
 
         for (let i = shapes.length - 1; i >= 0; i--) {
           if (isPointInShape(point, shapes[i])) {
-            foundShape = shapes[i];
+            foundShape = shapes[i] as Readonly<Shape>;
             break;
           }
         }
@@ -324,7 +323,7 @@ export function Canvas({
           ) {
             commitShape();
           }
-        }, 200);
+        }, 200) as unknown as number;
       }
     },
     [
@@ -358,7 +357,6 @@ export function Canvas({
 
       // Track eraser position for rendering
       if (tool === "eraser") {
-        setEraserPos(point);
         // Track screen position for icon rendering
         const canvas = canvasRef.current;
         if (canvas) {
@@ -381,7 +379,6 @@ export function Canvas({
         return;
       } else {
         // Clear eraser position when not using eraser
-        setEraserPos(null);
         setEraserScreenPos(null);
       }
 

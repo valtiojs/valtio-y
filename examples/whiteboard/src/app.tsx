@@ -10,16 +10,11 @@
 
 import { useEffect, useState, useCallback, useMemo } from "react";
 import {
-  Undo2,
-  Redo2,
-  Wifi,
-  WifiOff,
   ZoomIn,
   ZoomOut,
   Maximize2,
   HelpCircle,
 } from "lucide-react";
-import { useSnapshot } from "valtio";
 import { Canvas } from "./components/canvas";
 import { Toolbar } from "./components/toolbar";
 import { LayersPanel } from "./components/layers-panel";
@@ -33,10 +28,10 @@ import {
   initUndoManager,
 } from "./yjs-setup";
 import type { Tool, SyncStatus } from "./types";
-import { useUndoRedo, useSyncStatus } from "./hooks";
+import { useUndoRedo } from "./hooks";
 
 // Generate a random user ID and name for this session
-const USER_ID = `user-${Math.random().toString(36).substr(2, 9)}`;
+const USER_ID = `user-${Math.random().toString(36).substring(2, 11)}`;
 const USER_NAME = `User ${Math.floor(Math.random() * 1000)}`;
 
 export function App() {
@@ -55,7 +50,6 @@ export function App() {
 
   // Use custom hooks for reactive undo/redo and sync status
   const { undo, redo, canUndo, canRedo } = useUndoRedo();
-  const syncStatus = useSyncStatus();
 
   // React to hash changes so switching rooms updates state automatically
   useEffect(() => {
@@ -71,9 +65,7 @@ export function App() {
   // Create a new RoomState for this room
   const room = useMemo(() => new RoomState(USER_ID, USER_NAME), [roomId]);
 
-  const { doc, awareness, proxy, setLocalPresence } = room;
-
-  const state = useSnapshot(proxy, { sync: true });
+  const { doc, awareness, proxy } = room;
 
   // Connect to PartyServer using custom useRoomProvider hook
   const provider = useRoomProvider({
@@ -81,12 +73,9 @@ export function App() {
     room: roomId,
     party: PARTY_NAME,
     doc,
-    options: useMemo(
-      () => ({
-        awareness,
-      }),
-      [awareness],
-    ),
+    options: {
+      awareness,
+    },
   });
 
   // Cleanup: dispose room when component unmounts or room changes

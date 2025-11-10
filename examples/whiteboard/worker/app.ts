@@ -2,7 +2,8 @@ import { routePartykitRequest } from "partyserver";
 import { YServer } from "y-partyserver";
 import * as Y from "yjs";
 
-const CLEANUP_INTERVAL_MS = import.meta.env.DEV ? 60 * 1000 : 30 * 60 * 1000;
+// Cleanup interval: 30 minutes in production
+const CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
 
 /**
  * YDocServer is a durable object that hosts Yjs documents.

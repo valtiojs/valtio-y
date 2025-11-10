@@ -1,123 +1,53 @@
-# Y-PartyServer Drawing Demo
+# Collaborative Whiteboard
 
-A collaborative drawing application demonstrating real-time synchronization using valtio-y, Yjs, and y-partyserver on Cloudflare Workers.
+A demo application showcasing real-time collaborative drawing powered by **valtio-y**, **Yjs**, **y-partyserver**, and **Cloudflare Durable Objects**.
 
-## Features
+> ⚠️ **Note:** This is a demonstration application designed to showcase valtio-y's capabilities. It is not production-ready and should be used as a reference for building your own collaborative applications.
 
-- 🚀 Real-time collaborative drawing
-- ⚡️ Powered by Yjs CRDTs for conflict-free synchronization
-- 🔄 y-partyserver backend on Cloudflare Durable Objects
-- 🔒 TypeScript by default
-- 🎉 TailwindCSS for styling
-- 📦 Simple Vite + React setup
+## Tech Stack
 
-## Architecture
+- **[valtio-y](https://github.com/valtiojs/valtio-y)** - Syncs Valtio state with Yjs CRDTs for seamless real-time collaboration
+- **[Yjs](https://docs.yjs.dev/)** - CRDT library for conflict-free data synchronization
+- **[y-partyserver](https://github.com/threepointone/partyserver/tree/main/packages/y-partyserver)** - WebSocket server for Yjs on Cloudflare
+- **[Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)** - Stateful backend for persistent collaborative sessions
+- **React + TypeScript** - Frontend framework with type safety
+- **Vite** - Fast build tool and dev server
+- **TailwindCSS** - Utility-first styling
 
-This example demonstrates a unified worker architecture:
-
-- **Single Cloudflare Worker**: `workers/app.ts` hosts both the React app and the Durable Object
-- **YServer (Durable Object)**: `YDocServer` extends `y-partyserver`'s `YServer` to host Yjs documents
-- **WebSocket Connection**: Real-time sync over `/parties/:party/:room` on the same origin as the app
-- **Client Provider**: `YProvider` connects to the Durable Object through the shared worker
-- **React Components**: Drawing canvas with real-time collaboration
-
-## Getting Started
-
-### Installation
-
-Install the dependencies (from the monorepo root):
+## Scripts
 
 ```bash
-bun install
-```
-
-### Development
-
-Run the unified dev server:
-
-```bash
+# Run the local dev experience (Vite + worker)
 bun run dev
-```
 
-This starts Vite dev server with the Cloudflare plugin. The worker and Durable Object run alongside the frontend on the same origin (default `http://localhost:5173`), and WebSocket connections are proxied automatically.
-
-## Previewing the Production Build
-
-Preview the production build locally:
-
-```bash
-bun run preview
-```
-
-## Building for Production
-
-Create a production build:
-
-```bash
+# Build for production
 bun run build
+
+# Preview production build locally
+bun run preview
+
+# Deploy to your Cloudflare account
+bun run deploy
 ```
 
 ## How It Works
 
-### Server Setup
+The application uses a unified architecture where a single Cloudflare Worker hosts both the React app and the Durable Object:
 
-The example includes a YServer Durable Object (`workers/app.ts`) that:
-
-- Extends the `YDocServer` class from `y-partyserver`
-- Hosts Yjs documents in Cloudflare Durable Objects
-- Handles WebSocket connections for real-time sync
-- Routes requests via `/parties/:party/:room` paths
-- Saves document snapshots periodically
-
-### Client Setup
-
-The drawing app (`src/app.tsx`):
-
-- Creates a Yjs document with valtio-y proxy
-- Connects to the YServer using YProvider
-- Uses valtio-y for reactive state management
-- Syncs drawing operations in real-time
+1. **YServer Durable Object** (`worker/app.ts`) extends `y-partyserver`'s `YDocServer` to host Yjs documents
+2. **Client connects** via WebSocket to `/parties/:party/:room` on the same origin
+3. **valtio-y syncs** drawing state between Valtio proxies and Yjs CRDTs
+4. **Real-time collaboration** happens automatically through Yjs conflict-free merging
 
 ### Testing Collaboration
 
-1. Start the dev server with `bun run dev`
+1. Run `bun run dev`
 2. Open `http://localhost:5173` in multiple browser windows
 3. Draw in one window and watch it appear in the others in real-time!
 
-**Note:** The WebSocket connections to `/parties/:party/:room` are handled by the Cloudflare Workers runtime via the `@cloudflare/vite-plugin`.
-
-## Deployment
-
-Deployment is done using the Wrangler CLI.
-
-To build and deploy directly to production:
-
-```sh
-bun run deploy
-```
-
-To deploy a preview URL:
-
-```sh
-npx wrangler versions upload
-```
-
-You can then promote a version to production after verification or roll it out progressively.
-
-```sh
-npx wrangler versions deploy
-```
-
 ## Learn More
 
-- [y-partyserver documentation](https://github.com/threepointone/partyserver/tree/main/packages/y-partyserver)
+- [valtio-y documentation](https://github.com/valtiojs/valtio-y)
 - [Yjs documentation](https://docs.yjs.dev/)
+- [y-partyserver documentation](https://github.com/threepointone/partyserver/tree/main/packages/y-partyserver)
 - [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)
-
-## Styling
-
-This template comes with [Tailwind CSS](https://tailwindcss.com/) already configured for a simple default starting experience. You can use whatever CSS framework you prefer.
-
----
-
-Built with ❤️ using Vite, React, Yjs, and y-partyserver.

@@ -21,7 +21,7 @@ export type ShapeStyle = {
 export type PathShape = {
   id: string;
   type: "path";
-  points: Point[]; // Rapidly growing array - perfect for batching demo!
+  points: readonly Point[]; // Rapidly growing array - perfect for batching demo!
   style: ShapeStyle;
   timestamp: number;
 };
