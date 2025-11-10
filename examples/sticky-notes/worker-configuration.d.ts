@@ -7,7 +7,7 @@ declare namespace Cloudflare {
     durableNamespaces: "StickyNotesRoom";
   }
   interface Env {
-    STICKYNOTES_DO: DurableObjectNamespace<
+    StickyNotesRoom: DurableObjectNamespace<
       import("./worker/index").StickyNotesRoom
     >;
   }

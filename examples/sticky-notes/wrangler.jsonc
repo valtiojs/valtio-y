@@ -12,7 +12,7 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "STICKYNOTES_DO",
+        "name": "StickyNotesRoom",
         "class_name": "StickyNotesRoom"
       }
     ]

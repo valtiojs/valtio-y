@@ -39,4 +39,3 @@ export function Cursor({ x, y, color, name }: CursorProps) {
     </motion.div>
   );
 }
-

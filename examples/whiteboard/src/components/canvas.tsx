@@ -91,7 +91,7 @@ export function Canvas({
     // Update on resize, scroll, and zoom changes
     window.addEventListener("resize", updateOffset);
     window.addEventListener("scroll", updateOffset, true);
-    
+
     const canvas = canvasRef.current;
     const parent = canvas?.parentElement;
     if (!canvas || !parent) return;

@@ -1,4 +1,4 @@
-import { Plus, Trash2, WifiOff, Wifi } from "lucide-react";
+import { Plus, Trash2, WifiOff, Wifi, Undo2, Redo2 } from "lucide-react";
 import { STICKY_NOTE_COLORS, type SyncStatus } from "../types";
 
 interface ToolbarProps {
@@ -8,6 +8,10 @@ interface ToolbarProps {
   onColorChange: (color: string) => void;
   syncStatus: SyncStatus;
   hasSelection: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export function Toolbar({
@@ -17,6 +21,10 @@ export function Toolbar({
   onColorChange,
   syncStatus,
   hasSelection,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }: ToolbarProps) {
   return (
     <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl py-3 px-4 flex items-center gap-3 z-50 border border-gray-200/50">
@@ -50,6 +58,39 @@ export function Toolbar({
             />
           ))}
         </div>
+      </div>
+
+      {/* Divider */}
+      <div className="w-px h-8 bg-gray-200" />
+
+      {/* Undo/Redo Buttons */}
+      <div className="flex items-center gap-1">
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          className={`p-2 rounded-lg transition-all ${
+            canUndo
+              ? "text-gray-700 hover:bg-gray-100 active:scale-95"
+              : "text-gray-300 cursor-not-allowed"
+          }`}
+          title="Undo (Ctrl+Z / Cmd+Z)"
+          aria-label="Undo"
+        >
+          <Undo2 size={18} strokeWidth={2.5} />
+        </button>
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          className={`p-2 rounded-lg transition-all ${
+            canRedo
+              ? "text-gray-700 hover:bg-gray-100 active:scale-95"
+              : "text-gray-300 cursor-not-allowed"
+          }`}
+          title="Redo (Ctrl+Y / Cmd+Shift+Z)"
+          aria-label="Redo"
+        >
+          <Redo2 size={18} strokeWidth={2.5} />
+        </button>
       </div>
 
       {/* Divider */}
