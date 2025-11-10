@@ -103,8 +103,8 @@ export function LayersPanel({
         {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
       </button>
 
-      {isExpanded && (
-        shapes.length === 0 ? (
+      {isExpanded &&
+        (shapes.length === 0 ? (
           <div className="px-4 pb-4 text-center">
             <p className="text-xs text-gray-500">No shapes yet</p>
           </div>
@@ -129,8 +129,7 @@ export function LayersPanel({
               </AnimatePresence>
             </Reorder.Group>
           </div>
-        )
-      )}
+        ))}
     </div>
   );
 }

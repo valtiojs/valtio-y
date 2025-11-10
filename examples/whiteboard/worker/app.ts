@@ -17,7 +17,7 @@ export class YDocServer extends YServer<Env> {
   };
 
   /**
-   * Create fresh initial shapes in the shared state
+   * Reset the shared state to empty
    * This is called on initial load and every 30 minutes via alarm
    */
   private createInitialShapes(): void {
@@ -29,56 +29,10 @@ export class YDocServer extends YServer<Env> {
       sharedState.delete("users");
       sharedState.delete("stats");
 
-      // Create a Y.Array for shapes
+      // Create an empty Y.Array for shapes
       const yShapes = new Y.Array();
 
-      // Create sample shapes using Y.Map for each shape
-      // Shape 1: Welcome text as a rectangle
-      const shape1 = new Y.Map();
-      shape1.set("id", crypto.randomUUID());
-      shape1.set("type", "rect");
-      shape1.set("x", 100);
-      shape1.set("y", 100);
-      shape1.set("width", 400);
-      shape1.set("height", 100);
-      const style1 = new Y.Map();
-      style1.set("color", "#3b82f6");
-      style1.set("strokeWidth", 2);
-      shape1.set("style", style1);
-      shape1.set("timestamp", Date.now());
-      yShapes.push([shape1]);
-
-      // Shape 2: Circle
-      const shape2 = new Y.Map();
-      shape2.set("id", crypto.randomUUID());
-      shape2.set("type", "circle");
-      shape2.set("x", 700);
-      shape2.set("y", 150);
-      shape2.set("radius", 50);
-      const style2 = new Y.Map();
-      style2.set("color", "#ef4444");
-      style2.set("strokeWidth", 3);
-      shape2.set("style", style2);
-      shape2.set("timestamp", Date.now());
-      yShapes.push([shape2]);
-
-      // Shape 3: Another rectangle
-      const shape3 = new Y.Map();
-      shape3.set("id", crypto.randomUUID());
-      shape3.set("type", "rect");
-      shape3.set("x", 150);
-      shape3.set("y", 250);
-      shape3.set("width", 300);
-      shape3.set("height", 150);
-      const style3 = new Y.Map();
-      style3.set("color", "#10b981");
-      style3.set("strokeWidth", 2);
-      style3.set("fillColor", "#d1fae5");
-      shape3.set("style", style3);
-      shape3.set("timestamp", Date.now());
-      yShapes.push([shape3]);
-
-      // Set the Y.Array in the shared state
+      // Set the empty Y.Array in the shared state
       sharedState.set("shapes", yShapes);
       sharedState.set("users", new Y.Map());
     });
@@ -113,11 +67,11 @@ export class YDocServer extends YServer<Env> {
   }
 
   /**
-   * Alarm handler that cleans the room and creates fresh shapes
+   * Alarm handler that resets the room to empty state
    * This is called automatically by the Durable Objects runtime
    */
   async alarm(): Promise<void> {
-    // Create fresh initial shapes
+    // Reset to empty state
     this.createInitialShapes();
 
     // Schedule the next alarm

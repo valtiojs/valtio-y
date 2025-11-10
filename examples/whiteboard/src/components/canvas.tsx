@@ -10,6 +10,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSnapshot } from "valtio";
 import getStroke from "perfect-freehand";
+import { Eraser } from "lucide-react";
 import { trackOperation, getAwarenessUsers } from "../yjs-setup";
 import type { Point, Tool, Shape, PathShape, AppState } from "../types";
 import type * as awarenessProtocol from "y-protocols/awareness";
@@ -50,6 +51,9 @@ export function Canvas({
   const commitTimerRef = useRef<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
+  const [eraserPos, setEraserPos] = useState<Point | null>(null);
+  const [eraserScreenPos, setEraserScreenPos] = useState<Point | null>(null);
+  const eraserRadius = 20; // Size of the eraser cursor
 
   // Update awareness users on change
   useEffect(() => {
@@ -159,6 +163,43 @@ export function Canvas({
     return false;
   }, []);
 
+  // Check if a shape intersects with a circle (for eraser)
+  const shapeIntersectsCircle = useCallback(
+    (shape: Shape, center: Point, radius: number): boolean => {
+      if (shape.type === "rect") {
+        // Check if rectangle intersects with circle
+        const x1 = Math.min(shape.x, shape.x + shape.width);
+        const x2 = Math.max(shape.x, shape.x + shape.width);
+        const y1 = Math.min(shape.y, shape.y + shape.height);
+        const y2 = Math.max(shape.y, shape.y + shape.height);
+
+        // Find closest point on rectangle to circle center
+        const closestX = Math.max(x1, Math.min(center.x, x2));
+        const closestY = Math.max(y1, Math.min(center.y, y2));
+
+        // Check distance to closest point
+        const dx = center.x - closestX;
+        const dy = center.y - closestY;
+        return dx * dx + dy * dy <= radius * radius;
+      } else if (shape.type === "circle") {
+        // Check if circles overlap
+        const dx = center.x - shape.x;
+        const dy = center.y - shape.y;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        return distance <= radius + shape.radius;
+      } else if (shape.type === "path" && shape.points.length > 0) {
+        // Check if any point in the path is within the eraser circle
+        return shape.points.some((point) => {
+          const dx = center.x - point.x;
+          const dy = center.y - point.y;
+          return Math.sqrt(dx * dx + dy * dy) <= radius;
+        });
+      }
+      return false;
+    },
+    [],
+  );
+
   // Handle mouse down - start drawing
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
@@ -210,18 +251,18 @@ export function Canvas({
         return;
       }
 
-      // Handle eraser tool - delete shapes on click
+      // Handle eraser tool - start erasing mode
       if (tool === "eraser") {
-        const shapes = snap.shapes || [];
+        setIsDrawing(true);
 
-        // Find shape at click point (iterate in reverse to check top shapes first)
-        for (let i = shapes.length - 1; i >= 0; i--) {
-          if (isPointInShape(point, shapes[i])) {
-            // Delete the shape
-            if (proxy.shapes) {
+        // Delete any shapes under the eraser immediately
+        if (proxy.shapes) {
+          for (let i = proxy.shapes.length - 1; i >= 0; i--) {
+            const shape = proxy.shapes[i];
+            // Check if shape intersects with eraser circle
+            if (shapeIntersectsCircle(shape, point, eraserRadius)) {
               proxy.shapes.splice(i, 1);
             }
-            break; // Only delete one shape per click
           }
         }
         return;
@@ -298,6 +339,9 @@ export function Canvas({
       snap.shapes,
       isPointInShape,
       onShapeSelect,
+      proxy,
+      eraserRadius,
+      shapeIntersectsCircle,
     ],
   );
 
@@ -310,6 +354,35 @@ export function Canvas({
       const currentState = awareness.getLocalState();
       if (currentState) {
         awareness.setLocalStateField("cursor", { x: point.x, y: point.y });
+      }
+
+      // Track eraser position for rendering
+      if (tool === "eraser") {
+        setEraserPos(point);
+        // Track screen position for icon rendering
+        const canvas = canvasRef.current;
+        if (canvas) {
+          const rect = canvas.getBoundingClientRect();
+          setEraserScreenPos({
+            x: e.clientX - rect.left,
+            y: e.clientY - rect.top,
+          });
+        }
+
+        // If actively erasing, delete shapes under the eraser
+        if (isDrawing && proxy.shapes) {
+          for (let i = proxy.shapes.length - 1; i >= 0; i--) {
+            const shape = proxy.shapes[i];
+            if (shapeIntersectsCircle(shape, point, eraserRadius)) {
+              proxy.shapes.splice(i, 1);
+            }
+          }
+        }
+        return;
+      } else {
+        // Clear eraser position when not using eraser
+        setEraserPos(null);
+        setEraserScreenPos(null);
       }
 
       // Handle dragging selected shape
@@ -383,6 +456,8 @@ export function Canvas({
       dragOffset,
       proxy,
       awareness,
+      eraserRadius,
+      shapeIntersectsCircle,
     ],
   );
 
@@ -485,7 +560,7 @@ export function Canvas({
               ? "cursor-grabbing"
               : "cursor-grab"
             : tool === "eraser"
-              ? "cursor-not-allowed"
+              ? "cursor-none"
               : "cursor-crosshair"
         }`}
         style={{
@@ -502,25 +577,83 @@ export function Canvas({
 
       {/* Empty State Overlay */}
       {!hasShapes && (
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-center p-8 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl max-w-md">
-            <h3 className="text-2xl font-bold text-gray-800 mb-3">
-              Start Drawing!
-            </h3>
-            <p className="text-gray-600 mb-4">
-              Select a tool from the toolbar and start creating.
-            </p>
-            <div className="space-y-2 text-sm text-gray-500">
-              <p>
-                <strong>Pen (P):</strong> Click and drag to draw
-              </p>
-              <p>
-                <strong>Rectangle (R):</strong> Click to place, drag to size
-              </p>
-              <p>
-                <strong>Circle (C):</strong> Click to place, drag to size
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-4">
+          <div className="text-center max-w-2xl space-y-8">
+            {/* Header */}
+            <div className="space-y-3">
+              <h3 className="text-4xl font-bold text-gray-900">
+                Collaborative Whiteboard Demo
+              </h3>
+              <p className="text-base text-gray-600">
+                Powered by <strong className="font-semibold text-blue-600">valtio-y</strong>, Yjs, and CRDTs
               </p>
             </div>
+
+            {/* Main Message */}
+            <div className="space-y-4">
+              <p className="text-gray-700 leading-relaxed">
+                This is a public demo showcasing real-time collaboration.
+                <br />
+                The canvas resets every 30 minutes. Please keep it nice!
+              </p>
+
+              <p className="text-sm text-gray-600">
+                👥 Open this page in two browser windows to see real-time sync in action!
+              </p>
+            </div>
+
+            {/* Tools */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold text-gray-500 uppercase tracking-widest">
+                Quick Start
+              </h4>
+              <div className="grid grid-cols-3 gap-3">
+                <div className="bg-white/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-gray-200">
+                  <p className="font-bold text-gray-900 mb-1">Pen (P)</p>
+                  <p className="text-gray-600 text-xs">Click & drag to draw</p>
+                </div>
+                <div className="bg-white/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-gray-200">
+                  <p className="font-bold text-gray-900 mb-1">Rectangle (R)</p>
+                  <p className="text-gray-600 text-xs">Click to place, drag to size</p>
+                </div>
+                <div className="bg-white/80 backdrop-blur-sm px-4 py-3 rounded-lg border border-gray-200">
+                  <p className="font-bold text-gray-900 mb-1">Circle (C)</p>
+                  <p className="text-gray-600 text-xs">Click to place, drag to size</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Tip */}
+            <div className="inline-block">
+              <p className="text-sm text-gray-600">
+                💡 <strong className="font-semibold">Pro tip:</strong> Use the URL hash to create your own private room (e.g., <code className="bg-gray-200/70 px-2 py-1 rounded text-xs font-mono">#my-room</code>)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Eraser Icon Cursor */}
+      {eraserScreenPos && tool === "eraser" && (
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: eraserScreenPos.x,
+            top: eraserScreenPos.y,
+            transform: "translate(-50%, -50%)",
+          }}
+        >
+          <div className="relative">
+            <Eraser className="w-6 h-6 text-gray-800" strokeWidth={2} />
+            {/* Eraser range indicator circle */}
+            <div
+              className="absolute top-1/2 left-1/2 border-2 border-gray-400 rounded-full opacity-40"
+              style={{
+                width: eraserRadius * 2,
+                height: eraserRadius * 2,
+                transform: "translate(-50%, -50%)",
+              }}
+            />
           </div>
         </div>
       )}
