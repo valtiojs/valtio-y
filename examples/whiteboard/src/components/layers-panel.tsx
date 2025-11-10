@@ -9,6 +9,7 @@
  * Uses @dnd-kit for drag-and-drop functionality
  */
 
+import { useState } from "react";
 import { useSnapshot } from "valtio";
 import {
   DndContext,
@@ -27,7 +28,13 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { GripVertical, Trash2 } from "lucide-react";
+import {
+  GripVertical,
+  Trash2,
+  Layers,
+  ChevronDown,
+  ChevronUp,
+} from "lucide-react";
 import type { AppState } from "../types";
 
 interface LayersPanelProps {
@@ -42,6 +49,7 @@ export function LayersPanel({
   proxy,
 }: LayersPanelProps) {
   const snap = useSnapshot(proxy);
+  const [isExpanded, setIsExpanded] = useState(true);
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -74,57 +82,59 @@ export function LayersPanel({
   };
 
   const shapes = snap.shapes || [];
+  const renderedShapes = [...shapes].reverse();
 
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-5 shadow-lg h-full flex flex-col">
-      <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center justify-between">
-        <span>Layers</span>
-        <span className="text-sm font-medium text-gray-500 bg-gray-100 px-2.5 py-1 rounded-full">
-          {shapes.length}
-        </span>
-      </h3>
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 max-h-96 flex flex-col">
+      <button
+        onClick={() => setIsExpanded(!isExpanded)}
+        className="w-full flex items-center justify-between text-left hover:bg-gray-50/50 px-4 py-3 rounded-t-2xl transition-colors"
+      >
+        <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
+          <Layers size={16} />
+          Layers
+          <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
+            {shapes.length}
+          </span>
+        </h3>
+        {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
+      </button>
 
-      {shapes.length === 0 ? (
-        <div className="flex-1 flex flex-col items-center justify-center text-center px-4">
-          <div className="text-gray-400 text-sm space-y-2">
-            <p className="font-medium">No shapes yet.</p>
-            <p className="text-xs">Start drawing to see layers here!</p>
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 overflow-y-auto pr-1">
-          <DndContext
-            sensors={sensors}
-            collisionDetection={closestCenter}
-            onDragEnd={handleDragEnd}
-          >
-            <SortableContext
-              items={shapes.map((s) => s.id)}
-              strategy={verticalListSortingStrategy}
-            >
-              <div className="space-y-2">
-                {/* Render in reverse order (top layer first) */}
-                {[...shapes].reverse().map((shape) => (
-                  <LayerItem
-                    key={shape.id}
-                    shape={shape}
-                    selected={shape.id === selectedShapeId}
-                    onSelect={() => onShapeSelect?.(shape.id)}
-                    onDelete={() => handleDeleteShape(shape.id)}
-                  />
-                ))}
-              </div>
-            </SortableContext>
-          </DndContext>
-        </div>
+      {isExpanded && (
+        <>
+          {shapes.length === 0 ? (
+            <div className="px-4 pb-4 text-center">
+              <p className="text-xs text-gray-500">No shapes yet</p>
+            </div>
+          ) : (
+            <div className="px-3 pb-3 overflow-y-auto max-h-72">
+              <DndContext
+                sensors={sensors}
+                collisionDetection={closestCenter}
+                onDragEnd={handleDragEnd}
+              >
+                <SortableContext
+                  items={renderedShapes.map((s) => s.id)}
+                  strategy={verticalListSortingStrategy}
+                >
+                  <div className="space-y-1.5">
+                    {/* Render in reverse order (top layer first) */}
+                    {renderedShapes.map((shape) => (
+                      <LayerItem
+                        key={shape.id}
+                        shape={shape}
+                        selected={shape.id === selectedShapeId}
+                        onSelect={() => onShapeSelect?.(shape.id)}
+                        onDelete={() => handleDeleteShape(shape.id)}
+                      />
+                    ))}
+                  </div>
+                </SortableContext>
+              </DndContext>
+            </div>
+          )}
+        </>
       )}
-
-      <div className="mt-4 pt-4 border-t border-gray-200">
-        <p className="text-xs text-gray-500 leading-relaxed">
-          💡 <strong>Tip:</strong> Drag layers to reorder them - showcases array
-          moves without fractional indexes!
-        </p>
-      </div>
     </div>
   );
 }
@@ -163,38 +173,38 @@ function LayerItem({ shape, selected, onSelect, onDelete }: LayerItemProps) {
   const getShapePreview = (shape: any) => {
     if (shape.type === "path") {
       return (
-        <svg width="32" height="32" viewBox="0 0 32 32">
+        <svg width="24" height="24" viewBox="0 0 24 24">
           <path
-            d={`M ${shape.points.map((p: any, i: number) => `${i === 0 ? "M" : "L"} ${Math.min(30, (p.x / 1200) * 32)} ${Math.min(30, (p.y / 800) * 32)}`).join(" ")}`}
+            d={`M ${shape.points.map((p: any, i: number) => `${i === 0 ? "M" : "L"} ${Math.min(22, (p.x / 1200) * 24)} ${Math.min(22, (p.y / 800) * 24)}`).join(" ")}`}
             stroke={shape.style.color}
-            strokeWidth="2"
+            strokeWidth="1.5"
             fill="none"
           />
         </svg>
       );
     } else if (shape.type === "rect") {
       return (
-        <svg width="32" height="32" viewBox="0 0 32 32">
+        <svg width="24" height="24" viewBox="0 0 24 24">
           <rect
-            x="4"
-            y="4"
-            width="24"
-            height="24"
+            x="3"
+            y="3"
+            width="18"
+            height="18"
             stroke={shape.style.color}
-            strokeWidth="2"
+            strokeWidth="1.5"
             fill={shape.style.fillColor || "none"}
           />
         </svg>
       );
     } else if (shape.type === "circle") {
       return (
-        <svg width="32" height="32" viewBox="0 0 32 32">
+        <svg width="24" height="24" viewBox="0 0 24 24">
           <circle
-            cx="16"
-            cy="16"
-            r="12"
+            cx="12"
+            cy="12"
+            r="9"
             stroke={shape.style.color}
-            strokeWidth="2"
+            strokeWidth="1.5"
             fill={shape.style.fillColor || "none"}
           />
         </svg>
@@ -207,41 +217,38 @@ function LayerItem({ shape, selected, onSelect, onDelete }: LayerItemProps) {
     <div
       ref={setNodeRef}
       style={style}
-      className={`flex items-center gap-2 p-2.5 rounded-lg border transition-all duration-200 ${
+      className={`flex items-center gap-1.5 p-2 rounded-lg border transition-all ${
         selected
-          ? "bg-blue-50 border-blue-300 shadow-sm"
-          : "bg-white border-gray-200 hover:bg-gray-50 hover:border-gray-300 hover:shadow-sm"
+          ? "bg-blue-50/50 border-blue-300"
+          : "bg-white/50 border-gray-200 hover:bg-gray-50/50"
       }`}
     >
       {/* Drag Handle */}
       <button
         {...attributes}
         {...listeners}
-        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600"
+        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 flex-shrink-0"
       >
-        <GripVertical size={16} />
+        <GripVertical size={14} />
       </button>
 
       {/* Shape Preview */}
       <div className="flex-shrink-0">{getShapePreview(shape)}</div>
 
       {/* Shape Info */}
-      <div className="flex-1 min-w-0" onClick={onSelect}>
-        <p className="text-sm font-medium text-gray-800 truncate">
+      <div className="flex-1 min-w-0 cursor-pointer" onClick={onSelect}>
+        <p className="text-xs font-medium text-gray-800 truncate">
           {getShapeLabel(shape)}
-        </p>
-        <p className="text-xs text-gray-500">
-          {new Date(shape.timestamp).toLocaleTimeString()}
         </p>
       </div>
 
       {/* Delete Button */}
       <button
         onClick={onDelete}
-        className="flex-shrink-0 text-red-500 hover:text-red-700 hover:bg-red-50 p-1.5 rounded-md transition-all duration-200"
+        className="flex-shrink-0 text-gray-400 hover:text-red-600 p-1 rounded transition-all"
         title="Delete shape"
       >
-        <Trash2 size={16} />
+        <Trash2 size={13} />
       </button>
     </div>
   );

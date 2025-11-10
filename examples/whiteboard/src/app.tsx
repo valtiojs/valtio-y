@@ -280,280 +280,118 @@ export function App() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 shadow-sm">
-        <div className="container mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">
-                valtio-y Drawing Demo
-              </h1>
-              <p className="text-sm text-gray-600 mt-1">
-                Collaborative whiteboard powered by <strong>valtio-y</strong> +{" "}
-                <strong>Y-PartyServer</strong> • Room: <strong>{roomId}</strong>
-              </p>
-            </div>
+    <div className="w-full h-screen bg-gray-100 relative overflow-hidden">
+      {/* Floating Toolbar - Top Center */}
+      <div className="absolute top-6 left-1/2 transform -translate-x-1/2 z-30">
+        <Toolbar
+          tool={tool}
+          onToolChange={setTool}
+          color={color}
+          onColorChange={setColor}
+          strokeWidth={strokeWidth}
+          onStrokeWidthChange={setStrokeWidth}
+          fillEnabled={fillEnabled}
+          onFillToggle={() => setFillEnabled(!fillEnabled)}
+          onClearCanvas={handleClearCanvas}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          syncStatus={syncStatusState}
+        />
+      </div>
 
-            {/* Undo/Redo and Status Controls */}
-            <div className="flex items-center gap-3">
-              {/* Help Button */}
-              <button
-                onClick={() => setShowKeyboardShortcuts(true)}
-                className="p-2 rounded-md border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 transition-all"
-                title="Keyboard shortcuts (?)"
-              >
-                <HelpCircle size={20} />
-              </button>
-
-              {/* Connection Status */}
-              <div className="flex items-center gap-2 border-r border-gray-300 pr-4">
-                {syncStatusState === "connected" ? (
-                  <div className="flex items-center gap-2 text-green-600">
-                    <Wifi size={20} />
-                    <span className="text-sm font-medium">Online</span>
-                  </div>
-                ) : syncStatusState === "syncing" ? (
-                  <div className="flex items-center gap-2 text-yellow-600">
-                    <Wifi size={20} className="animate-pulse" />
-                    <span className="text-sm font-medium">Syncing...</span>
-                  </div>
-                ) : syncStatusState === "connecting" ? (
-                  <div className="flex items-center gap-2 text-blue-600">
-                    <Wifi size={20} className="animate-pulse" />
-                    <span className="text-sm font-medium">Connecting...</span>
-                  </div>
-                ) : (
-                  <div className="flex items-center gap-2 text-red-600">
-                    <WifiOff size={20} />
-                    <span className="text-sm font-medium">Offline</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Undo/Redo Buttons */}
-              <div className="flex items-center gap-2 border-r border-gray-300 pr-4">
-                <button
-                  onClick={undo}
-                  disabled={!canUndo}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-md border transition-all ${
-                    canUndo
-                      ? "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
-                      : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                  }`}
-                  title="Undo (Ctrl+Z)"
-                >
-                  <Undo2 size={18} />
-                  <span className="text-sm font-medium">Undo</span>
-                </button>
-                <button
-                  onClick={redo}
-                  disabled={!canRedo}
-                  className={`flex items-center gap-1.5 px-3 py-2 rounded-md border transition-all ${
-                    canRedo
-                      ? "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
-                      : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                  }`}
-                  title="Redo (Ctrl+Y)"
-                >
-                  <Redo2 size={18} />
-                  <span className="text-sm font-medium">Redo</span>
-                </button>
-              </div>
-
-              {/* User Info */}
-              <div className="text-right">
-                <p className="text-sm font-medium text-gray-700">
-                  {room.getUserName()}
-                </p>
-                <div className="flex items-center gap-2 justify-end mt-1">
-                  <div
-                    className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: room.getUserColor() }}
-                  />
-                  <span className="text-xs text-gray-500">You</span>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* User Info Badge - Top Left */}
+      <div className="absolute top-6 left-6 z-30">
+        <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-gray-200 flex items-center gap-2">
+          <div
+            className="w-3 h-3 rounded-full"
+            style={{ backgroundColor: room.getUserColor() }}
+          />
+          <span className="text-sm font-medium text-gray-700">
+            {room.getUserName()}
+          </span>
         </div>
-      </header>
+      </div>
 
-      {/* Main Content */}
-      <div className="container mx-auto px-6 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Left Sidebar - Toolbar */}
-          <div className="lg:col-span-2">
-            <Toolbar
-              tool={tool}
-              onToolChange={setTool}
-              color={color}
-              onColorChange={setColor}
-              strokeWidth={strokeWidth}
-              onStrokeWidthChange={setStrokeWidth}
-              fillEnabled={fillEnabled}
-              onFillToggle={() => setFillEnabled(!fillEnabled)}
-              onClearCanvas={handleClearCanvas}
-            />
-          </div>
+      {/* Help Button - Top Right */}
+      <div className="absolute top-6 right-6 z-30">
+        <button
+          onClick={() => setShowKeyboardShortcuts(true)}
+          className="p-3 rounded-full bg-white/90 backdrop-blur-sm shadow-lg border border-gray-200 text-gray-700 hover:bg-white hover:shadow-xl transition-all"
+          title="Keyboard shortcuts (?)"
+        >
+          <HelpCircle size={20} />
+        </button>
+      </div>
 
-          {/* Center - Canvas */}
-          <div className="lg:col-span-7">
-            <div className="bg-white border border-gray-300 rounded-lg p-4 shadow-lg">
-              <div
-                className="overflow-hidden"
-                style={{
-                  transform: `scale(${zoom / 100})`,
-                  transformOrigin: "center",
-                  transition: "transform 0.2s ease",
-                }}
-              >
-                <Canvas
-                  tool={tool}
-                  color={color}
-                  strokeWidth={strokeWidth}
-                  userId={room.getUserId()}
-                  fillEnabled={fillEnabled}
-                  selectedShapeId={selectedShapeId}
-                  onShapeSelect={setSelectedShapeId}
-                  proxy={proxy}
-                  awareness={awareness}
-                />
-              </div>
+      {/* Full-width Canvas */}
+      <div className="w-full h-full">
+        <Canvas
+          tool={tool}
+          color={color}
+          strokeWidth={strokeWidth}
+          userId={room.getUserId()}
+          fillEnabled={fillEnabled}
+          selectedShapeId={selectedShapeId}
+          onShapeSelect={setSelectedShapeId}
+          proxy={proxy}
+          awareness={awareness}
+        />
+      </div>
 
-              {/* Zoom Controls */}
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  💡 Open this page in multiple windows to see real-time
-                  collaboration!
-                </p>
-                <div className="flex items-center gap-2">
-                  <button
-                    onClick={handleZoomOut}
-                    disabled={zoom <= 50}
-                    className={`p-2 rounded-md border transition-all ${
-                      zoom > 50
-                        ? "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                        : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                    }`}
-                    title="Zoom out"
-                  >
-                    <ZoomOut size={18} />
-                  </button>
-                  <span className="text-sm font-medium text-gray-700 min-w-16 text-center">
-                    {zoom}%
-                  </span>
-                  <button
-                    onClick={handleZoomIn}
-                    disabled={zoom >= 200}
-                    className={`p-2 rounded-md border transition-all ${
-                      zoom < 200
-                        ? "bg-white text-gray-700 border-gray-300 hover:bg-gray-50"
-                        : "bg-gray-100 text-gray-400 border-gray-200 cursor-not-allowed"
-                    }`}
-                    title="Zoom in"
-                  >
-                    <ZoomIn size={18} />
-                  </button>
-                  <button
-                    onClick={handleZoomFit}
-                    className="p-2 rounded-md border bg-white text-gray-700 border-gray-300 hover:bg-gray-50 transition-all"
-                    title="Fit to view (100%)"
-                  >
-                    <Maximize2 size={18} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
+      {/* Floating Edge Metrics - Bottom Right */}
+      <div className="absolute bottom-6 right-6 z-30 max-w-sm">
+        <PerformanceStats proxy={proxy} doc={doc} />
+      </div>
 
-          {/* Right Sidebar - Layers & Stats */}
-          <div className="lg:col-span-3 space-y-6">
-            <div className="h-96">
-              <LayersPanel
-                onShapeSelect={setSelectedShapeId}
-                selectedShapeId={selectedShapeId}
-                proxy={proxy}
-              />
-            </div>
-            <PerformanceStats proxy={proxy} doc={doc} />
-          </div>
+      {/* Zoom Controls - Bottom Center */}
+      <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 z-30">
+        <div className="bg-white/90 backdrop-blur-sm rounded-full px-4 py-2 shadow-lg border border-gray-200 flex items-center gap-2">
+          <button
+            onClick={handleZoomOut}
+            disabled={zoom <= 50}
+            className={`p-2 rounded-full transition-all ${
+              zoom > 50
+                ? "text-gray-700 hover:bg-gray-100"
+                : "text-gray-400 cursor-not-allowed"
+            }`}
+            title="Zoom out"
+          >
+            <ZoomOut size={18} />
+          </button>
+          <span className="text-sm font-medium text-gray-700 min-w-16 text-center">
+            {zoom}%
+          </span>
+          <button
+            onClick={handleZoomIn}
+            disabled={zoom >= 200}
+            className={`p-2 rounded-full transition-all ${
+              zoom < 200
+                ? "text-gray-700 hover:bg-gray-100"
+                : "text-gray-400 cursor-not-allowed"
+            }`}
+            title="Zoom in"
+          >
+            <ZoomIn size={18} />
+          </button>
+          <button
+            onClick={handleZoomFit}
+            className="p-2 rounded-full text-gray-700 hover:bg-gray-100 transition-all"
+            title="Fit to view (100%)"
+          >
+            <Maximize2 size={18} />
+          </button>
         </div>
+      </div>
 
-        {/* Educational Footer */}
-        <div className="mt-8 bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900 mb-4">
-            🎨 Figma-Like Architecture on the Edge
-          </h2>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <h3 className="text-lg font-semibold text-blue-600 mb-2">
-                👻 Two-Layer Rendering
-              </h3>
-              <p className="text-sm text-gray-700">
-                Draw with the <strong>pen tool</strong>. Your stroke appears
-                instantly in a &quot;ghost&quot; layer (ephemeral, not synced).
-                Every 200ms or on release, it commits to the CRDT layer
-                (persisted). This Figma-style approach delivers 60fps drawing
-                with bulletproof sync.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-purple-600 mb-2">
-                📡 Awareness for Cursors
-              </h3>
-              <p className="text-sm text-gray-700">
-                Live cursors use <strong>Yjs Awareness</strong> - ephemeral
-                presence data that&apos;s never persisted. Open two windows to
-                see collaborators&apos; cursors in real-time, without bloating
-                the CRDT.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-green-600 mb-2">
-                🌍 Edge-Native CRDTs
-              </h3>
-              <p className="text-sm text-gray-700">
-                Every room = one <strong>Cloudflare Durable Object</strong>{" "}
-                holding a Y.Doc. Snapshots save every ~10s. New clients sync by
-                sending a state vector and getting only the diff. No backend
-                servers - just self-replicating edge state.
-              </p>
-            </div>
-            <div>
-              <h3 className="text-lg font-semibold text-orange-600 mb-2">
-                ⚡ Sub-50ms Latency
-              </h3>
-              <p className="text-sm text-gray-700">
-                Check the <strong>Edge Metrics</strong> panel for your colo
-                (datacenter) and RTT. Drawing operations reach the nearest edge
-                in ~20-50ms, then fan out to peers globally. Feels local, works
-                global.
-              </p>
-            </div>
-          </div>
-
-          <div className="mt-6 p-4 bg-gradient-to-br from-indigo-50 to-purple-50 border border-indigo-200 rounded-md">
-            <h3 className="text-base font-semibold text-indigo-900 mb-2">
-              💡 Try This
-            </h3>
-            <ul className="text-sm text-indigo-800 space-y-1">
-              <li>
-                • Open this page in 2+ windows - see cursors and strokes sync
-                instantly
-              </li>
-              <li>
-                • Draw fast with the pen - watch ghost → committed transition
-              </li>
-              <li>
-                • Drag layers in the panel - no fractional indexes needed!
-              </li>
-              <li>
-                • Turn off Wi-Fi, draw offline, reconnect - automatic merge
-              </li>
-            </ul>
-          </div>
-        </div>
+      {/* Floating Layers Panel - Bottom Left */}
+      <div className="absolute bottom-6 left-6 z-30 max-w-xs">
+        <LayersPanel
+          onShapeSelect={setSelectedShapeId}
+          selectedShapeId={selectedShapeId}
+          proxy={proxy}
+        />
       </div>
 
       {/* Keyboard Shortcuts Modal */}

@@ -1,12 +1,12 @@
 /**
- * Toolbar Component - Drawing tool selection and style controls
+ * Toolbar Component - Minimal horizontal floating toolbar
  *
  * Provides:
  * - Tool selection (pen, rect, circle, select, eraser)
  * - Color picker
  * - Stroke width control
- * - Fill toggle
- * - Clear canvas action
+ * - Undo/Redo buttons
+ * - Connection status indicator
  */
 
 import {
@@ -16,8 +16,12 @@ import {
   MousePointer,
   Eraser,
   Trash2,
+  Undo2,
+  Redo2,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
-import type { Tool } from "../types";
+import type { Tool, SyncStatus } from "../types";
 
 interface ToolbarProps {
   tool: Tool;
@@ -29,22 +33,23 @@ interface ToolbarProps {
   fillEnabled: boolean;
   onFillToggle: () => void;
   onClearCanvas: () => void;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
+  syncStatus: SyncStatus;
 }
 
 const COLORS = [
-  "#000000", // Black
-  "#FF0000", // Red
-  "#00FF00", // Green
-  "#0000FF", // Blue
-  "#FFFF00", // Yellow
-  "#FF00FF", // Magenta
-  "#00FFFF", // Cyan
-  "#FFA500", // Orange
-  "#800080", // Purple
-  "#FFC0CB", // Pink
+  "#fef3c7", // Yellow (like sticky notes)
+  "#fed7aa", // Orange
+  "#fecaca", // Red
+  "#e9d5ff", // Purple
+  "#ddd6fe", // Lavender
+  "#c7d2fe", // Indigo
 ];
 
-const STROKE_WIDTHS = [2, 4, 8, 16, 32];
+const STROKE_WIDTHS = [2, 4, 8, 16];
 
 export function Toolbar({
   tool,
@@ -53,121 +58,141 @@ export function Toolbar({
   onColorChange,
   strokeWidth,
   onStrokeWidthChange,
-  fillEnabled,
-  onFillToggle,
   onClearCanvas,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
+  syncStatus,
 }: ToolbarProps) {
   return (
-    <div className="bg-white border border-gray-300 rounded-lg p-5 shadow-lg space-y-8">
+    <div className="bg-white/90 backdrop-blur-sm rounded-2xl px-4 py-3 shadow-xl border border-gray-200 flex items-center gap-4">
+      {/* Connection Status */}
+      <div className="pr-3 border-r border-gray-200">
+        {syncStatus === "connected" ? (
+          <div className="text-green-600" title="Connected">
+            <Wifi size={18} />
+          </div>
+        ) : syncStatus === "syncing" ? (
+          <div className="text-yellow-600 animate-pulse" title="Syncing...">
+            <Wifi size={18} />
+          </div>
+        ) : syncStatus === "connecting" ? (
+          <div className="text-blue-600 animate-pulse" title="Connecting...">
+            <Wifi size={18} />
+          </div>
+        ) : (
+          <div className="text-red-600" title="Offline">
+            <WifiOff size={18} />
+          </div>
+        )}
+      </div>
+
+      {/* Undo/Redo */}
+      <div className="flex items-center gap-1 pr-3 border-r border-gray-200">
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          className={`p-2 rounded-lg transition-all ${
+            canUndo
+              ? "text-gray-700 hover:bg-gray-100"
+              : "text-gray-400 cursor-not-allowed"
+          }`}
+          title="Undo (⌘Z)"
+        >
+          <Undo2 size={18} />
+        </button>
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          className={`p-2 rounded-lg transition-all ${
+            canRedo
+              ? "text-gray-700 hover:bg-gray-100"
+              : "text-gray-400 cursor-not-allowed"
+          }`}
+          title="Redo (⌘Y)"
+        >
+          <Redo2 size={18} />
+        </button>
+      </div>
+
       {/* Tool Selection */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Tools</h3>
-        <div className="flex gap-2">
-          <ToolButton
-            icon={MousePointer}
-            label="Select"
-            shortcut="V"
-            active={tool === "select"}
-            onClick={() => onToolChange("select")}
-          />
-          <ToolButton
-            icon={Pencil}
-            label="Pen"
-            shortcut="P"
-            active={tool === "pen"}
-            onClick={() => onToolChange("pen")}
-          />
-          <ToolButton
-            icon={Square}
-            label="Rectangle"
-            shortcut="R"
-            active={tool === "rect"}
-            onClick={() => onToolChange("rect")}
-          />
-          <ToolButton
-            icon={Circle}
-            label="Circle"
-            shortcut="C"
-            active={tool === "circle"}
-            onClick={() => onToolChange("circle")}
-          />
-          <ToolButton
-            icon={Eraser}
-            label="Eraser"
-            shortcut="E"
-            active={tool === "eraser"}
-            onClick={() => onToolChange("eraser")}
-          />
-        </div>
+      <div className="flex items-center gap-1 pr-3 border-r border-gray-200">
+        <ToolButton
+          icon={MousePointer}
+          active={tool === "select"}
+          onClick={() => onToolChange("select")}
+          title="Select (V)"
+        />
+        <ToolButton
+          icon={Pencil}
+          active={tool === "pen"}
+          onClick={() => onToolChange("pen")}
+          title="Pen (P)"
+        />
+        <ToolButton
+          icon={Square}
+          active={tool === "rect"}
+          onClick={() => onToolChange("rect")}
+          title="Rectangle (R)"
+        />
+        <ToolButton
+          icon={Circle}
+          active={tool === "circle"}
+          onClick={() => onToolChange("circle")}
+          title="Circle (C)"
+        />
+        <ToolButton
+          icon={Eraser}
+          active={tool === "eraser"}
+          onClick={() => onToolChange("eraser")}
+          title="Eraser (E)"
+        />
       </div>
 
       {/* Color Picker */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">Color</h3>
-        <div className="grid grid-cols-5 gap-2.5">
-          {COLORS.map((c) => (
-            <button
-              key={c}
-              className={`w-10 h-10 rounded-lg border-3 transition-all duration-200 ${
-                color === c
-                  ? "border-blue-500 scale-110 shadow-lg ring-2 ring-blue-200"
-                  : "border-gray-300 hover:scale-105 hover:border-gray-400 hover:shadow-md"
-              }`}
-              style={{ backgroundColor: c }}
-              onClick={() => onColorChange(c)}
-              title={c}
-            />
-          ))}
-        </div>
+      <div className="flex items-center gap-1.5 pr-3 border-r border-gray-200">
+        {COLORS.map((c) => (
+          <button
+            key={c}
+            className={`w-7 h-7 rounded-lg border-2 transition-all ${
+              color === c
+                ? "border-gray-800 scale-110"
+                : "border-gray-300 hover:scale-105 hover:border-gray-400"
+            }`}
+            style={{ backgroundColor: c }}
+            onClick={() => onColorChange(c)}
+            title={c}
+          />
+        ))}
       </div>
 
       {/* Stroke Width */}
-      <div>
-        <h3 className="text-sm font-semibold text-gray-700 mb-3">
-          Stroke Width
-        </h3>
-        <div className="flex gap-2">
-          {STROKE_WIDTHS.map((width) => (
-            <button
-              key={width}
-              className={`px-3 py-2 rounded-md border text-sm font-medium transition-all duration-200 ${
-                strokeWidth === width
-                  ? "bg-blue-500 text-white border-blue-600 shadow-md"
-                  : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400"
-              }`}
-              onClick={() => onStrokeWidthChange(width)}
-              title={`${width}px stroke`}
-            >
-              {width}px
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Fill Toggle */}
-      <div>
-        <label className="flex items-center gap-2.5 cursor-pointer p-2 rounded-md hover:bg-gray-50 transition-colors">
-          <input
-            type="checkbox"
-            checked={fillEnabled}
-            onChange={onFillToggle}
-            className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-          />
-          <span className="text-sm font-medium text-gray-700">Fill shapes</span>
-        </label>
+      <div className="flex items-center gap-1 pr-3 border-r border-gray-200">
+        {STROKE_WIDTHS.map((width) => (
+          <button
+            key={width}
+            className={`px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all ${
+              strokeWidth === width
+                ? "bg-gray-800 text-white"
+                : "text-gray-700 hover:bg-gray-100"
+            }`}
+            onClick={() => onStrokeWidthChange(width)}
+            title={`${width}px stroke`}
+          >
+            {width}
+          </button>
+        ))}
       </div>
 
       {/* Clear Canvas */}
-      <div>
-        <button
-          onClick={onClearCanvas}
-          className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-red-500 text-white rounded-md hover:bg-red-600 transition-all duration-200 font-medium shadow-sm hover:shadow-md"
-          title="Clear all shapes from canvas"
-        >
-          <Trash2 size={16} />
-          Clear Canvas
-        </button>
-      </div>
+      <button
+        onClick={onClearCanvas}
+        className="p-2 rounded-lg text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all"
+        title="Clear canvas"
+      >
+        <Trash2 size={18} />
+      </button>
     </div>
   );
 }
@@ -178,33 +203,21 @@ export function Toolbar({
 
 interface ToolButtonProps {
   icon: React.ComponentType<{ size?: number; className?: string }>;
-  label: string;
-  shortcut?: string;
   active: boolean;
   onClick: () => void;
+  title: string;
 }
 
-function ToolButton({
-  icon: Icon,
-  label,
-  shortcut,
-  active,
-  onClick,
-}: ToolButtonProps) {
-  const tooltipText = shortcut ? `${label} (${shortcut})` : label;
-
+function ToolButton({ icon: Icon, active, onClick, title }: ToolButtonProps) {
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center gap-1 px-3 py-2 rounded-md border transition-all duration-200 ${
-        active
-          ? "bg-blue-500 text-white border-blue-600 shadow-md"
-          : "bg-white text-gray-700 border-gray-300 hover:bg-gray-50 hover:border-gray-400 hover:shadow-sm"
+      className={`p-2.5 rounded-lg transition-all ${
+        active ? "bg-gray-800 text-white" : "text-gray-700 hover:bg-gray-100"
       }`}
-      title={tooltipText}
+      title={title}
     >
-      <Icon size={20} />
-      <span className="text-xs font-medium">{label}</span>
+      <Icon size={18} />
     </button>
   );
 }
