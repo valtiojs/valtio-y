@@ -114,14 +114,17 @@ state.data.deeply.nested.value = 42;
 ### Undo/Redo
 
 ```js
-import { UndoManager } from "yjs";
-
-const undoManager = new UndoManager(ydoc.getMap("state"));
+const { proxy: state, undo, redo } = createYjsProxy(ydoc, {
+  getRoot: (doc) => doc.getMap("state"),
+  undoManager: true  // Enable with defaults
+});
 
 state.count = 1;
-undoManager.undo();
-undoManager.redo();
+undo();  // state.count -> undefined
+redo();  // state.count -> 1
 ```
+
+See [guides/undo-redo.md](../guides/undo-redo.md) for full documentation.
 
 ## Using with React
 

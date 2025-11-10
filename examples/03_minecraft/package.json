@@ -7,20 +7,20 @@
     "@react-three/cannon": "latest",
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",
-    "react": "latest",
-    "react-dom": "latest",
+    "react": "catalog:",
+    "react-dom": "catalog:",
     "three": "latest",
-    "valtio": "latest",
+    "valtio": "catalog:",
     "valtio-y": "workspace:*",
     "y-webrtc": "latest",
-    "yjs": "latest"
+    "yjs": "catalog:"
   },
   "devDependencies": {
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@types/three": "latest",
     "typescript": "latest",
-    "vite": "latest"
+    "vite": "catalog:"
   },
   "scripts": {
     "dev": "PORT=4444 node node_modules/y-webrtc/bin/server.js & vite",

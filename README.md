@@ -169,6 +169,15 @@ function TodoList() {
 
 valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Solid, and vanilla JavaScript.
 
+**Note for text inputs:** When using controlled text inputs (like `<input>` or `<textarea>`), add `{ sync: true }` to prevent cursor jumping:
+
+```jsx
+const snap = useSnapshot(state, { sync: true });
+<input value={snap.text} onChange={(e) => (state.text = e.target.value)} />;
+```
+
+This forces synchronous updates instead of Valtio's default async batching. See [Valtio issue #270](https://github.com/pmndrs/valtio/issues/270) for details.
+
 ---
 
 ## Guides
@@ -470,15 +479,17 @@ For more details, see the [architecture docs](./docs/architecture/)
 
 Live collaborative demos - open in multiple tabs to see real-time sync:
 
-1. **[Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple)** - Single-file example with detailed comments. Best for learning core concepts (CRUD, nested objects, reordering, offline/online simulation).
+1. **[Realtime Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Cloudflare Durable Object demo showing collaborative sticky notes in production.
 
-2. **[Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Minimal object synchronization with WebSocket provider.
+2. **[Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple)** - Single-file example with detailed comments. Best for learning core concepts (CRUD, nested objects, reordering, offline/online simulation).
 
-3. **[Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Array operations (push, pop, splice) with WebSocket sync.
+3. **[Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Minimal object synchronization with WebSocket provider.
 
-4. **[Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)** - Production-ready app with drag-and-drop, bulk operations, filtering (React, Tailwind, dnd-kit).
+4. **[Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Array operations (push, pop, splice) with WebSocket sync.
 
-5. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
+5. **[Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)** - Production-ready app with drag-and-drop, bulk operations, filtering (React, Tailwind, dnd-kit).
+
+6. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
 
 ---
 

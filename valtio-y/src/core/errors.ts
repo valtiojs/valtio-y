@@ -31,7 +31,8 @@ export type ValidationErrorType =
   | "bigint"
   | "non-finite"
   | "non-plain"
-  | "reparenting";
+  | "reparenting"
+  | "unsupported-y-type";
 
 /**
  * Thrown when a value fails validation before being added to shared state.
@@ -83,6 +84,8 @@ export class ValtioYValidationError extends ValtioYError {
         return "Only plain objects and arrays can be stored in shared state. Convert custom class instances, Date, RegExp, etc. to plain representations first.";
       case "reparenting":
         return "Cannot move a Y.js type that is already in the document. Create a deep clone if you want to copy this object to a new location.";
+      case "unsupported-y-type":
+        return "Only Y.Map and Y.Array can be stored in shared state. Convert other Y.js types to plain data before assigning.";
       default:
         return this.message;
     }
@@ -108,6 +111,8 @@ export class ValtioYValidationError extends ValtioYError {
         return "Convert to plain object. For Date: date.toISOString(), for RegExp: regex.toString()";
       case "reparenting":
         return "Create a deep clone at the application layer before assigning.";
+      case "unsupported-y-type":
+        return "Store collaborative text or XML nodes separately, or convert them to plain data before assigning.";
       default:
         return "";
     }

@@ -200,10 +200,10 @@ function handleSets(
     deletes.size > 0
       ? Math.min(...Array.from(deletes.keys()))
       : Number.POSITIVE_INFINITY;
-  // Compute tail cursor deterministically: after replaces (no length change) and deletes
-  // we want tail cursor to be yArray.length, but also guarantee that when inserting items
-  // that originated from indices >= lengthAtStart, we preserve their relative order and
-  // avoid shifting existing in-bounds items like original index 2.
+  // Initialize tail cursor to current array length (after replaces and deletes)
+  // This cursor tracks where to append out-of-bounds items and increments as items are appended.
+  // Rationale: Items that were originally out-of-bounds (index >= lengthAtStart) or affected
+  // by deletes (index >= firstDeleteIndex) should append sequentially to maintain order.
   let tailCursor = yArray.length;
 
   for (const index of sortedSetIndices) {
@@ -219,14 +219,19 @@ function handleSets(
       id: hasProperty(entry.value, "id") ? entry.value.id : undefined,
     });
 
+    // Determine if this item should append to tail or insert in-place:
+    // - index >= lengthAtStart: Item was originally out-of-bounds before this batch
+    // - index >= firstDeleteIndex: Item is at/after first deletion (indices shifted)
+    // - index >= yArray.length: Item is currently out-of-bounds (after previous inserts in this loop)
+    // Note: yArray.length is evaluated BEFORE this iteration's insert, so each iteration
+    // sees the updated length from previous iterations. This ensures correct sequential appends.
     const shouldAppend =
       index >= lengthAtStart ||
       index >= firstDeleteIndex ||
       index >= yArray.length;
-    // Use current yArray.length (modified by replaces/deletes) for clamping instead of
-    // lengthAtStart because we want to insert at the safest position given the current
-    // array state. This prevents index-out-of-bounds errors in edge cases where complex
-    // operation sequences might create temporary inconsistencies.
+    // For in-place inserts, clamp to valid range using CURRENT yArray.length
+    // (which may have changed from previous inserts in this loop).
+    // For appends, use the tail cursor which increments for each appended item.
     const targetIndex = shouldAppend
       ? tailCursor
       : Math.min(Math.max(index, 0), yArray.length);
