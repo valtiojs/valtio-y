@@ -3,4 +3,3 @@ import { App } from "./app";
 import "./styles.css";
 
 createRoot(document.getElementById("root")!).render(<App />);
-

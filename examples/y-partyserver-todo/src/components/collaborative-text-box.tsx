@@ -19,7 +19,8 @@ export function CollaborativeTextBox() {
     const yText = yDoc.getText("content");
 
     // Connect to unified worker (same host handles both frontend and Y-PartyServer)
-    const yPartyHost = typeof window !== "undefined" ? window.location.host : undefined;
+    const yPartyHost =
+      typeof window !== "undefined" ? window.location.host : undefined;
     const roomName = "shared-text-document";
     // PartyServer automatically converts YDocServer -> y-doc-server (kebab-case)
     const partyName = "y-doc-server";
@@ -35,7 +36,7 @@ export function CollaborativeTextBox() {
       console.error("[Client] Cannot create provider: no host available");
       return;
     }
-    
+
     const newProvider = new YProvider(yPartyHost, roomName, yDoc, {
       connect: true,
       party: partyName,
