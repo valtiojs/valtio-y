@@ -3,31 +3,28 @@
  * https://developers.cloudflare.com/workers/wrangler/configuration/
  */
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "y-partyserver-todo",
-	"compatibility_date": "2025-04-04",
-	"main": "./worker/app.ts",
-	"vars": {
-		"VALUE_FROM_CLOUDFLARE": "Hello from Cloudflare"
-	},
-	"observability": {
-		"enabled": true
-	},
-	"assets": {
-		"not_found_handling": "single-page-application"
-	},
-	"durable_objects": {
-		"bindings": [
-			{
-				"name": "YDocServer",
-				"class_name": "YDocServer"
-			}
-		]
-	},
-	"migrations": [
-		{
-			"tag": "v1",
-			"new_sqlite_classes": ["YDocServer"]
-		}
-	]
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "valtio-y-whiteboard",
+  "compatibility_date": "2025-04-04",
+  "main": "./worker/app.ts",
+  "observability": {
+    "enabled": true
+  },
+  "assets": {
+    "not_found_handling": "single-page-application"
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "YDocServer",
+        "class_name": "YDocServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["YDocServer"]
+    }
+  ]
 }
