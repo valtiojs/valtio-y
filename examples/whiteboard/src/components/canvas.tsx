@@ -10,14 +10,9 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { useSnapshot } from "valtio";
 import getStroke from "perfect-freehand";
-import {
-  proxy,
-  trackOperation,
-  updateCursor,
-  getAwareness,
-  getAwarenessUsers,
-} from "../yjs-setup";
-import type { Point, Tool, Shape, PathShape } from "../types";
+import { trackOperation, getAwarenessUsers } from "../yjs-setup";
+import type { Point, Tool, Shape, PathShape, AppState } from "../types";
+import type * as awarenessProtocol from "y-protocols/awareness";
 
 interface CanvasProps {
   tool: Tool;
@@ -27,6 +22,8 @@ interface CanvasProps {
   fillEnabled: boolean;
   selectedShapeId?: string;
   onShapeSelect?: (shapeId: string | undefined) => void;
+  proxy: AppState;
+  awareness: awarenessProtocol.Awareness;
 }
 
 // Type for ghost shape (in-progress drawing)
@@ -40,6 +37,8 @@ export function Canvas({
   fillEnabled,
   selectedShapeId,
   onShapeSelect,
+  proxy,
+  awareness,
 }: CanvasProps) {
   const snap = useSnapshot(proxy);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -52,10 +51,8 @@ export function Canvas({
 
   // Update awareness users on change
   useEffect(() => {
-    const awareness = getAwareness();
-
     const updateUsers = () => {
-      setAwarenessUsers(getAwarenessUsers());
+      setAwarenessUsers(getAwarenessUsers(awareness));
     };
 
     awareness.on("change", updateUsers);
@@ -64,7 +61,7 @@ export function Canvas({
     return () => {
       awareness.off("change", updateUsers);
     };
-  }, []);
+  }, [awareness]);
 
   // Convert screen coordinates to canvas coordinates
   const getCanvasPoint = useCallback(
@@ -112,11 +109,11 @@ export function Canvas({
     }
 
     proxy.shapes.push(ghostShape as Shape);
-    trackOperation(1);
+    trackOperation(proxy, 1);
 
     // Clear ghost
     setGhostShape(null);
-  }, [ghostShape]);
+  }, [ghostShape, proxy]);
 
   // Check if a point is inside a shape
   const isPointInShape = useCallback((point: Point, shape: Shape): boolean => {
@@ -279,7 +276,10 @@ export function Canvas({
       const point = getCanvasPoint(e.nativeEvent);
 
       // Update cursor position in awareness (ephemeral)
-      updateCursor(point.x, point.y);
+      const currentState = awareness.getLocalState();
+      if (currentState) {
+        awareness.setLocalStateField("cursor", { x: point.x, y: point.y });
+      }
 
       // Handle dragging selected shape
       if (isDragging && tool === "select" && selectedShapeId && proxy.shapes) {
@@ -350,7 +350,8 @@ export function Canvas({
       isDragging,
       selectedShapeId,
       dragOffset,
-      proxy.shapes,
+      proxy,
+      awareness,
     ],
   );
 

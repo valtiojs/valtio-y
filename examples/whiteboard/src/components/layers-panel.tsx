@@ -28,16 +28,18 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { GripVertical, Trash2 } from "lucide-react";
-import { proxy } from "../yjs-setup";
+import type { AppState } from "../types";
 
 interface LayersPanelProps {
   onShapeSelect?: (shapeId: string) => void;
   selectedShapeId?: string;
+  proxy: AppState;
 }
 
 export function LayersPanel({
   onShapeSelect,
   selectedShapeId,
+  proxy,
 }: LayersPanelProps) {
   const snap = useSnapshot(proxy);
 

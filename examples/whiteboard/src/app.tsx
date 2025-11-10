@@ -8,7 +8,7 @@
  * 4. **Real-time Sync**: Changes sync instantly across all connected clients
  */
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useMemo } from "react";
 import {
   Undo2,
   Redo2,
@@ -19,42 +19,30 @@ import {
   Maximize2,
   HelpCircle,
 } from "lucide-react";
+import { useSnapshot } from "valtio";
 import { Canvas } from "./components/canvas";
 import { Toolbar } from "./components/toolbar";
 import { LayersPanel } from "./components/layers-panel";
 import { PerformanceStats } from "./components/performance-stats";
 import { KeyboardShortcutsModal } from "./components/keyboard-shortcuts-modal";
-import useYProvider from "y-partyserver/react";
+import { useRoomProvider } from "./use-room-provider";
 import {
-  yDoc,
-  ROOM_NAME,
+  RoomState,
   PARTY_NAME,
-  setProvider,
-  setupSyncListeners,
-  initializeState,
-  cleanupUser,
-  proxy,
+  setSyncStatus,
   initUndoManager,
 } from "./yjs-setup";
-import type { Tool } from "./types";
+import type { Tool, SyncStatus } from "./types";
 import { useUndoRedo, useSyncStatus } from "./hooks";
 
-// Generate a random user ID and color for this session
+// Generate a random user ID and name for this session
 const USER_ID = `user-${Math.random().toString(36).substr(2, 9)}`;
 const USER_NAME = `User ${Math.floor(Math.random() * 1000)}`;
-const USER_COLORS = [
-  "#FF6B6B",
-  "#4ECDC4",
-  "#45B7D1",
-  "#FFA07A",
-  "#98D8C8",
-  "#F7DC6F",
-  "#BB8FCE",
-];
-const USER_COLOR = USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
 
 export function App() {
-  const [initialized, setInitialized] = useState(false);
+  const [roomId, setRoomId] = useState<string>(
+    () => window.location.hash.slice(1) || "drawing-room",
+  );
   const [tool, setTool] = useState<Tool>("pen");
   const [color, setColor] = useState("#000000");
   const [strokeWidth, setStrokeWidth] = useState(4);
@@ -62,51 +50,161 @@ export function App() {
   const [selectedShapeId, setSelectedShapeId] = useState<string>();
   const [zoom, setZoom] = useState(100);
   const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+  const [syncStatusState, setSyncStatusState] =
+    useState<SyncStatus>("connecting");
 
   // Use custom hooks for reactive undo/redo and sync status
   const { undo, redo, canUndo, canRedo } = useUndoRedo();
   const syncStatus = useSyncStatus();
 
-  // Initialize Yjs provider using the hook
-  // Connects to same host (unified worker handles both frontend and Y-PartyServer)
-  const provider = useYProvider({
-    host: typeof window !== "undefined" ? window.location.host : undefined,
-    room: ROOM_NAME,
+  // React to hash changes so switching rooms updates state automatically
+  useEffect(() => {
+    const handleHashChange = () => {
+      const hashRoom = window.location.hash.slice(1) || "drawing-room";
+      setRoomId(hashRoom);
+    };
+
+    window.addEventListener("hashchange", handleHashChange);
+    return () => window.removeEventListener("hashchange", handleHashChange);
+  }, []);
+
+  // Create a new RoomState for this room
+  const room = useMemo(() => new RoomState(USER_ID, USER_NAME), [roomId]);
+
+  const { doc, awareness, proxy, setLocalPresence } = room;
+
+  const state = useSnapshot(proxy, { sync: true });
+
+  // Connect to PartyServer using custom useRoomProvider hook
+  const provider = useRoomProvider({
+    host: window.location.host,
+    room: roomId,
     party: PARTY_NAME,
-    doc: yDoc,
+    doc,
+    options: useMemo(
+      () => ({
+        awareness,
+      }),
+      [awareness],
+    ),
   });
 
-  // Initialize state when provider syncs
+  // Cleanup: dispose room when component unmounts or room changes
   useEffect(() => {
-    // Set the provider so other parts of the app can access it
-    setProvider(provider);
+    setSelectedShapeId(undefined);
+    return () => {
+      // Provider cleanup happens first (in useRoomProvider)
+      // Then we dispose the room
+      room.dispose();
+    };
+  }, [room]);
 
-    // Setup sync listeners
-    setupSyncListeners(provider);
+  // Track sync status based on provider events
+  useEffect(() => {
+    if (!provider) return;
 
-    // Wait for initial sync, then initialize state
+    setSyncStatus("connecting");
+    setSyncStatusState("connecting");
+
+    type ProviderWithConnectionState = typeof provider & {
+      wsconnected: boolean;
+      wsconnecting: boolean;
+      shouldConnect: boolean;
+    };
+
+    const updateStatus = () => {
+      const providerWithState =
+        provider as unknown as ProviderWithConnectionState;
+
+      let status: SyncStatus;
+      if (providerWithState.wsconnected) {
+        status = provider.synced ? "connected" : "syncing";
+      } else if (providerWithState.wsconnecting) {
+        status = "connecting";
+      } else {
+        status = "offline";
+      }
+
+      setSyncStatus(status);
+      setSyncStatusState(status);
+    };
+
+    // Listen to status changes
+    provider.on("status", updateStatus);
+    provider.on("sync", updateStatus);
+
+    // Handle connection errors (especially important for mobile Safari)
+    provider.on("connection-error", () => {
+      setSyncStatus("offline");
+      setSyncStatusState("offline");
+    });
+
+    provider.on("connection-close", () => {
+      setSyncStatus("offline");
+      setSyncStatusState("offline");
+    });
+
+    // Update status immediately
+    updateStatus();
+
+    // Handle iOS Safari backgrounding - reconnect when page becomes visible again
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === "visible") {
+        const providerWithState =
+          provider as unknown as ProviderWithConnectionState;
+        if (!providerWithState.wsconnected && providerWithState.shouldConnect) {
+          void provider.connect();
+        }
+      }
+    };
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+
+    return () => {
+      provider.off("status", updateStatus);
+      provider.off("sync", updateStatus);
+      provider.off("connection-error", () => {});
+      provider.off("connection-close", () => {});
+      document.removeEventListener("visibilitychange", handleVisibilityChange);
+    };
+  }, [provider]);
+
+  // Initialize undo manager after provider is ready
+  useEffect(() => {
+    if (!provider) return;
+
+    let initialized = false;
+
     const handleSync = (synced: boolean) => {
       if (synced && !initialized) {
-        initializeState(USER_ID, USER_NAME, USER_COLOR);
-        initUndoManager();
-        setInitialized(true);
+        initUndoManager(doc);
+        initialized = true;
       }
     };
 
     provider.on("sync", handleSync);
 
-    // Cleanup on unmount
     return () => {
       provider.off("sync", handleSync);
-      cleanupUser();
     };
-  }, [provider, initialized]);
+  }, [provider, doc]);
 
   const handleClearCanvas = useCallback(() => {
     if (proxy.shapes) {
       proxy.shapes = [];
     }
-  }, []);
+  }, [proxy]);
+
+  // Delete selected shape
+  const handleDeleteShape = useCallback(() => {
+    if (selectedShapeId && proxy.shapes) {
+      const index = proxy.shapes.findIndex((s) => s.id === selectedShapeId);
+      if (index !== -1) {
+        proxy.shapes.splice(index, 1);
+        setSelectedShapeId(undefined);
+      }
+    }
+  }, [selectedShapeId, proxy]);
 
   // Keyboard shortcuts
   useEffect(() => {
@@ -122,6 +220,18 @@ export function App() {
       if (e.key === "Escape" && showKeyboardShortcuts) {
         e.preventDefault();
         setShowKeyboardShortcuts(false);
+        return;
+      }
+
+      // Delete or Backspace key, but not when typing in a textarea or input
+      if (
+        (e.key === "Delete" || e.key === "Backspace") &&
+        selectedShapeId &&
+        !(e.target instanceof HTMLTextAreaElement) &&
+        !(e.target instanceof HTMLInputElement)
+      ) {
+        e.preventDefault();
+        handleDeleteShape();
         return;
       }
 
@@ -154,7 +264,7 @@ export function App() {
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [undo, redo, showKeyboardShortcuts]);
+  }, [undo, redo, showKeyboardShortcuts, handleDeleteShape, selectedShapeId]);
 
   // Zoom controls
   const handleZoomIn = useCallback(() => {
@@ -169,17 +279,6 @@ export function App() {
     setZoom(100);
   }, []);
 
-  if (!initialized) {
-    return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 flex items-center justify-center">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p className="text-gray-600">Connecting to collaboration server...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
       {/* Header */}
@@ -192,7 +291,7 @@ export function App() {
               </h1>
               <p className="text-sm text-gray-600 mt-1">
                 Collaborative whiteboard powered by <strong>valtio-y</strong> +{" "}
-                <strong>Y-PartyServer</strong>
+                <strong>Y-PartyServer</strong> • Room: <strong>{roomId}</strong>
               </p>
             </div>
 
@@ -209,15 +308,20 @@ export function App() {
 
               {/* Connection Status */}
               <div className="flex items-center gap-2 border-r border-gray-300 pr-4">
-                {syncStatus === "connected" ? (
+                {syncStatusState === "connected" ? (
                   <div className="flex items-center gap-2 text-green-600">
                     <Wifi size={20} />
                     <span className="text-sm font-medium">Online</span>
                   </div>
-                ) : syncStatus === "syncing" ? (
+                ) : syncStatusState === "syncing" ? (
                   <div className="flex items-center gap-2 text-yellow-600">
                     <Wifi size={20} className="animate-pulse" />
                     <span className="text-sm font-medium">Syncing...</span>
+                  </div>
+                ) : syncStatusState === "connecting" ? (
+                  <div className="flex items-center gap-2 text-blue-600">
+                    <Wifi size={20} className="animate-pulse" />
+                    <span className="text-sm font-medium">Connecting...</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2 text-red-600">
@@ -259,11 +363,13 @@ export function App() {
 
               {/* User Info */}
               <div className="text-right">
-                <p className="text-sm font-medium text-gray-700">{USER_NAME}</p>
+                <p className="text-sm font-medium text-gray-700">
+                  {room.getUserName()}
+                </p>
                 <div className="flex items-center gap-2 justify-end mt-1">
                   <div
                     className="w-4 h-4 rounded-full"
-                    style={{ backgroundColor: USER_COLOR }}
+                    style={{ backgroundColor: room.getUserColor() }}
                   />
                   <span className="text-xs text-gray-500">You</span>
                 </div>
@@ -306,10 +412,12 @@ export function App() {
                   tool={tool}
                   color={color}
                   strokeWidth={strokeWidth}
-                  userId={USER_ID}
+                  userId={room.getUserId()}
                   fillEnabled={fillEnabled}
                   selectedShapeId={selectedShapeId}
                   onShapeSelect={setSelectedShapeId}
+                  proxy={proxy}
+                  awareness={awareness}
                 />
               </div>
 
@@ -365,9 +473,10 @@ export function App() {
               <LayersPanel
                 onShapeSelect={setSelectedShapeId}
                 selectedShapeId={selectedShapeId}
+                proxy={proxy}
               />
             </div>
-            <PerformanceStats />
+            <PerformanceStats proxy={proxy} doc={doc} />
           </div>
         </div>
 

@@ -103,4 +103,4 @@ export type Tool = "select" | "pen" | "rect" | "circle" | "eraser";
 /**
  * Sync status for visual feedback
  */
-export type SyncStatus = "connected" | "syncing" | "offline";
+export type SyncStatus = "connecting" | "connected" | "syncing" | "offline";

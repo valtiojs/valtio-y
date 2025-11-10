@@ -22,11 +22,16 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import { proxy, getSyncStatus, subscribeSyncStatus, yDoc } from "../yjs-setup";
-import type { SyncStatus } from "../types";
+import { getSyncStatus, subscribeSyncStatus } from "../yjs-setup";
+import type { SyncStatus, AppState } from "../types";
 import * as Y from "yjs";
 
-export function PerformanceStats() {
+interface PerformanceStatsProps {
+  proxy: AppState;
+  doc?: Y.Doc;
+}
+
+export function PerformanceStats({ proxy, doc }: PerformanceStatsProps) {
   const snap = useSnapshot(proxy);
   const [syncStatus, setSyncStatus] = useState<SyncStatus>("offline");
   const [colo, setColo] = useState<string>("--");
@@ -72,8 +77,10 @@ export function PerformanceStats() {
 
   // Calculate snapshot size
   useEffect(() => {
+    if (!doc) return;
+
     const updateSnapshotSize = () => {
-      const state = Y.encodeStateAsUpdate(yDoc);
+      const state = Y.encodeStateAsUpdate(doc);
       setSnapshotSize(state.byteLength);
     };
 
@@ -81,7 +88,7 @@ export function PerformanceStats() {
     const interval = setInterval(updateSnapshotSize, 2000); // Every 2s
 
     return () => clearInterval(interval);
-  }, []);
+  }, [doc]);
 
   // Subscribe to sync status
   useEffect(() => {

@@ -8,56 +8,109 @@
  */
 
 import * as Y from "yjs";
-import YProvider from "y-partyserver/provider";
+import * as awarenessProtocol from "y-protocols/awareness";
 import { createYjsProxy, VALTIO_Y_ORIGIN } from "valtio-y";
 import { proxy as valtioProxy } from "valtio";
-import type { AppState, SyncStatus } from "./types";
+import type { AppState, SyncStatus, User } from "./types";
 
 // ============================================================================
-// YJS DOCUMENT SETUP
+// ROOM STATE CLASS
 // ============================================================================
+
+const USER_COLORS = [
+  "#FF6B6B",
+  "#4ECDC4",
+  "#45B7D1",
+  "#FFA07A",
+  "#98D8C8",
+  "#F7DC6F",
+  "#BB8FCE",
+];
 
 /**
- * Create the shared Y.Doc that will sync across all clients
+ * RoomState class manages a single room's Y.Doc, awareness, and proxy
+ * This allows for proper cleanup when switching rooms
  */
-export const yDoc = new Y.Doc();
+export class RoomState {
+  readonly doc: Y.Doc;
+  readonly awareness: awarenessProtocol.Awareness;
+  readonly proxy: AppState;
+  readonly setLocalPresence: (presence: Partial<User>) => void;
+  private readonly disposeBridge: () => void;
+  private readonly userId: string;
+  private readonly userName: string;
+  private readonly userColor: string;
+
+  constructor(userId: string, userName: string) {
+    this.userId = userId;
+    this.userName = userName;
+    this.userColor =
+      USER_COLORS[Math.floor(Math.random() * USER_COLORS.length)];
+
+    this.doc = new Y.Doc();
+    this.awareness = new awarenessProtocol.Awareness(this.doc);
+
+    const { proxy, dispose } = createYjsProxy<AppState>(this.doc, {
+      getRoot: (document: Y.Doc) => document.getMap("drawingState"),
+    });
+
+    this.proxy = proxy;
+    this.disposeBridge = dispose;
+
+    // Initialize shapes array if needed
+    if (!this.proxy.shapes) {
+      this.proxy.shapes = [];
+    }
+
+    // Initialize users object if needed
+    if (!this.proxy.users) {
+      this.proxy.users = {};
+    }
+
+    // Helper to set local presence
+    this.setLocalPresence = (presence: Partial<User>) => {
+      this.awareness.setLocalState({
+        id: this.userId,
+        name: this.userName,
+        color: this.userColor,
+        cursor: null,
+        selection: [],
+        ...presence,
+      });
+    };
+
+    // Initialize local presence
+    this.setLocalPresence({});
+  }
+
+  getUserId(): string {
+    return this.userId;
+  }
+
+  getUserName(): string {
+    return this.userName;
+  }
+
+  getUserColor(): string {
+    return this.userColor;
+  }
+
+  dispose(): void {
+    this.awareness.setLocalState(null);
+    this.disposeBridge();
+    // Note: We don't destroy awareness/doc here because the provider
+    // might still be cleaning up. They'll be garbage collected naturally.
+  }
+}
+
+// ============================================================================
+// PARTYSERVER CONFIGURATION
+// ============================================================================
 
 /**
  * PartyServer configuration
  */
-export const ROOM_NAME = "drawing-room";
 export const PARTY_NAME = "y-doc-server"; // PartyServer converts YDocServer -> y-doc-server
-
-let currentProvider: YProvider | null = null;
-
-/**
- * Set the current provider (called from useYProvider hook)
- */
-export function setProvider(provider: YProvider) {
-  currentProvider = provider;
-}
-
-// ============================================================================
-// YJS AWARENESS - Ephemeral cursor/presence data
-// ============================================================================
-
-/**
- * Get the Awareness instance for ephemeral data (cursors, presence)
- * Awareness data is NOT persisted in the CRDT - perfect for cursors!
- */
-export function getAwareness(): any {
-  if (!currentProvider) {
-    throw new Error("[valtio-y] Provider not initialized");
-  }
-  return currentProvider.awareness;
-}
-
-/**
- * Get the current provider instance
- */
-export function getProvider(): YProvider | null {
-  return currentProvider;
-}
 
 // ============================================================================
 // SYNC STATUS TRACKING
@@ -71,27 +124,11 @@ function notifySyncListeners() {
 }
 
 /**
- * Setup sync status listeners (call this after provider is ready)
+ * Update the sync status and notify listeners
  */
-export function setupSyncListeners(provider: YProvider) {
-  provider.on("status", ({ status }: { status: string }) => {
-    console.log("[valtio-y] Status changed:", status);
-    syncStatus = status === "connected" ? "connected" : "offline";
-    notifySyncListeners();
-  });
-
-  provider.on("sync", (synced: boolean) => {
-    if (synced) {
-      syncStatus = "connected";
-      notifySyncListeners();
-    }
-  });
-
-  provider.on("connection-error", (error: unknown) => {
-    console.error("[valtio-y] Connection error:", error);
-    syncStatus = "offline";
-    notifySyncListeners();
-  });
+export function setSyncStatus(status: SyncStatus) {
+  syncStatus = status;
+  notifySyncListeners();
 }
 
 /**
@@ -112,78 +149,15 @@ export function getSyncStatus(): SyncStatus {
 }
 
 // ============================================================================
-// VALTIO-Y PROXY CREATION
+// AWARENESS UTILITIES
 // ============================================================================
 
 /**
- * Create the valtio-y proxy that bridges Valtio and Yjs.
- *
- * This proxy lets you:
- * - Write like normal JavaScript: proxy.shapes.push(newShape)
- * - Read reactively with useSnapshot(): const snap = useSnapshot(proxy)
- * - Sync automatically with all connected clients via Yjs CRDTs
+ * Get all connected users from awareness (excluding local client)
  */
-export const { proxy, bootstrap } = createYjsProxy<AppState>(yDoc, {
-  getRoot: (doc: Y.Doc) => doc.getMap("drawingState"),
-});
-
-// ============================================================================
-// INITIAL DATA
-// ============================================================================
-
-/**
- * Initialize the state with default values.
- * This will sync to all connected clients automatically.
- */
-export function initializeState(
-  userId: string,
-  userName: string,
-  userColor: string,
-) {
-  // Only initialize if the state is empty
-  if (!proxy.shapes) {
-    proxy.shapes = [];
-  }
-
-  // Set local awareness state (ephemeral, not persisted)
-  const awareness = getAwareness();
-  awareness.setLocalState({
-    id: userId,
-    name: userName,
-    color: userColor,
-    cursor: null,
-  });
-
-  console.log("[valtio-y] State initialized:", {
-    shapes: proxy.shapes?.length || 0,
-    clientId: awareness.clientID,
-  });
-}
-
-/**
- * Clean up user on disconnect
- */
-export function cleanupUser() {
-  const awareness = getAwareness();
-  awareness.setLocalState(null);
-}
-
-/**
- * Update local cursor position in awareness
- */
-export function updateCursor(x: number, y: number) {
-  const awareness = getAwareness();
-  const currentState = awareness.getLocalState();
-  if (currentState) {
-    awareness.setLocalStateField("cursor", { x, y });
-  }
-}
-
-/**
- * Get all connected users from awareness
- */
-export function getAwarenessUsers(): any[] {
-  const awareness = getAwareness();
+export function getAwarenessUsers(
+  awareness: awarenessProtocol.Awareness,
+): any[] {
   const users: any[] = [];
   awareness.getStates().forEach((state: any, clientId: number) => {
     if (state && clientId !== awareness.clientID) {
@@ -223,8 +197,8 @@ function updateUndoRedoState() {
  * use this origin. This ensures we only track local changes made
  * through the valtio proxy, not remote changes from other clients.
  */
-export function initUndoManager() {
-  const drawingStateMap = yDoc.getMap("drawingState");
+export function initUndoManager(doc: Y.Doc) {
+  const drawingStateMap = doc.getMap("drawingState");
 
   undoManager = new Y.UndoManager(drawingStateMap, {
     trackedOrigins: new Set([VALTIO_Y_ORIGIN]),
@@ -292,7 +266,7 @@ let currentBatchSize = 0;
 /**
  * Track an operation for performance stats
  */
-export function trackOperation(batchSize = 1) {
+export function trackOperation(proxy: AppState, batchSize = 1) {
   opCount += batchSize;
   currentBatchSize = Math.max(currentBatchSize, batchSize);
 
