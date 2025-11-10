@@ -13,10 +13,8 @@
 		"typecheck": "bun run cf-typegen && tsc -b --emitDeclarationOnly"
 	},
 	"dependencies": {
-		"@dnd-kit/core": "^6.3.1",
-		"@dnd-kit/sortable": "^10.0.0",
-		"@dnd-kit/utilities": "^3.2.2",
 		"lucide-react": "^0.552.0",
+		"motion": "^12.23.24",
 		"partyserver": "^0.0.75",
 		"perfect-freehand": "^1.2.2",
 		"react": "^19.1.1",

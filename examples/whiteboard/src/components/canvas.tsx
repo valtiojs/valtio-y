@@ -24,6 +24,7 @@ interface CanvasProps {
   onShapeSelect?: (shapeId: string | undefined) => void;
   proxy: AppState;
   awareness: awarenessProtocol.Awareness;
+  zoom: number;
 }
 
 // Type for ghost shape (in-progress drawing)
@@ -39,6 +40,7 @@ export function Canvas({
   onShapeSelect,
   proxy,
   awareness,
+  zoom,
 }: CanvasProps) {
   const snap = useSnapshot(proxy);
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -70,12 +72,15 @@ export function Canvas({
       if (!canvas) return { x: 0, y: 0 };
 
       const rect = canvas.getBoundingClientRect();
+      const scale = zoom / 100;
+
+      // Account for zoom scaling
       return {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top,
+        x: (e.clientX - rect.left) / scale,
+        y: (e.clientY - rect.top) / scale,
       };
     },
-    [],
+    [zoom],
   );
 
   // Commit the current ghost shape to the CRDT
@@ -89,18 +94,30 @@ export function Canvas({
       return;
     }
 
+    // For shapes that are too small, use default sizes
+    let shapeToCommit = ghostShape;
+
     if (ghostShape.type === "rect") {
-      const hasSize =
-        Math.abs(ghostShape.width) > 5 && Math.abs(ghostShape.height) > 5;
-      if (!hasSize) {
-        setGhostShape(null);
-        return;
+      const width = Math.abs(ghostShape.width);
+      const height = Math.abs(ghostShape.height);
+
+      // If too small, create a default-sized rectangle
+      if (width < 5 || height < 5) {
+        const defaultSize = 60;
+        shapeToCommit = {
+          ...ghostShape,
+          width: defaultSize,
+          height: defaultSize,
+        };
       }
     }
 
     if (ghostShape.type === "circle" && ghostShape.radius < 5) {
-      setGhostShape(null);
-      return;
+      // Create a default-sized circle
+      shapeToCommit = {
+        ...ghostShape,
+        radius: 30,
+      };
     }
 
     // Commit to CRDT (persisted layer)
@@ -108,7 +125,7 @@ export function Canvas({
       proxy.shapes = [];
     }
 
-    proxy.shapes.push(ghostShape as Shape);
+    proxy.shapes.push(shapeToCommit as Shape);
     trackOperation(proxy, 1);
 
     // Clear ghost
@@ -193,8 +210,22 @@ export function Canvas({
         return;
       }
 
-      // Eraser not implemented yet
-      if (tool === "eraser") return;
+      // Handle eraser tool - delete shapes on click
+      if (tool === "eraser") {
+        const shapes = snap.shapes || [];
+
+        // Find shape at click point (iterate in reverse to check top shapes first)
+        for (let i = shapes.length - 1; i >= 0; i--) {
+          if (isPointInShape(point, shapes[i])) {
+            // Delete the shape
+            if (proxy.shapes) {
+              proxy.shapes.splice(i, 1);
+            }
+            break; // Only delete one shape per click
+          }
+        }
+        return;
+      }
 
       setIsDrawing(true);
 
@@ -221,7 +252,7 @@ export function Canvas({
           style: {
             color,
             strokeWidth,
-            fillColor: fillEnabled ? color : undefined,
+            ...(fillEnabled && { fillColor: color }),
           },
           timestamp,
         });
@@ -235,7 +266,7 @@ export function Canvas({
           style: {
             color,
             strokeWidth,
-            fillColor: fillEnabled ? color : undefined,
+            ...(fillEnabled && { fillColor: color }),
           },
           timestamp,
         });
@@ -453,7 +484,9 @@ export function Canvas({
             ? isDragging
               ? "cursor-grabbing"
               : "cursor-grab"
-            : "cursor-crosshair"
+            : tool === "eraser"
+              ? "cursor-not-allowed"
+              : "cursor-crosshair"
         }`}
         style={{
           backgroundImage: hasShapes
@@ -470,22 +503,22 @@ export function Canvas({
       {/* Empty State Overlay */}
       {!hasShapes && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-center p-8 bg-white/90 rounded-xl shadow-lg max-w-md">
+          <div className="text-center p-8 bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl max-w-md">
             <h3 className="text-2xl font-bold text-gray-800 mb-3">
               Start Drawing!
             </h3>
             <p className="text-gray-600 mb-4">
-              Select a tool from the left sidebar and start creating.
+              Select a tool from the toolbar and start creating.
             </p>
             <div className="space-y-2 text-sm text-gray-500">
               <p>
-                <strong>Pen (P):</strong> Draw freehand strokes
+                <strong>Pen (P):</strong> Click and drag to draw
               </p>
               <p>
-                <strong>Rectangle (R):</strong> Drag to create rectangles
+                <strong>Rectangle (R):</strong> Click to place, drag to size
               </p>
               <p>
-                <strong>Circle (C):</strong> Drag to create circles
+                <strong>Circle (C):</strong> Click to place, drag to size
               </p>
             </div>
           </div>

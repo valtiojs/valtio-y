@@ -6,28 +6,12 @@
  * - Delete layers
  * - Show layer previews
  *
- * Uses @dnd-kit for drag-and-drop functionality
+ * Uses Motion's Reorder API for buttery-smooth layer drag & drop
  */
 
-import { useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { useSnapshot } from "valtio";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
 import {
   GripVertical,
   Trash2,
@@ -35,10 +19,13 @@ import {
   ChevronDown,
   ChevronUp,
 } from "lucide-react";
-import type { AppState } from "../types";
+import { AnimatePresence, Reorder, useDragControls } from "motion/react";
+import type { AppState, Shape } from "../types";
+
+type SnapshotShape = Readonly<Shape>;
 
 interface LayersPanelProps {
-  onShapeSelect?: (shapeId: string) => void;
+  onShapeSelect?: (shapeId: string | undefined) => void;
   selectedShapeId?: string;
   proxy: AppState;
 }
@@ -51,43 +38,59 @@ export function LayersPanel({
   const snap = useSnapshot(proxy);
   const [isExpanded, setIsExpanded] = useState(true);
 
-  const sensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
+  const toggleExpanded = useCallback(() => {
+    setIsExpanded((prev) => !prev);
+  }, []);
+
+  const handleDeleteShape = useCallback(
+    (shapeId: string) => {
+      if (!proxy.shapes) return;
+      const index = proxy.shapes.findIndex((shape) => shape.id === shapeId);
+      if (index !== -1) {
+        proxy.shapes.splice(index, 1);
+
+        if (shapeId === selectedShapeId) {
+          onShapeSelect?.(undefined);
+        }
+      }
+    },
+    [proxy, onShapeSelect, selectedShapeId],
   );
 
-  const handleDragEnd = (event: DragEndEvent) => {
-    const { active, over } = event;
+  const handleSelectShape = useCallback(
+    (shapeId: string) => {
+      onShapeSelect?.(shapeId);
+    },
+    [onShapeSelect],
+  );
 
-    if (over && active.id !== over.id && proxy.shapes) {
-      const oldIndex = proxy.shapes.findIndex(
-        (shape) => shape.id === active.id,
-      );
-      const newIndex = proxy.shapes.findIndex((shape) => shape.id === over.id);
+  const shapes = (snap.shapes || []) as SnapshotShape[];
+  const renderedShapes = useMemo<SnapshotShape[]>(
+    () => [...shapes].reverse(),
+    [shapes],
+  );
 
-      // Use valtio-y's array move - no fractional indexes needed!
-      const moved = arrayMove(proxy.shapes, oldIndex, newIndex);
-      proxy.shapes = moved;
-    }
-  };
+  const handleReorder = useCallback(
+    (newOrder: SnapshotShape[]) => {
+      if (!proxy.shapes) return;
 
-  const handleDeleteShape = (shapeId: string) => {
-    if (!proxy.shapes) return;
-    const index = proxy.shapes.findIndex((shape) => shape.id === shapeId);
-    if (index !== -1) {
-      proxy.shapes.splice(index, 1);
-    }
-  };
+      const idToShape = new Map(proxy.shapes.map((shape) => [shape.id, shape]));
+      const normalizedIds = [...newOrder].reverse().map((shape) => shape.id);
+      const reordered = normalizedIds
+        .map((id) => idToShape.get(id))
+        .filter((shape): shape is Shape => Boolean(shape));
 
-  const shapes = snap.shapes || [];
-  const renderedShapes = [...shapes].reverse();
+      if (reordered.length === proxy.shapes.length) {
+        proxy.shapes = reordered;
+      }
+    },
+    [proxy],
+  );
 
   return (
     <div className="bg-white/90 backdrop-blur-sm rounded-2xl shadow-xl border border-gray-200 max-h-96 flex flex-col">
       <button
-        onClick={() => setIsExpanded(!isExpanded)}
+        onClick={toggleExpanded}
         className="w-full flex items-center justify-between text-left hover:bg-gray-50/50 px-4 py-3 rounded-t-2xl transition-colors"
       >
         <h3 className="text-sm font-semibold text-gray-800 flex items-center gap-2">
@@ -101,39 +104,32 @@ export function LayersPanel({
       </button>
 
       {isExpanded && (
-        <>
-          {shapes.length === 0 ? (
-            <div className="px-4 pb-4 text-center">
-              <p className="text-xs text-gray-500">No shapes yet</p>
-            </div>
-          ) : (
-            <div className="px-3 pb-3 overflow-y-auto max-h-72">
-              <DndContext
-                sensors={sensors}
-                collisionDetection={closestCenter}
-                onDragEnd={handleDragEnd}
-              >
-                <SortableContext
-                  items={renderedShapes.map((s) => s.id)}
-                  strategy={verticalListSortingStrategy}
-                >
-                  <div className="space-y-1.5">
-                    {/* Render in reverse order (top layer first) */}
-                    {renderedShapes.map((shape) => (
-                      <LayerItem
-                        key={shape.id}
-                        shape={shape}
-                        selected={shape.id === selectedShapeId}
-                        onSelect={() => onShapeSelect?.(shape.id)}
-                        onDelete={() => handleDeleteShape(shape.id)}
-                      />
-                    ))}
-                  </div>
-                </SortableContext>
-              </DndContext>
-            </div>
-          )}
-        </>
+        shapes.length === 0 ? (
+          <div className="px-4 pb-4 text-center">
+            <p className="text-xs text-gray-500">No shapes yet</p>
+          </div>
+        ) : (
+          <div className="px-3 pb-3 overflow-y-auto max-h-72">
+            <Reorder.Group<SnapshotShape>
+              axis="y"
+              values={renderedShapes}
+              onReorder={handleReorder}
+              className="space-y-1.5 list-none"
+            >
+              <AnimatePresence initial={false}>
+                {renderedShapes.map((shape) => (
+                  <LayerItem
+                    key={shape.id}
+                    shape={shape}
+                    selected={shape.id === selectedShapeId}
+                    onSelect={handleSelectShape}
+                    onDelete={handleDeleteShape}
+                  />
+                ))}
+              </AnimatePresence>
+            </Reorder.Group>
+          </div>
+        )
       )}
     </div>
   );
@@ -144,112 +140,176 @@ export function LayersPanel({
 // ============================================================================
 
 interface LayerItemProps {
-  shape: any;
+  shape: SnapshotShape;
   selected: boolean;
-  onSelect: () => void;
-  onDelete: () => void;
+  onSelect: (shapeId: string) => void;
+  onDelete: (shapeId: string) => void;
 }
 
+const LAYER_INITIAL = { opacity: 0, y: -6 } as const;
+const LAYER_EXIT = { opacity: 0, y: 8 } as const;
+const LAYER_TRANSITION = {
+  type: "spring" as const,
+  stiffness: 520,
+  damping: 38,
+  mass: 0.65,
+};
+
 function LayerItem({ shape, selected, onSelect, onDelete }: LayerItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition } =
-    useSortable({ id: shape.id });
+  const dragControls = useDragControls();
 
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
+  const handleDragPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      dragControls.start(event);
+    },
+    [dragControls],
+  );
 
-  const getShapeLabel = (shape: any): string => {
-    if (shape.type === "path") {
-      return `Path (${shape.points.length} points)`;
-    } else if (shape.type === "rect") {
-      return `Rectangle`;
-    } else if (shape.type === "circle") {
-      return `Circle`;
-    }
-    return "Shape";
-  };
+  const handleSelect = useCallback(() => {
+    onSelect(shape.id);
+  }, [onSelect, shape.id]);
 
-  const getShapePreview = (shape: any) => {
-    if (shape.type === "path") {
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24">
-          <path
-            d={`M ${shape.points.map((p: any, i: number) => `${i === 0 ? "M" : "L"} ${Math.min(22, (p.x / 1200) * 24)} ${Math.min(22, (p.y / 800) * 24)}`).join(" ")}`}
-            stroke={shape.style.color}
-            strokeWidth="1.5"
-            fill="none"
-          />
-        </svg>
-      );
-    } else if (shape.type === "rect") {
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24">
-          <rect
-            x="3"
-            y="3"
-            width="18"
-            height="18"
-            stroke={shape.style.color}
-            strokeWidth="1.5"
-            fill={shape.style.fillColor || "none"}
-          />
-        </svg>
-      );
-    } else if (shape.type === "circle") {
-      return (
-        <svg width="24" height="24" viewBox="0 0 24 24">
-          <circle
-            cx="12"
-            cy="12"
-            r="9"
-            stroke={shape.style.color}
-            strokeWidth="1.5"
-            fill={shape.style.fillColor || "none"}
-          />
-        </svg>
-      );
-    }
-    return null;
-  };
+  const handleDelete = useCallback(() => {
+    onDelete(shape.id);
+  }, [onDelete, shape.id]);
+
+  const animate = useMemo(
+    () => ({
+      opacity: 1,
+      y: 0,
+      scale: selected ? 1.02 : 1,
+    }),
+    [selected],
+  );
+
+  const shapeLabel = useMemo(() => getShapeLabel(shape), [shape]);
+  const shapePreview = useMemo(() => getShapePreview(shape), [shape]);
 
   return (
-    <div
-      ref={setNodeRef}
-      style={style}
-      className={`flex items-center gap-1.5 p-2 rounded-lg border transition-all ${
+    <Reorder.Item
+      value={shape}
+      dragControls={dragControls}
+      dragListener={false}
+      initial={LAYER_INITIAL}
+      animate={animate}
+      exit={LAYER_EXIT}
+      transition={LAYER_TRANSITION}
+      layout
+      className={`flex items-center gap-1.5 p-2 rounded-lg border backdrop-blur-sm ${
         selected
-          ? "bg-blue-50/50 border-blue-300"
-          : "bg-white/50 border-gray-200 hover:bg-gray-50/50"
+          ? "bg-blue-50/70 border-blue-300 shadow-sm"
+          : "bg-white/60 border-gray-200/80 hover:bg-gray-50/70"
       }`}
     >
       {/* Drag Handle */}
       <button
-        {...attributes}
-        {...listeners}
-        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 flex-shrink-0"
+        type="button"
+        onPointerDown={handleDragPointerDown}
+        className="cursor-grab active:cursor-grabbing text-gray-400 hover:text-gray-600 shrink-0"
+        aria-label="Reorder layer"
       >
         <GripVertical size={14} />
       </button>
 
       {/* Shape Preview */}
-      <div className="flex-shrink-0">{getShapePreview(shape)}</div>
+      <div className="shrink-0">{shapePreview}</div>
 
       {/* Shape Info */}
-      <div className="flex-1 min-w-0 cursor-pointer" onClick={onSelect}>
+      <button
+        type="button"
+        className="flex-1 min-w-0 text-left"
+        onClick={handleSelect}
+        title={shapeLabel}
+      >
         <p className="text-xs font-medium text-gray-800 truncate">
-          {getShapeLabel(shape)}
+          {shapeLabel}
         </p>
-      </div>
+      </button>
 
       {/* Delete Button */}
       <button
-        onClick={onDelete}
-        className="flex-shrink-0 text-gray-400 hover:text-red-600 p-1 rounded transition-all"
+        type="button"
+        onClick={handleDelete}
+        className="shrink-0 text-gray-400 hover:text-red-600 p-1 rounded transition-all"
         title="Delete shape"
       >
         <Trash2 size={13} />
       </button>
-    </div>
+    </Reorder.Item>
   );
+}
+
+function getShapeLabel(shape: SnapshotShape): string {
+  if (shape.type === "path") {
+    return `Path (${shape.points.length} points)`;
+  }
+  if (shape.type === "rect") {
+    return "Rectangle";
+  }
+  if (shape.type === "circle") {
+    return "Circle";
+  }
+  return "Shape";
+}
+
+function getShapePreview(shape: SnapshotShape) {
+  if (shape.type === "path") {
+    if (shape.points.length === 0) {
+      return null;
+    }
+
+    const pathCommands = shape.points
+      .map((point, index) => {
+        const command = index === 0 ? "M" : "L";
+        const x = Math.min(22, (point.x / 1200) * 24);
+        const y = Math.min(22, (point.y / 800) * 24);
+        return `${command} ${x} ${y}`;
+      })
+      .join(" ");
+
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24">
+        <path
+          d={pathCommands}
+          stroke={shape.style.color}
+          strokeWidth="1.5"
+          fill="none"
+        />
+      </svg>
+    );
+  }
+
+  if (shape.type === "rect") {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24">
+        <rect
+          x="3"
+          y="3"
+          width="18"
+          height="18"
+          stroke={shape.style.color}
+          strokeWidth="1.5"
+          fill={shape.style.fillColor || "none"}
+        />
+      </svg>
+    );
+  }
+
+  if (shape.type === "circle") {
+    return (
+      <svg width="24" height="24" viewBox="0 0 24 24">
+        <circle
+          cx="12"
+          cy="12"
+          r="9"
+          stroke={shape.style.color}
+          strokeWidth="1.5"
+          fill={shape.style.fillColor || "none"}
+        />
+      </svg>
+    );
+  }
+
+  return null;
 }

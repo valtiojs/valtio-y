@@ -44,7 +44,7 @@ export function App() {
     () => window.location.hash.slice(1) || "drawing-room",
   );
   const [tool, setTool] = useState<Tool>("pen");
-  const [color, setColor] = useState("#000000");
+  const [color, setColor] = useState("#fef3c7");
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [fillEnabled, setFillEnabled] = useState(false);
   const [selectedShapeId, setSelectedShapeId] = useState<string>();
@@ -326,18 +326,27 @@ export function App() {
       </div>
 
       {/* Full-width Canvas */}
-      <div className="w-full h-full">
-        <Canvas
-          tool={tool}
-          color={color}
-          strokeWidth={strokeWidth}
-          userId={room.getUserId()}
-          fillEnabled={fillEnabled}
-          selectedShapeId={selectedShapeId}
-          onShapeSelect={setSelectedShapeId}
-          proxy={proxy}
-          awareness={awareness}
-        />
+      <div className="w-full h-full flex items-center justify-center overflow-auto">
+        <div
+          style={{
+            transform: `scale(${zoom / 100})`,
+            transformOrigin: "center",
+            transition: "transform 0.2s ease",
+          }}
+        >
+          <Canvas
+            tool={tool}
+            color={color}
+            strokeWidth={strokeWidth}
+            userId={room.getUserId()}
+            fillEnabled={fillEnabled}
+            selectedShapeId={selectedShapeId}
+            onShapeSelect={setSelectedShapeId}
+            proxy={proxy}
+            awareness={awareness}
+            zoom={zoom}
+          />
+        </div>
       </div>
 
       {/* Floating Edge Metrics - Bottom Right */}
