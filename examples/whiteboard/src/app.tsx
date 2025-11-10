@@ -9,12 +9,7 @@
  */
 
 import { useEffect, useState, useCallback, useMemo } from "react";
-import {
-  ZoomIn,
-  ZoomOut,
-  Maximize2,
-  HelpCircle,
-} from "lucide-react";
+import { ZoomIn, ZoomOut, Maximize2, HelpCircle } from "lucide-react";
 import { Canvas } from "./components/canvas";
 import { Toolbar } from "./components/toolbar";
 import { LayersPanel } from "./components/layers-panel";

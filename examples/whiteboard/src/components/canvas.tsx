@@ -136,31 +136,37 @@ export function Canvas({
   }, [ghostShape, proxy]);
 
   // Check if a point is inside a shape
-  const isPointInShape = useCallback((point: Point, shape: Readonly<Shape>): boolean => {
-    if (shape.type === "rect") {
-      const x1 = Math.min(shape.x, shape.x + shape.width);
-      const x2 = Math.max(shape.x, shape.x + shape.width);
-      const y1 = Math.min(shape.y, shape.y + shape.height);
-      const y2 = Math.max(shape.y, shape.y + shape.height);
-      return point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2;
-    } else if (shape.type === "circle") {
-      const dx = point.x - shape.x;
-      const dy = point.y - shape.y;
-      return Math.sqrt(dx * dx + dy * dy) <= shape.radius;
-    } else if (shape.type === "path" && shape.points.length > 0) {
-      // Simple bounding box check for paths
-      const xs = shape.points.map((p) => p.x);
-      const ys = shape.points.map((p) => p.y);
-      const minX = Math.min(...xs) - 10;
-      const maxX = Math.max(...xs) + 10;
-      const minY = Math.min(...ys) - 10;
-      const maxY = Math.max(...ys) + 10;
-      return (
-        point.x >= minX && point.x <= maxX && point.y >= minY && point.y <= maxY
-      );
-    }
-    return false;
-  }, []);
+  const isPointInShape = useCallback(
+    (point: Point, shape: Readonly<Shape>): boolean => {
+      if (shape.type === "rect") {
+        const x1 = Math.min(shape.x, shape.x + shape.width);
+        const x2 = Math.max(shape.x, shape.x + shape.width);
+        const y1 = Math.min(shape.y, shape.y + shape.height);
+        const y2 = Math.max(shape.y, shape.y + shape.height);
+        return point.x >= x1 && point.x <= x2 && point.y >= y1 && point.y <= y2;
+      } else if (shape.type === "circle") {
+        const dx = point.x - shape.x;
+        const dy = point.y - shape.y;
+        return Math.sqrt(dx * dx + dy * dy) <= shape.radius;
+      } else if (shape.type === "path" && shape.points.length > 0) {
+        // Simple bounding box check for paths
+        const xs = shape.points.map((p) => p.x);
+        const ys = shape.points.map((p) => p.y);
+        const minX = Math.min(...xs) - 10;
+        const maxX = Math.max(...xs) + 10;
+        const minY = Math.min(...ys) - 10;
+        const maxY = Math.max(...ys) + 10;
+        return (
+          point.x >= minX &&
+          point.x <= maxX &&
+          point.y >= minY &&
+          point.y <= maxY
+        );
+      }
+      return false;
+    },
+    [],
+  );
 
   // Check if a shape intersects with a circle (for eraser)
   const shapeIntersectsCircle = useCallback(
