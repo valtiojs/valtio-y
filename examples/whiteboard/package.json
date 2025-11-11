@@ -1,0 +1,39 @@
+{
+	"name": "y-partyserver-todo",
+	"version": "0.0.0",
+	"private": true,
+	"type": "module",
+	"scripts": {
+		"build": "tsc -b && vite build",
+		"cf-typegen": "wrangler types",
+		"deploy": "bun run build && wrangler deploy",
+		"dev": "vite",
+		"postinstall": "bun run cf-typegen",
+		"preview": "bun run build && vite preview",
+		"typecheck": "bun run cf-typegen && tsc -b --emitDeclarationOnly"
+	},
+	"dependencies": {
+		"lucide-react": "^0.552.0",
+		"motion": "^12.23.24",
+		"partyserver": "^0.0.75",
+		"perfect-freehand": "^1.2.2",
+		"react": "^19.1.1",
+		"react-dom": "^19.1.1",
+		"valtio": "^2.2.0",
+		"valtio-y": "workspace:*",
+		"y-partyserver": "^0.0.51",
+		"y-protocols": "^1.0.6",
+		"yjs": "^13.6.27"
+	},
+	"devDependencies": {
+		"@cloudflare/vite-plugin": "^1.13.5",
+		"@tailwindcss/vite": "^4.1.13",
+		"@types/react": "^19.1.13",
+		"@types/react-dom": "^19.1.9",
+		"@vitejs/plugin-react": "^5.1.0",
+		"tailwindcss": "^4.1.13",
+		"typescript": "^5.9.2",
+		"vite": "^7.1.7",
+		"wrangler": "^4.44.0"
+	}
+}

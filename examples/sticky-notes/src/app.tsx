@@ -36,23 +36,22 @@ export function App() {
 
   const room = useMemo(() => new RoomState(), [roomId]);
 
-  const { doc, awareness, proxy, setLocalPresence } = room;
+  const { doc, awareness, proxy, setLocalPresence, undo, redo, undoState } =
+    room;
 
   const state = useSnapshot(proxy, { sync: true });
+  const undoStateSnap = useSnapshot(undoState);
 
   // Connect to PartyServer using useYProvider hook
   // Connect using y-partyserver defaults: /parties/:party/:room.
+  // PartyServer converts YDocServer -> y-doc-server
+  // In dev mode, don't specify host - let YProvider auto-detect
   const provider = useRoomProvider({
-    host: window.location.host,
+    host: import.meta.env.PROD ? window.location.host : undefined,
     room: roomId,
-    party: "stickynotes-do",
+    party: "y-doc-server",
     doc,
-    options: useMemo(
-      () => ({
-        awareness,
-      }),
-      [awareness],
-    ),
+    awareness,
   });
 
   // Cleanup: dispose room when component unmounts or room changes
@@ -195,7 +194,7 @@ export function App() {
     };
   }, [setLocalPresence]);
 
-  // Handle keyboard shortcuts for deleting notes
+  // Handle keyboard shortcuts for deleting notes and undo/redo
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       // Delete or Backspace key, but not when typing in a textarea or input
@@ -210,12 +209,27 @@ export function App() {
           delete proxy.notes[selectedNoteId];
           setSelectedNoteId(null);
         }
+        return;
+      }
+
+      // Undo: Ctrl+Z or Cmd+Z
+      if ((e.ctrlKey || e.metaKey) && e.key === "z" && !e.shiftKey) {
+        e.preventDefault();
+        undo();
+      }
+      // Redo: Ctrl+Y or Cmd+Shift+Z or Ctrl+Shift+Z
+      else if (
+        ((e.ctrlKey || e.metaKey) && e.key === "y") ||
+        ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key === "z")
+      ) {
+        e.preventDefault();
+        redo();
       }
     };
 
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [selectedNoteId, proxy]);
+  }, [selectedNoteId, proxy, undo, redo]);
 
   const handleAddNote = () => {
     if (!proxy.notes) {
@@ -297,6 +311,10 @@ export function App() {
           onColorChange={setSelectedColor}
           syncStatus={syncStatus}
           hasSelection={selectedNoteId !== null}
+          onUndo={undo}
+          onRedo={redo}
+          canUndo={undoStateSnap.canUndo}
+          canRedo={undoStateSnap.canRedo}
         />
 
         {/* Canvas with sticky notes */}

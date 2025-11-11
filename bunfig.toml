@@ -1,0 +1,6 @@
+[install]
+# Prevent peer dependency issues in workspace
+peer = false
+
+# Use isolated linker to prevent cross-contamination between workspace packages
+linker = "isolated"

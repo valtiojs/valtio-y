@@ -129,6 +129,26 @@ That's it! State is now synchronized via Yjs. Add a provider to sync across clie
 
 ---
 
+## Examples
+
+Live collaborative demos - open in multiple tabs to see real-time sync:
+
+1. **[Realtime Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Cloudflare Durable Object demo showing collaborative sticky notes in production.
+
+2. **[Whiteboard](https://valtio-y-whiteboard.agcty.workers.dev)** - Collaborative whiteboard demo with drawing and shapes.
+
+3. **[Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple)** - Single-file example with detailed comments. Best for learning core concepts (CRUD, nested objects, reordering, offline/online simulation).
+
+4. **[Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Minimal object synchronization with WebSocket provider.
+
+5. **[Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Array operations (push, pop, splice) with WebSocket sync.
+
+6. **[Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)** - Production-ready app with drag-and-drop, bulk operations, filtering (React, Tailwind, dnd-kit).
+
+7. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
+
+---
+
 ## Key Features
 
 - **⚡ Zero API Overhead** - No special methods—just mutate objects like normal JavaScript
@@ -194,29 +214,20 @@ Core documentation for understanding and using valtio-y effectively:
 
 ## Collaboration Setup
 
-Connect multiple clients with any Yjs provider:
+Connect any Yjs provider to sync across clients:
 
 ```js
 import { WebsocketProvider } from "y-websocket";
 
-const ydoc = new Y.Doc();
-const provider = new WebsocketProvider("ws://localhost:1234", "my-room", ydoc);
-
-const { proxy: state } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("state"),
-});
-
-// Now all clients in "my-room" share the same state!
-state.message = "Hello from client 1";
+const provider = new WebsocketProvider(
+  "ws://localhost:1234",
+  "room-name",
+  ydoc
+);
+// That's it—state syncs automatically
 ```
 
-**Supported providers:**
-
-- [y-websocket](https://github.com/yjs/y-websocket) - WebSocket sync
-- [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver) - PartyKit/Cloudflare Durable Objects backend
-- [y-webrtc](https://github.com/yjs/y-webrtc) - P2P WebRTC sync
-- [y-indexeddb](https://github.com/yjs/y-indexeddb) - Offline persistence
-- Any Yjs provider
+Works with any provider: [y-websocket](https://github.com/yjs/y-websocket), [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver) (great for Cloudflare), [y-webrtc](https://github.com/yjs/y-webrtc), [y-indexeddb](https://github.com/yjs/y-indexeddb), etc.
 
 ---
 
@@ -472,24 +483,6 @@ tasks[i].order = (tasks[i - 1].order + tasks[i + 1].order) / 2;
 **Why strings over numbers:** String-based fractional indexing scales infinitely without precision issues, while number-based approaches run into floating-point limits after repeated reordering.
 
 For more details, see the [architecture docs](./docs/architecture/)
-
----
-
-## Examples
-
-Live collaborative demos - open in multiple tabs to see real-time sync:
-
-1. **[Realtime Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Cloudflare Durable Object demo showing collaborative sticky notes in production.
-
-2. **[Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple)** - Single-file example with detailed comments. Best for learning core concepts (CRUD, nested objects, reordering, offline/online simulation).
-
-3. **[Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Minimal object synchronization with WebSocket provider.
-
-4. **[Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Array operations (push, pop, splice) with WebSocket sync.
-
-5. **[Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)** - Production-ready app with drag-and-drop, bulk operations, filtering (React, Tailwind, dnd-kit).
-
-6. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
 
 ---
 

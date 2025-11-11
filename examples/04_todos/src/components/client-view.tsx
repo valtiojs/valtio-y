@@ -13,9 +13,9 @@
  * feel like local state - just read from snapshot, write to proxy!
  */
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSnapshot } from "valtio";
-import { Plus, Circle, GripVertical } from "lucide-react";
+import { Plus, Circle, GripVertical, Wifi, WifiOff } from "lucide-react";
 import {
   DndContext,
   closestCenter,
@@ -36,6 +36,12 @@ import type { TodoItem as TodoItemType, AppState } from "../types";
 import { countTodos, countCompletedTodos } from "../utils";
 import { SyncStatus } from "./sync-status";
 import { TodoItem } from "./todo-item";
+import {
+  connectClient,
+  disconnectClient,
+  isClientConnected,
+  subscribeSyncStatus,
+} from "../yjs-setup";
 
 interface ClientViewProps {
   /** Display name for this client */
@@ -65,6 +71,25 @@ export function ClientView({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
+  const [isConnected, setIsConnected] = useState(() =>
+    isClientConnected(clientId),
+  );
+
+  // Subscribe to connection status changes
+  useEffect(() => {
+    const unsubscribe = subscribeSyncStatus(() => {
+      setIsConnected(isClientConnected(clientId));
+    });
+    return unsubscribe;
+  }, [clientId]);
+
+  function handleConnect() {
+    connectClient(clientId);
+  }
+
+  function handleDisconnect() {
+    disconnectClient(clientId);
+  }
 
   // Color scheme configuration
   const colors = {
@@ -260,7 +285,32 @@ export function ClientView({
               {completedTodos} of {totalTodos} tasks completed
             </p>
           </div>
-          <SyncStatus clientId={clientId} />
+          <div className="flex items-center gap-3">
+            <SyncStatus clientId={clientId} />
+            <button
+              onClick={isConnected ? handleDisconnect : handleConnect}
+              className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
+                isConnected
+                  ? "bg-red-100 text-red-700 hover:bg-red-200"
+                  : "bg-green-100 text-green-700 hover:bg-green-200"
+              }`}
+              title={
+                isConnected ? "Disconnect from server" : "Connect to server"
+              }
+            >
+              {isConnected ? (
+                <>
+                  <WifiOff size={16} />
+                  Disconnect
+                </>
+              ) : (
+                <>
+                  <Wifi size={16} />
+                  Connect
+                </>
+              )}
+            </button>
+          </div>
         </div>
       </div>
 

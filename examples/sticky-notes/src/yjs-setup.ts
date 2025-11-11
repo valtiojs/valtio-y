@@ -18,17 +18,26 @@ export class RoomState {
   readonly proxy: AppState;
   readonly setLocalPresence: (presence: Partial<UserPresence>) => void;
   private readonly disposeBridge: () => void;
+  readonly undo: () => void;
+  readonly redo: () => void;
+  readonly undoState: { canUndo: boolean; canRedo: boolean };
 
   constructor() {
     this.doc = new Y.Doc();
     this.awareness = new awarenessProtocol.Awareness(this.doc);
 
-    const { proxy, dispose } = createYjsProxy<AppState>(this.doc, {
+    const proxyWithUndo = createYjsProxy<AppState>(this.doc, {
       getRoot: (document: Y.Doc) => document.getMap("root"),
+      undoManager: {
+        captureTimeout: 100, // Group operations within 100ms (prevents overly aggressive undo)
+      },
     });
 
-    this.proxy = proxy;
-    this.disposeBridge = dispose;
+    this.proxy = proxyWithUndo.proxy;
+    this.disposeBridge = proxyWithUndo.dispose;
+    this.undo = proxyWithUndo.undo;
+    this.redo = proxyWithUndo.redo;
+    this.undoState = proxyWithUndo.undoState;
 
     const clientColor = colors[Math.floor(Math.random() * colors.length)];
     this.setLocalPresence = (presence: Partial<UserPresence>) => {

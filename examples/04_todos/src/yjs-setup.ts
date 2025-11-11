@@ -1,12 +1,12 @@
 /**
- * Yjs Setup and Network Simulation
+ * Yjs Setup with Y-PartyServer
  *
- * This file demonstrates how to set up valtio-y for real-time collaboration.
- * In a real application, you would connect these documents to a network provider
- * (like y-websocket, y-webrtc, etc.) instead of this manual relay.
+ * This file sets up valtio-y with real-time collaboration using y-partyserver.
+ * Two clients connect to the same PartyServer room to demonstrate real-time sync.
  */
 
 import * as Y from "yjs";
+import YProvider from "y-partyserver/provider";
 import { createYjsProxy } from "valtio-y";
 import type { AppState, SyncStatus } from "./types";
 
@@ -21,22 +21,33 @@ import type { AppState, SyncStatus } from "./types";
 export const doc1 = new Y.Doc();
 export const doc2 = new Y.Doc();
 
+/**
+ * Connect both documents to the same Y-PartyServer room.
+ * PartyServer converts TodosYServer -> todos-y-server (kebab-case)
+ */
+const Y_PARTY_HOST = "localhost:8788";
+const ROOM_NAME = "todos-room";
+const PARTY_NAME = "todos-y-server";
+
+export const provider1 = new YProvider(Y_PARTY_HOST, ROOM_NAME, doc1, {
+  connect: true,
+  party: PARTY_NAME,
+});
+
+export const provider2 = new YProvider(Y_PARTY_HOST, ROOM_NAME, doc2, {
+  connect: true,
+  party: PARTY_NAME,
+});
+
 // ============================================================================
-// NETWORK SIMULATION
+// SYNC STATUS TRACKING
 // ============================================================================
 
 /**
- * Symbol used to mark updates that come from the relay, preventing infinite loops.
- * When we receive an update from the network, we mark it with this origin so
- * we don't send it back out again.
+ * Track sync status for each client based on provider connection state
  */
-const RELAY_ORIGIN = Symbol("relay-origin");
-
-/**
- * Track sync status for each client
- */
-let syncStatus1: SyncStatus = "connected";
-let syncStatus2: SyncStatus = "connected";
+let syncStatus1: SyncStatus = "offline";
+let syncStatus2: SyncStatus = "offline";
 
 /**
  * Listeners that get notified when sync status changes
@@ -51,53 +62,33 @@ const notifySyncListeners = () => {
 };
 
 /**
- * Set up a simulated network relay between the two documents.
- *
- * HOW IT WORKS:
- * 1. When doc1 changes, it emits an "update" event with a binary update
- * 2. We apply that update to doc2 (simulating network transmission)
- * 3. The same happens in reverse for doc2 -> doc1
- *
- * In a real app, you would use a network provider like:
- * - y-websocket: WebSocket connection to a server
- * - y-webrtc: Peer-to-peer WebRTC connections
- * - y-indexeddb: Local persistence with optional sync
+ * Listen to provider1 connection status
  */
-doc1.on("update", (update: Uint8Array, origin: unknown) => {
-  // Ignore updates that came from the relay (prevents infinite loop)
-  if (origin === RELAY_ORIGIN) return;
-
-  // Show syncing status
-  syncStatus1 = "syncing";
+provider1.on("status", ({ status }: { status: string }) => {
+  syncStatus1 = status === "connected" ? "connected" : "offline";
   notifySyncListeners();
-
-  // Simulate network delay (100ms)
-  setTimeout(() => {
-    // Apply the update to doc2 within a transaction marked with RELAY_ORIGIN
-    doc2.transact(() => {
-      Y.applyUpdate(doc2, update);
-    }, RELAY_ORIGIN);
-
-    // Update complete
-    syncStatus1 = "connected";
-    notifySyncListeners();
-  }, 100);
 });
 
-doc2.on("update", (update: Uint8Array, origin: unknown) => {
-  if (origin === RELAY_ORIGIN) return;
+provider1.on("sync", (synced: boolean) => {
+  if (synced) {
+    syncStatus1 = "connected";
+    notifySyncListeners();
+  }
+});
 
-  syncStatus2 = "syncing";
+/**
+ * Listen to provider2 connection status
+ */
+provider2.on("status", ({ status }: { status: string }) => {
+  syncStatus2 = status === "connected" ? "connected" : "offline";
   notifySyncListeners();
+});
 
-  setTimeout(() => {
-    doc1.transact(() => {
-      Y.applyUpdate(doc1, update);
-    }, RELAY_ORIGIN);
-
+provider2.on("sync", (synced: boolean) => {
+  if (synced) {
     syncStatus2 = "connected";
     notifySyncListeners();
-  }, 100);
+  }
 });
 
 // ============================================================================
@@ -140,6 +131,37 @@ export function subscribeSyncStatus(listener: () => void): () => void {
  */
 export function getSyncStatus(clientId: 1 | 2): SyncStatus {
   return clientId === 1 ? syncStatus1 : syncStatus2;
+}
+
+/**
+ * Get the provider for a specific client
+ */
+export function getProvider(clientId: 1 | 2): YProvider {
+  return clientId === 1 ? provider1 : provider2;
+}
+
+/**
+ * Connect a client to the server
+ */
+export function connectClient(clientId: 1 | 2): void {
+  const provider = getProvider(clientId);
+  provider.connect();
+}
+
+/**
+ * Disconnect a client from the server
+ */
+export function disconnectClient(clientId: 1 | 2): void {
+  const provider = getProvider(clientId);
+  provider.disconnect();
+}
+
+/**
+ * Check if a client is connected
+ */
+export function isClientConnected(clientId: 1 | 2): boolean {
+  const provider = getProvider(clientId);
+  return provider.wsconnected;
 }
 
 // ============================================================================

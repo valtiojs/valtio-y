@@ -1,4 +1,4 @@
-import { Plus, Trash2, WifiOff, Wifi } from "lucide-react";
+import { Plus, Trash2, WifiOff, Wifi, Undo2, Redo2 } from "lucide-react";
 import { STICKY_NOTE_COLORS, type SyncStatus } from "../types";
 
 interface ToolbarProps {
@@ -8,6 +8,10 @@ interface ToolbarProps {
   onColorChange: (color: string) => void;
   syncStatus: SyncStatus;
   hasSelection: boolean;
+  onUndo: () => void;
+  onRedo: () => void;
+  canUndo: boolean;
+  canRedo: boolean;
 }
 
 export function Toolbar({
@@ -17,49 +21,84 @@ export function Toolbar({
   onColorChange,
   syncStatus,
   hasSelection,
+  onUndo,
+  onRedo,
+  canUndo,
+  canRedo,
 }: ToolbarProps) {
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl py-3 px-4 flex items-center gap-3 z-50 border border-gray-200/50">
+    <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl py-3 px-3 flex flex-wrap md:flex-nowrap items-center justify-center gap-2 gap-y-2 z-50 border border-gray-200/50 w-[calc(100vw-2rem)] md:w-auto max-w-[calc(100vw-2rem)]">
       {/* Add Note Button */}
       <button
         onClick={onAddNote}
-        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all font-medium shadow-sm hover:shadow-md text-sm flex-shrink-0"
+        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all font-medium shadow-sm hover:shadow-md text-sm shrink-0"
       >
         <Plus size={18} strokeWidth={2.5} />
         Add Note
       </button>
 
       {/* Divider */}
-      <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
+      <div className="w-px h-8 bg-gray-200 shrink-0" />
 
       {/* Color Selector */}
-      <div className="flex items-center gap-1.5 px-2">
-        <div className="flex gap-1.5">
-          {STICKY_NOTE_COLORS.map((color) => (
-            <button
-              key={color.value}
-              onClick={() => onColorChange(color.value)}
-              className={`w-7 h-7 rounded-lg transition-all hover:scale-105 shadow-sm flex-shrink-0 ${
-                selectedColor === color.value
-                  ? "ring-2 ring-gray-800 scale-105"
-                  : "hover:shadow-md opacity-80 hover:opacity-100"
-              }`}
-              style={{ backgroundColor: color.value }}
-              title={color.name}
-              aria-label={`Select ${color.name} color`}
-            />
-          ))}
-        </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {STICKY_NOTE_COLORS.map((color) => (
+          <button
+            key={color.value}
+            onClick={() => onColorChange(color.value)}
+            className={`w-7 h-7 rounded-lg transition-all hover:scale-105 shadow-sm shrink-0 ${
+              selectedColor === color.value
+                ? "ring-2 ring-gray-800 scale-105"
+                : "hover:shadow-md opacity-80 hover:opacity-100"
+            }`}
+            style={{ backgroundColor: color.value }}
+            title={color.name}
+            aria-label={`Select ${color.name} color`}
+          />
+        ))}
       </div>
 
       {/* Divider */}
-      <div className="w-px h-8 bg-gray-200" />
+      <div className="w-px h-8 bg-gray-200 shrink-0" />
+
+      {/* Undo/Redo Buttons */}
+      <div className="flex items-center gap-1 shrink-0">
+        <button
+          onClick={onUndo}
+          disabled={!canUndo}
+          className={`p-2 rounded-lg transition-all ${
+            canUndo
+              ? "text-gray-700 hover:bg-gray-100 active:scale-95"
+              : "text-gray-300 cursor-not-allowed"
+          }`}
+          title="Undo (Ctrl+Z / Cmd+Z)"
+          aria-label="Undo"
+        >
+          <Undo2 size={18} strokeWidth={2.5} />
+        </button>
+        <button
+          onClick={onRedo}
+          disabled={!canRedo}
+          className={`p-2 rounded-lg transition-all ${
+            canRedo
+              ? "text-gray-700 hover:bg-gray-100 active:scale-95"
+              : "text-gray-300 cursor-not-allowed"
+          }`}
+          title="Redo (Ctrl+Y / Cmd+Shift+Z)"
+          aria-label="Redo"
+        >
+          <Redo2 size={18} strokeWidth={2.5} />
+        </button>
+      </div>
+
+      {/* Divider */}
+      <div className="w-px h-8 bg-gray-200 shrink-0" />
 
       {/* Delete Button */}
       <button
         onClick={onDeleteNote}
         disabled={!hasSelection}
-        className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium text-sm ${
+        className={`flex items-center gap-2 px-4 py-2 rounded-xl transition-all font-medium text-sm shrink-0 ${
           hasSelection
             ? "bg-red-500 text-white hover:bg-red-600 active:scale-95 shadow-sm hover:shadow-md"
             : "bg-gray-100 text-gray-400 cursor-not-allowed"
@@ -72,10 +111,10 @@ export function Toolbar({
       </button>
 
       {/* Divider */}
-      <div className="w-px h-8 bg-gray-200" />
+      <div className="w-px h-8 bg-gray-200 shrink-0" />
 
       {/* Sync Status */}
-      <div className="flex items-center px-2">
+      <div className="flex items-center shrink-0">
         {syncStatus === "connected" ? (
           <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 rounded-lg">
             <Wifi size={16} className="text-green-600" strokeWidth={2.5} />

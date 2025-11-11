@@ -56,25 +56,40 @@ state.todos[0].done = true;
 
 That's it! State is now synchronized via Yjs. Add a provider to sync across clients.
 
+## Examples
+
+Live collaborative demos - open in multiple tabs to see real-time sync:
+
+1. **[Realtime Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Cloudflare Durable Object demo showing collaborative sticky notes in production.
+
+2. **[Whiteboard](https://valtio-y-whiteboard.agcty.workers.dev)** - Collaborative whiteboard demo with drawing and shapes.
+
+3. **[Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple)** - Single-file example with detailed comments. Best for learning core concepts (CRUD, nested objects, reordering, offline/online simulation).
+
+4. **[Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Minimal object synchronization with WebSocket provider.
+
+5. **[Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Array operations (push, pop, splice) with WebSocket sync.
+
+6. **[Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)** - Production-ready app with drag-and-drop, bulk operations, filtering (React, Tailwind, dnd-kit).
+
+7. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
+
 ## Collaboration Setup
 
-Connect multiple clients with any Yjs provider:
+Connect any Yjs provider to sync across clients:
 
 ```js
 import { WebsocketProvider } from "y-websocket";
 
-const ydoc = new Y.Doc();
-const provider = new WebsocketProvider("ws://localhost:1234", "my-room", ydoc);
-
-const { proxy: state } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("state"),
-});
-
-// Now all clients in "my-room" share the same state!
-state.message = "Hello from client 1";
+const provider = new WebsocketProvider(
+  "ws://localhost:1234",
+  "room-name",
+  ydoc
+);
+// That's it—state syncs automatically
 ```
 
-Supported providers: [y-websocket](https://github.com/yjs/y-websocket), [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver), [y-webrtc](https://github.com/yjs/y-webrtc), [y-indexeddb](https://github.com/yjs/y-indexeddb), and any Yjs provider.
+Works with any provider: [y-websocket](https://github.com/yjs/y-websocket), [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver) (great for Cloudflare), [y-webrtc](https://github.com/yjs/y-webrtc), [y-indexeddb](https://github.com/yjs/y-indexeddb), etc.
 
 ## Common Operations
 
@@ -114,14 +129,18 @@ state.data.deeply.nested.value = 42;
 ### Undo/Redo
 
 ```js
-const { proxy: state, undo, redo } = createYjsProxy(ydoc, {
+const {
+  proxy: state,
+  undo,
+  redo,
+} = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
-  undoManager: true  // Enable with defaults
+  undoManager: true, // Enable with defaults
 });
 
 state.count = 1;
-undo();  // state.count -> undefined
-redo();  // state.count -> 1
+undo(); // state.count -> undefined
+redo(); // state.count -> 1
 ```
 
 See [guides/undo-redo.md](../guides/undo-redo.md) for full documentation.
@@ -171,14 +190,6 @@ valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Soli
 - Use `array.splice()` instead of `array.length = N`
 
 For text editors, use native Yjs integrations: [Lexical](https://lexical.dev/), [TipTap](https://tiptap.dev/), or [ProseMirror](https://prosemirror.net/).
-
-## Examples
-
-See [examples on GitHub](https://github.com/valtiojs/valtio-y/tree/main/examples):
-
-- [Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple) - Best for learning
-- [Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)
-- [Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)
 
 ## API Reference
 
