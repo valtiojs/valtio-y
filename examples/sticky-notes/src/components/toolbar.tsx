@@ -27,18 +27,18 @@ export function Toolbar({
   canRedo,
 }: ToolbarProps) {
   return (
-    <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl py-3 px-4 flex items-center gap-3 z-50 border border-gray-200/50">
+    <div className="fixed top-6 left-1/2 -translate-x-1/2 bg-white/95 backdrop-blur-md rounded-2xl shadow-xl py-3 px-3 sm:px-4 flex flex-wrap md:flex-nowrap items-center justify-center gap-2 md:gap-3 gap-y-2 z-50 border border-gray-200/50 w-[calc(100vw-2rem)] md:w-auto max-w-[calc(100vw-2rem)]">
       {/* Add Note Button */}
       <button
         onClick={onAddNote}
-        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all font-medium shadow-sm hover:shadow-md text-sm flex-shrink-0"
+        className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 active:scale-95 transition-all font-medium shadow-sm hover:shadow-md text-sm shrink-0"
       >
         <Plus size={18} strokeWidth={2.5} />
         Add Note
       </button>
 
       {/* Divider */}
-      <div className="w-px h-8 bg-gray-200 flex-shrink-0" />
+      <div className="w-px h-8 bg-gray-200 shrink-0" />
 
       {/* Color Selector */}
       <div className="flex items-center gap-1.5 px-2">
@@ -47,7 +47,7 @@ export function Toolbar({
             <button
               key={color.value}
               onClick={() => onColorChange(color.value)}
-              className={`w-7 h-7 rounded-lg transition-all hover:scale-105 shadow-sm flex-shrink-0 ${
+              className={`w-7 h-7 rounded-lg transition-all hover:scale-105 shadow-sm shrink-0 ${
                 selectedColor === color.value
                   ? "ring-2 ring-gray-800 scale-105"
                   : "hover:shadow-md opacity-80 hover:opacity-100"
