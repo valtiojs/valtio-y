@@ -157,11 +157,11 @@ export function getSyncStatus(): SyncStatus {
  */
 export function getAwarenessUsers(
   awareness: awarenessProtocol.Awareness,
-): any[] {
-  const users: any[] = [];
-  awareness.getStates().forEach((state: any, clientId: number) => {
+): User[] {
+  const users: User[] = [];
+  awareness.getStates().forEach((state: unknown, clientId: number) => {
     if (state && clientId !== awareness.clientID) {
-      users.push({ ...state, clientId });
+      users.push(state as User);
     }
   });
   return users;

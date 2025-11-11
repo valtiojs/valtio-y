@@ -6,12 +6,20 @@ interface CursorProps {
   y: number;
   color: string;
   name: string;
+  position?: "absolute" | "fixed";
 }
 
-export function Cursor({ x, y, color, name }: CursorProps) {
+export function Cursor({
+  x,
+  y,
+  color,
+  name,
+  position = "absolute",
+}: CursorProps) {
   return (
     <motion.div
-      className="absolute pointer-events-none z-[9999]"
+      className={`${position} pointer-events-none z-[9999]`}
+      style={{ left: 0, top: 0 }}
       animate={{
         x: x - 2,
         y: y - 2,

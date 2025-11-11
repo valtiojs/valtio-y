@@ -13,7 +13,15 @@ import getStroke from "perfect-freehand";
 import { Eraser } from "lucide-react";
 import { trackOperation, getAwarenessUsers } from "../yjs-setup";
 import { Cursor } from "./cursor";
-import type { Point, Tool, Shape, PathShape, AppState } from "../types";
+import type {
+  Point,
+  Tool,
+  Shape,
+  PathShape,
+  AppState,
+  CursorState,
+  User,
+} from "../types";
 import type * as awarenessProtocol from "y-protocols/awareness";
 
 interface CanvasProps {
@@ -32,6 +40,12 @@ interface CanvasProps {
 // Type for ghost shape (in-progress drawing)
 type GhostShape = PathShape | RectShape | CircleShape;
 
+const CANVAS_WIDTH = 1200;
+const CANVAS_HEIGHT = 800;
+
+const clamp = (value: number, min: number, max: number) =>
+  Math.min(max, Math.max(min, value));
+
 export function Canvas({
   tool,
   color,
@@ -48,12 +62,20 @@ export function Canvas({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [isDrawing, setIsDrawing] = useState(false);
   const [ghostShape, setGhostShape] = useState<GhostShape | null>(null);
-  const [awarenessUsers, setAwarenessUsers] = useState<any[]>([]);
+  const [awarenessUsers, setAwarenessUsers] = useState<User[]>([]);
   const commitTimerRef = useRef<number | null>(null);
   const [isDragging, setIsDragging] = useState(false);
   const [dragOffset, setDragOffset] = useState<Point>({ x: 0, y: 0 });
   const [eraserScreenPos, setEraserScreenPos] = useState<Point | null>(null);
-  const [canvasOffset, setCanvasOffset] = useState<Point>({ x: 0, y: 0 });
+  const canvasMetricsRef = useRef({
+    left: 0,
+    top: 0,
+    width: CANVAS_WIDTH,
+    height: CANVAS_HEIGHT,
+    scaleX: 1,
+    scaleY: 1,
+  });
+  const [canvasViewport, setCanvasViewport] = useState(canvasMetricsRef.current);
   const eraserRadius = 20; // Size of the eraser cursor
 
   // Update awareness users on change
@@ -70,42 +92,56 @@ export function Canvas({
     };
   }, [awareness]);
 
-  // Update canvas offset for cursor positioning (updates on zoom/resize/scroll)
-  useEffect(() => {
-    const updateOffset = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
+  const updateCanvasViewport = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
 
-      const rect = canvas.getBoundingClientRect();
-      const parentRect = canvas.parentElement?.getBoundingClientRect();
-      if (!parentRect) return;
+    const rect = canvas.getBoundingClientRect();
+    const width = rect.width || CANVAS_WIDTH;
+    const height = rect.height || CANVAS_HEIGHT;
+    const scaleX = canvas.width ? rect.width / canvas.width : 1;
+    const scaleY = canvas.height ? rect.height / canvas.height : 1;
 
-      setCanvasOffset({
-        x: rect.left - parentRect.left,
-        y: rect.top - parentRect.top,
-      });
+    const nextMetrics = {
+      left: rect.left,
+      top: rect.top,
+      width,
+      height,
+      scaleX: scaleX || 1,
+      scaleY: scaleY || 1,
     };
 
-    updateOffset();
+    canvasMetricsRef.current = nextMetrics;
+    setCanvasViewport(nextMetrics);
+  }, []);
 
-    // Update on resize, scroll, and zoom changes
-    window.addEventListener("resize", updateOffset);
-    window.addEventListener("scroll", updateOffset, true);
+  useEffect(() => {
+    updateCanvasViewport();
+
+    window.addEventListener("resize", updateCanvasViewport);
+    window.addEventListener("scroll", updateCanvasViewport, true);
 
     const canvas = canvasRef.current;
-    const parent = canvas?.parentElement;
-    if (!canvas || !parent) return;
-
-    const resizeObserver = new ResizeObserver(updateOffset);
-    resizeObserver.observe(canvas);
-    resizeObserver.observe(parent);
+    const resizeObserver = canvas
+      ? new ResizeObserver(updateCanvasViewport)
+      : null;
+    if (canvas && resizeObserver) {
+      resizeObserver.observe(canvas);
+    }
 
     return () => {
-      window.removeEventListener("resize", updateOffset);
-      window.removeEventListener("scroll", updateOffset, true);
-      resizeObserver.disconnect();
+      window.removeEventListener("resize", updateCanvasViewport);
+      window.removeEventListener("scroll", updateCanvasViewport, true);
+      if (resizeObserver && canvas) {
+        resizeObserver.unobserve(canvas);
+        resizeObserver.disconnect();
+      }
     };
-  }, [zoom]);
+  }, [updateCanvasViewport]);
+
+  useEffect(() => {
+    updateCanvasViewport();
+  }, [updateCanvasViewport, zoom]);
 
   // Convert screen coordinates to canvas coordinates
   const getCanvasPoint = useCallback(
@@ -114,15 +150,16 @@ export function Canvas({
       if (!canvas) return { x: 0, y: 0 };
 
       const rect = canvas.getBoundingClientRect();
-      const scale = zoom / 100;
+      const { scaleX, scaleY } = canvasMetricsRef.current;
+      const effectiveScaleX = scaleX || 1;
+      const effectiveScaleY = scaleY || 1;
 
-      // Account for zoom scaling
       return {
-        x: (e.clientX - rect.left) / scale,
-        y: (e.clientY - rect.top) / scale,
+        x: (e.clientX - rect.left) / effectiveScaleX,
+        y: (e.clientY - rect.top) / effectiveScaleY,
       };
     },
-    [zoom],
+    [],
   );
 
   // Commit the current ghost shape to the CRDT
@@ -396,8 +433,17 @@ export function Canvas({
 
       // Update cursor position in awareness (ephemeral)
       const currentState = awareness.getLocalState();
-      if (currentState) {
-        awareness.setLocalStateField("cursor", { x: point.x, y: point.y });
+      const canvas = canvasRef.current;
+      if (currentState && canvas) {
+        const normalizedX = clamp(point.x / canvas.width, 0, 1);
+        const normalizedY = clamp(point.y / canvas.height, 0, 1);
+
+        awareness.setLocalStateField("cursor", {
+          x: point.x,
+          y: point.y,
+          normalizedX,
+          normalizedY,
+        } satisfies CursorState);
       }
 
       // Track eraser position for rendering
@@ -587,8 +633,8 @@ export function Canvas({
     <div className="relative">
       <canvas
         ref={canvasRef}
-        width={1200}
-        height={800}
+        width={CANVAS_WIDTH}
+        height={CANVAS_HEIGHT}
         className={`border border-gray-300 rounded-lg bg-white touch-none ${
           tool === "select"
             ? isDragging
@@ -707,24 +753,41 @@ export function Canvas({
         </div>
       )}
 
-      {/* Other users' cursors - React-based with animation */}
+      {/* Other users' cursors - render in viewport space for perfect alignment */}
       {awarenessUsers.map((user) => {
-        if (!user.cursor) return null;
+        const cursor = user.cursor;
+        if (!cursor) return null;
 
-        const scale = zoom / 100;
+        const canvas = canvasRef.current;
+        if (!canvas) return null;
 
-        // Convert canvas coordinates (0-1200, 0-800) to coordinates relative to parent div
-        // Account for canvas position within parent and zoom scaling
-        const x = canvasOffset.x + user.cursor.x * scale;
-        const y = canvasOffset.y + user.cursor.y * scale;
+        const hasNormalized =
+          typeof cursor.normalizedX === "number" &&
+          typeof cursor.normalizedY === "number";
+
+        const baseWidth = canvas.width || CANVAS_WIDTH;
+        const baseHeight = canvas.height || CANVAS_HEIGHT;
+
+        const normalizedX = hasNormalized
+          ? clamp(cursor.normalizedX, 0, 1)
+          : clamp(cursor.x / baseWidth, 0, 1);
+        const normalizedY = hasNormalized
+          ? clamp(cursor.normalizedY, 0, 1)
+          : clamp(cursor.y / baseHeight, 0, 1);
+
+        const screenX =
+          canvasViewport.left + normalizedX * canvasViewport.width;
+        const screenY =
+          canvasViewport.top + normalizedY * canvasViewport.height;
 
         return (
           <Cursor
             key={user.id}
-            x={x}
-            y={y}
+            x={screenX}
+            y={screenY}
             color={user.color}
             name={user.name}
+            position="fixed"
           />
         );
       })}

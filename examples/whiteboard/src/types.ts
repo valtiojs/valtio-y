@@ -61,11 +61,18 @@ export type Shape = PathShape | RectShape | CircleShape;
 /**
  * User information and cursor position
  */
+export type CursorState = {
+  x: number;
+  y: number;
+  normalizedX: number;
+  normalizedY: number;
+};
+
 export type User = {
   id: string;
   name: string;
   color: string;
-  cursor?: Point;
+  cursor?: CursorState | null;
   selection: string[]; // IDs of selected shapes
   viewBox?: {
     x: number;
