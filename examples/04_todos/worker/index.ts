@@ -82,15 +82,15 @@ const INITIAL_TODOS: TodoSeed[] = [
     ],
   },
   {
-    text: "Demo mode - room resets every 30 minutes ⏰",
+    text: "Demo mode - all rooms reset every 30 minutes ⏰",
     completed: false,
     children: [
       {
-        text: "This keeps the default room clean for new visitors",
+        text: "This keeps all rooms clean for demonstrations",
         completed: false,
       },
       {
-        text: "Your changes are safe in custom rooms (#room-name)",
+        text: "All changes will be deleted after 30 minutes",
         completed: false,
       },
       { text: "Feel free to experiment!", completed: false },
