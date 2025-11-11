@@ -764,11 +764,13 @@ export function Canvas({
         const baseX =
           typeof cursor.x === "number"
             ? cursor.x
-            : clamp(cursor.normalizedX ?? 0, 0, 1) * (canvas.width || CANVAS_WIDTH);
+            : clamp(cursor.normalizedX ?? 0, 0, 1) *
+              (canvas.width || CANVAS_WIDTH);
         const baseY =
           typeof cursor.y === "number"
             ? cursor.y
-            : clamp(cursor.normalizedY ?? 0, 0, 1) * (canvas.height || CANVAS_HEIGHT);
+            : clamp(cursor.normalizedY ?? 0, 0, 1) *
+              (canvas.height || CANVAS_HEIGHT);
 
         return (
           <Cursor
