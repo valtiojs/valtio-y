@@ -8,13 +8,18 @@ const CLEANUP_INTERVAL_MS = import.meta.env.DEV ? 60 * 1000 : 30 * 60 * 1000;
 // Block letters spelling "valtio-y" vertically in the air (viewed from the side)
 // Each letter is 5 blocks tall, readable from player's perspective
 const INITIAL_CUBES: [number, number, number][] = [
-  // V (x: -20 to -18)
-  [-20, 3, -10],
-  [-20, 4, -10],
+  // V (x: -20 to -16)
   [-20, 5, -10],
+  [-20, 4, -10],
+  [-20, 3, -10],
   [-19, 2, -10],
+  [-18, 1, -10],
+  [-17, 2, -10],
+  [-16, 3, -10],
+  [-16, 4, -10],
+  [-16, 5, -10],
 
-  // A (x: -16 to -14)
+  // A (x: -14 to -12)
   [-16, 1, -10],
   [-16, 2, -10],
   [-16, 3, -10],
