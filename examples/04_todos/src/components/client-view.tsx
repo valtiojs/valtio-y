@@ -17,7 +17,11 @@ import { useState } from "react";
 import { useSnapshot } from "valtio";
 import { Plus, Circle } from "lucide-react";
 import { AnimatePresence, Reorder } from "motion/react";
-import type { TodoItem as TodoItemType, AppState } from "../types";
+import type {
+  TodoItem as TodoItemType,
+  AppState,
+  SyncStatus as SyncStatusType,
+} from "../types";
 import { countTodos, countCompletedTodos } from "../utils";
 import { SyncStatus } from "./sync-status";
 import { TodoItem } from "./todo-item";
@@ -25,9 +29,11 @@ import { TodoItem } from "./todo-item";
 interface ClientViewProps {
   /** The valtio-y proxy to read from (via useSnapshot) and write to */
   stateProxy: AppState;
+  /** Current sync status */
+  syncStatus: SyncStatusType;
 }
 
-export function ClientView({ stateProxy }: ClientViewProps) {
+export function ClientView({ stateProxy, syncStatus }: ClientViewProps) {
   const snap = useSnapshot(stateProxy);
 
   const [newTodoText, setNewTodoText] = useState("");
@@ -38,6 +44,11 @@ export function ClientView({ stateProxy }: ClientViewProps) {
    */
   function addTodo() {
     if (!newTodoText.trim()) return;
+
+    // Initialize todos array if it doesn't exist
+    if (!stateProxy.todos) {
+      stateProxy.todos = [];
+    }
 
     const newTodo: TodoItemType = {
       id: `${Date.now()}-${Math.random()}`,
@@ -94,7 +105,7 @@ export function ClientView({ stateProxy }: ClientViewProps) {
               </span>
             </p>
           </div>
-          <SyncStatus />
+          <SyncStatus status={syncStatus} />
         </div>
       </div>
 

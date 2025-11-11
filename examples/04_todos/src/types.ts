@@ -28,4 +28,8 @@ export type AppState = {
 /**
  * Sync status for visual feedback to users
  */
-export type SyncStatus = "connected" | "syncing" | "offline";
+export type SyncStatus =
+  | "connecting"
+  | "connected"
+  | "syncing"
+  | "disconnected";
