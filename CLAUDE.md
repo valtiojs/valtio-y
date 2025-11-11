@@ -230,6 +230,7 @@ Closes #42
    ```
 
 5. **PR Title** must follow conventional commits with scope (enforced by CI):
+
    ```
    feat(core): add PartyKit provider support
    fix(docs): correct installation instructions
@@ -245,21 +246,26 @@ This project uses **Changesets** with **Turbo** to manage versioning and release
 **How it works:**
 
 1. **Create a changeset** - When making changes, run `bun changeset` to create a changeset file:
+
    ```bash
    bun changeset
    ```
+
    This prompts you to:
+
    - Select the packages to version (usually `valtio-y`)
    - Choose the version bump type (major, minor, patch)
    - Write a user-focused description for the changelog
 
 2. **Commit the changeset** - The changeset file (`.changeset/*.md`) should be committed with your changes:
+
    ```bash
    git add .changeset/
    git commit -m "feat(core): add new feature"
    ```
 
 3. **Version PR created** - When merged to main, the Release workflow automatically creates/updates a "Version Packages" PR with:
+
    - Runs: `bun run version` → `changeset version && bun update`
    - Updates package.json versions and CHANGELOG.md files
    - **Bun workaround**: `bun update` fixes the lockfile to resolve `workspace:*` references
@@ -279,12 +285,14 @@ This project uses **Changesets** with **Turbo** to manage versioning and release
 Create a changeset ONLY for changes that affect the published npm package:
 
 ✅ **Need a changeset:**
+
 - `feat(core)` - New features, APIs, exports
 - `fix(core)` - Bug fixes users will notice
 - `perf(core)` - Performance improvements
 - Breaking changes to published APIs
 
 ❌ **NO changeset needed:**
+
 - `chore(ci)` - CI/CD, workflows, build config
 - `chore(repo)` - Dev tooling, linting, formatting
 - `feat(examples)` - Examples don't get published
@@ -325,6 +333,7 @@ git commit -m "fix(core): resolve array sync race condition"
 To make a new package publishable:
 
 1. Add a `publish` script to the package's `package.json`:
+
    ```json
    {
      "scripts": {
