@@ -10,6 +10,10 @@ const CLEANUP_INTERVAL_MS = 30 * 60 * 1000;
  * YServer handles all routing, WebSocket upgrades, and synchronization automatically.
  */
 export class YDocServer extends YServer<Env> {
+  static options = {
+    hibernate: true,
+  };
+
   // Configure periodic snapshots - saves every 2s or after 10s max
   static callbackOptions = {
     debounceWait: 2000, // Wait 2s after last update
