@@ -6,7 +6,8 @@ interface CursorProps {
   y: number;
   color: string;
   name: string;
-  position?: "absolute" | "fixed";
+  scaleX?: number;
+  scaleY?: number;
 }
 
 export function Cursor({
@@ -14,11 +15,15 @@ export function Cursor({
   y,
   color,
   name,
-  position = "absolute",
+  scaleX = 1,
+  scaleY = 1,
 }: CursorProps) {
+  const inverseScaleX = scaleX !== 0 ? 1 / scaleX : 1;
+  const inverseScaleY = scaleY !== 0 ? 1 / scaleY : 1;
+
   return (
     <motion.div
-      className={`${position} pointer-events-none z-[9999]`}
+      className="absolute pointer-events-none z-[9999]"
       style={{ left: 0, top: 0 }}
       animate={{
         x: x - 2,
@@ -31,18 +36,25 @@ export function Cursor({
         mass: 0.5,
       }}
     >
-      <MousePointer2
-        size={20}
-        style={{ color }}
-        className="drop-shadow-md"
-        fill={color}
-        strokeWidth={2}
-      />
       <div
-        className="mt-1 ml-2 px-2.5 py-1 rounded-full text-white text-xs font-semibold whitespace-nowrap shadow-lg opacity-90"
-        style={{ backgroundColor: color }}
+        style={{
+          transform: `scale(${inverseScaleX}, ${inverseScaleY})`,
+          transformOrigin: "top left",
+        }}
       >
-        {name}
+        <MousePointer2
+          size={20}
+          style={{ color }}
+          className="drop-shadow-md"
+          fill={color}
+          strokeWidth={2}
+        />
+        <div
+          className="mt-1 ml-2 px-2.5 py-1 rounded-full text-white text-xs font-semibold whitespace-nowrap shadow-lg opacity-90"
+          style={{ backgroundColor: color }}
+        >
+          {name}
+        </div>
       </div>
     </motion.div>
   );

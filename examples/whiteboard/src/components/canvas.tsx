@@ -75,7 +75,7 @@ export function Canvas({
     scaleX: 1,
     scaleY: 1,
   });
-  const [canvasViewport, setCanvasViewport] = useState(canvasMetricsRef.current);
+  const [canvasMetrics, setCanvasMetrics] = useState(canvasMetricsRef.current);
   const eraserRadius = 20; // Size of the eraser cursor
 
   // Update awareness users on change
@@ -112,7 +112,7 @@ export function Canvas({
     };
 
     canvasMetricsRef.current = nextMetrics;
-    setCanvasViewport(nextMetrics);
+    setCanvasMetrics(nextMetrics);
   }, []);
 
   useEffect(() => {
@@ -761,33 +761,24 @@ export function Canvas({
         const canvas = canvasRef.current;
         if (!canvas) return null;
 
-        const hasNormalized =
-          typeof cursor.normalizedX === "number" &&
-          typeof cursor.normalizedY === "number";
-
-        const baseWidth = canvas.width || CANVAS_WIDTH;
-        const baseHeight = canvas.height || CANVAS_HEIGHT;
-
-        const normalizedX = hasNormalized
-          ? clamp(cursor.normalizedX, 0, 1)
-          : clamp(cursor.x / baseWidth, 0, 1);
-        const normalizedY = hasNormalized
-          ? clamp(cursor.normalizedY, 0, 1)
-          : clamp(cursor.y / baseHeight, 0, 1);
-
-        const screenX =
-          canvasViewport.left + normalizedX * canvasViewport.width;
-        const screenY =
-          canvasViewport.top + normalizedY * canvasViewport.height;
+        const baseX =
+          typeof cursor.x === "number"
+            ? cursor.x
+            : clamp(cursor.normalizedX ?? 0, 0, 1) * (canvas.width || CANVAS_WIDTH);
+        const baseY =
+          typeof cursor.y === "number"
+            ? cursor.y
+            : clamp(cursor.normalizedY ?? 0, 0, 1) * (canvas.height || CANVAS_HEIGHT);
 
         return (
           <Cursor
             key={user.id}
-            x={screenX}
-            y={screenY}
+            x={baseX}
+            y={baseY}
             color={user.color}
             name={user.name}
-            position="fixed"
+            scaleX={canvasMetrics.scaleX}
+            scaleY={canvasMetrics.scaleY}
           />
         );
       })}
