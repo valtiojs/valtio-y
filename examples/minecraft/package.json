@@ -18,15 +18,15 @@
     "yjs": "^13.6.27"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "^1.14.0",
-    "@cloudflare/workers-types": "^4.20251109.0",
+    "@cloudflare/vite-plugin": "^1.14.1",
+    "@cloudflare/workers-types": "^4.20251111.0",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@types/three": "latest",
     "@vitejs/plugin-react": "^5.1.0",
     "typescript": "latest",
     "vite": "^7.2.2",
-    "wrangler": "^4.46.0"
+    "wrangler": "^4.47.0"
   },
   "scripts": {
     "dev": "vite",
