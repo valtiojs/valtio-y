@@ -99,6 +99,10 @@ const INITIAL_TODOS: TodoSeed[] = [
 ];
 
 export class YDocServer extends YServer<Env> {
+  static options = {
+    hibernate: true,
+  };
+
   /**
    * Initialize document with sample todos if empty
    * Called once when a client connects to the server
