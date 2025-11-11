@@ -12,6 +12,7 @@
     "react-dom": "catalog:",
     "valtio": "catalog:",
     "valtio-y": "workspace:*",
+    "y-partyserver": "^0.0.51",
     "yjs": "catalog:"
   },
   "devDependencies": {
