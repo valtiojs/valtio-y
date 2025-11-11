@@ -15,7 +15,7 @@
  * - Deeply nested updates propagate correctly
  */
 
-import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   CheckCircle2,
@@ -232,104 +232,98 @@ export function TodoItem({
           </button>
         )}
 
-          {/* Selection checkbox */}
-          {selectionMode && (
-            <button
-              onClick={() => onToggleSelect(item.id)}
-              className="mt-0.5 flex-shrink-0 text-slate-400 hover:text-slate-700 transition-colors"
-              aria-label={isSelected ? "Deselect task" : "Select task"}
-            >
-              {isSelected ? (
-                <CheckSquare size={20} className={accentColor} />
-              ) : (
-                <Square size={20} />
-              )}
-            </button>
-          )}
-
-          {/* Expand/Collapse */}
+        {/* Selection checkbox */}
+        {selectionMode && (
           <button
-            onClick={() => setIsExpanded(!isExpanded)}
-            className={`mt-0.5 flex-shrink-0 text-slate-400 hover:text-slate-700 transition-colors ${
-              hasChildren ? "visible" : "invisible"
-            }`}
-            aria-label={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
-            aria-expanded={isExpanded}
-          >
-            {isExpanded ? (
-              <ChevronDown size={16} />
-            ) : (
-              <ChevronRight size={16} />
-            )}
-          </button>
-
-          {/* Complete checkbox */}
-          <button
-            onClick={toggleComplete}
+            onClick={() => onToggleSelect(item.id)}
             className="mt-0.5 flex-shrink-0 text-slate-400 hover:text-slate-700 transition-colors"
-            aria-label={
-              item.completed ? "Mark as incomplete" : "Mark as complete"
-            }
+            aria-label={isSelected ? "Deselect task" : "Select task"}
           >
-            {item.completed ? (
-              <CheckCircle2 size={20} className={accentColor} />
+            {isSelected ? (
+              <CheckSquare size={20} className={accentColor} />
             ) : (
-              <Circle size={20} />
+              <Square size={20} />
             )}
           </button>
+        )}
 
-          {/* Todo text (editable on double-click) */}
-          {isEditing ? (
-            <div className="flex-1 flex gap-2">
-              <input
-                ref={inputRef}
-                type="text"
-                value={editText}
-                onChange={(e) => setEditText(e.target.value)}
-                onKeyDown={handleKeyDown}
-                onBlur={handleEditSave}
-                className="flex-1 px-3 py-1.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent text-sm"
-                aria-label="Edit task text"
-              />
-            </div>
+        {/* Expand/Collapse */}
+        <button
+          onClick={() => setIsExpanded(!isExpanded)}
+          className={`mt-0.5 flex-shrink-0 text-slate-400 hover:text-slate-700 transition-colors ${
+            hasChildren ? "visible" : "invisible"
+          }`}
+          aria-label={isExpanded ? "Collapse subtasks" : "Expand subtasks"}
+          aria-expanded={isExpanded}
+        >
+          {isExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+        </button>
+
+        {/* Complete checkbox */}
+        <button
+          onClick={toggleComplete}
+          className="mt-0.5 flex-shrink-0 text-slate-400 hover:text-slate-700 transition-colors"
+          aria-label={
+            item.completed ? "Mark as incomplete" : "Mark as complete"
+          }
+        >
+          {item.completed ? (
+            <CheckCircle2 size={20} className={accentColor} />
           ) : (
-            <div
-              onDoubleClick={handleEditStart}
-              className={`flex-1 cursor-pointer leading-relaxed ${
-                item.completed
-                  ? "text-slate-400 line-through"
-                  : "text-slate-700"
-              }`}
-              role="button"
-              tabIndex={0}
-              aria-label={`Task: ${item.text}. Double-click to edit`}
-            >
-              {item.text}
-            </div>
+            <Circle size={20} />
           )}
+        </button>
 
-          {/* Action buttons */}
-          {!selectionMode && (
-            <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-              <button
-                onClick={addSubtask}
-                className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
-                aria-label="Add subtask"
-                title="Add subtask"
-              >
-                <Plus size={15} />
-              </button>
-              <button
-                onClick={deleteTodo}
-                className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
-                aria-label="Delete task"
-                title="Delete"
-              >
-                <Trash2 size={15} />
-              </button>
-            </div>
-          )}
-        </div>
+        {/* Todo text (editable on double-click) */}
+        {isEditing ? (
+          <div className="flex-1 flex gap-2">
+            <input
+              ref={inputRef}
+              type="text"
+              value={editText}
+              onChange={(e) => setEditText(e.target.value)}
+              onKeyDown={handleKeyDown}
+              onBlur={handleEditSave}
+              className="flex-1 px-3 py-1.5 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-900 focus:border-transparent text-sm"
+              aria-label="Edit task text"
+            />
+          </div>
+        ) : (
+          <div
+            onDoubleClick={handleEditStart}
+            className={`flex-1 cursor-pointer leading-relaxed ${
+              item.completed ? "text-slate-400 line-through" : "text-slate-700"
+            }`}
+            role="button"
+            tabIndex={0}
+            aria-label={`Task: ${item.text}. Double-click to edit`}
+          >
+            {item.text}
+          </div>
+        )}
+
+        {/* Action buttons */}
+        {!selectionMode && (
+          <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+            <button
+              onClick={addSubtask}
+              className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-md transition-colors"
+              aria-label="Add subtask"
+              title="Add subtask"
+            >
+              <Plus size={15} />
+            </button>
+            <button
+              onClick={deleteTodo}
+              className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-md transition-colors"
+              aria-label="Delete task"
+              title="Delete"
+            >
+              <Trash2 size={15} />
+            </button>
+          </div>
+        )}
+      </div>
 
       {/* Recursive children rendering */}
       {hasChildren && isExpanded && (
