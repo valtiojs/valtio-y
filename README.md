@@ -141,7 +141,7 @@ Live collaborative demos - open in multiple tabs to see real-time sync:
 
 4. **[Todos App](https://valtio-y-todos.agcty.workers.dev)** - Live collaborative todo app demo.
 
-5. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
+5. **[Minecraft Clone](https://valtio-y-minecraft.agcty.workers.dev)** - Real-time multiplayer 3D game with Cloudflare Durable Objects sync (Three.js, valtio-y).
 
 ---
 
@@ -200,187 +200,72 @@ This forces synchronous updates instead of Valtio's default async batching. See 
 
 Core documentation for understanding and using valtio-y effectively:
 
-- **[Structuring Your App](./guides/structuring-your-app.md)** - How to organize state with `getRoot`
-- **[Core Concepts](./guides/concepts.md)** - Understand CRDTs and the valtio-y mental model
+- **[Getting Started](./guides/getting-started.md)** - Essential patterns for collaboration, initialization, and React integration
 - **[Basic Operations](./guides/basic-operations.md)** - Objects, arrays, and nested structures
+- **[Core Concepts](./guides/concepts.md)** - Understand CRDTs and the valtio-y mental model
+- **[Structuring Your App](./guides/structuring-your-app.md)** - How to organize state with `getRoot`
 - **[Undo/Redo](./guides/undo-redo.md)** - Implement undo/redo with Yjs UndoManager
 - **[Performance Guide](./guides/performance-guide.md)** - Batching, bulk operations, and optimization
 
 ---
 
-## Collaboration Setup
+## Common Patterns
 
-Connect any Yjs provider to sync across clients:
+### Setting Up Collaboration
 
-```js
-import { WebsocketProvider } from "y-websocket";
-
-const provider = new WebsocketProvider(
-  "ws://localhost:1234",
-  "room-name",
-  ydoc
-);
-// That's it—state syncs automatically
-```
-
-Works with any provider: [y-websocket](https://github.com/yjs/y-websocket), [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver) (great for Cloudflare), [y-webrtc](https://github.com/yjs/y-webrtc), [y-indexeddb](https://github.com/yjs/y-indexeddb), etc.
-
----
-
-## Recipes
-
-### Initializing state with network sync
-
-When using network providers, initialize state after the first sync to avoid overwriting remote data:
+Connect a Yjs provider to sync across clients:
 
 ```js
 import { WebsocketProvider } from "y-websocket";
 
-const ydoc = new Y.Doc();
 const provider = new WebsocketProvider("ws://localhost:1234", "room", ydoc);
-
-const { proxy: state, bootstrap } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("state"),
-});
-
-// Wait for sync, then safely initialize if empty
-provider.once("synced", () => {
-  bootstrap({
-    todos: [],
-    settings: { theme: "light" },
-  });
-  // Only writes if the document is empty
-});
+// State syncs automatically
 ```
 
-For local-first apps without network sync, direct assignment works fine:
+Works with [y-websocket](https://github.com/yjs/y-websocket), [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver), [y-webrtc](https://github.com/yjs/y-webrtc), [y-indexeddb](https://github.com/yjs/y-indexeddb), and more.
+
+**→ See [Getting Started Guide](./guides/getting-started.md) for initialization patterns and provider setup**
+
+### Working with State
 
 ```js
-// Just assign directly
-if (!state.todos) {
-  state.todos = [];
-}
-```
-
-### Array operations
-
-All standard JavaScript array methods work:
-
-```js
-// Add/remove items
+// Arrays - all standard methods work
 state.items.push(newItem);
-state.items.pop();
-state.items.unshift(firstItem);
-state.items.shift();
-
-// Modify by index
 state.items[0] = updatedItem;
-delete state.items[2]; // Removes element (no sparse arrays)
 
-// Splice for complex operations (recommended for resizing)
-state.items.splice(1, 2, replacement1, replacement2);
-state.items.splice(0); // Clear array (instead of: arr.length = 0)
-state.items.splice(5); // Truncate to 5 items (instead of: arr.length = 5)
-
-// Moving items
-const [item] = state.items.splice(2, 1); // Remove from index 2
-state.items.splice(0, 0, item); // Insert at index 0
-```
-
-### Object operations
-
-```js
-// Set properties
+// Objects - mutate naturally
 state.user.name = "Alice";
-state.settings = { theme: "dark", fontSize: 14 };
+state.settings = { theme: "dark" };
 
-// Delete properties
-delete state.user.temporaryFlag;
-
-// Nested updates
-state.data.deeply.nested.value = 42;
-
-// Replace entire nested object
-state.user.preferences = { ...newPreferences };
-```
-
-### Accessing state anywhere
-
-```js
-// Read current state (non-reactive)
-const currentCount = state.count;
-
-// Mutate from anywhere
+// Access anywhere (event handlers, timers, async functions)
 state.count++;
-
-// In event handlers, timers, etc.
-setTimeout(() => {
-  state.message = "Updated from timer";
-}, 1000);
 ```
+
+**→ See [Basic Operations](./guides/basic-operations.md) for arrays, objects, and nested structures**
 
 ### Undo/Redo
 
-Use Yjs's UndoManager:
-
 ```js
-import { UndoManager } from "yjs";
-
-const ydoc = new Y.Doc();
-const { proxy: state } = createYjsProxy(ydoc, {
+const {
+  proxy: state,
+  undo,
+  redo,
+} = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
+  undoManager: true, // Enable undo/redo
 });
 
-const undoManager = new UndoManager(ydoc.getMap("state"));
-
-// Perform some actions
-state.count = 1;
-state.count = 2;
-
-// Undo/redo
-undoManager.undo(); // state.count is now 1
-undoManager.redo(); // state.count is now 2
+undo(); // Undo last change
+redo(); // Redo
 ```
+
+**→ See [Undo/Redo Guide](./guides/undo-redo.md) for full integration with React and advanced patterns**
 
 ---
 
 ## Performance
 
-valtio-y is fast out of the box with automatic optimizations:
-
-### Automatic Batching
-
-Multiple mutations in the same tick are automatically batched:
-
-```js
-// These 100 operations become 1 network update
-for (let i = 0; i < 100; i++) {
-  state.count++;
-}
-// Results in a single Yjs transaction and one sync event
-```
-
-### Bulk Operations
-
-Large array operations are optimized automatically:
-
-```js
-// Optimized: spread syntax for bulk inserts
-state.items.push(...Array(1000).fill({ data: "x" }));
-state.items.unshift(...newItems);
-```
-
-### Lazy Materialization
-
-Nested objects create proxies on-demand:
-
-```js
-state.users = Array(10000).fill({ name: "User", data: {...} });
-// Fast initialization, proxies are created when accessed
-const user = state.users[0]; // Materializes this user only
-```
-
-**Performance characteristics:**
+valtio-y is fast out of the box with automatic batching, bulk operations, and lazy materialization. Typical performance characteristics:
 
 | Operation                   | Time     | Notes                      |
 | --------------------------- | -------- | -------------------------- |
@@ -388,6 +273,8 @@ const user = state.users[0]; // Materializes this user only
 | Bulk operations (100 items) | ~3-8ms   | Automatically optimized    |
 | Large arrays (1000 items)   | ~15-30ms | Bootstrap/import scenarios |
 | Deep nesting (10+ levels)   | ~2-4ms   | Lazy materialization helps |
+
+**→ See [Performance Guide](./guides/performance-guide.md) for benchmarking, optimization patterns, and React integration**
 
 ---
 
@@ -433,52 +320,21 @@ valtio-y currently focuses on collaborative data structures like maps, arrays, a
 
 ## Best Practices
 
-**Recommended:**
+**Do:**
 
-- Batch related updates in the same tick to keep them in one transaction
-- Use bulk array operations (`push(...items)`) for better performance
-- Initialize with `bootstrap()` when using network sync providers
+- Use `bootstrap()` when initializing state with network sync providers
+- Batch related updates in the same tick for better performance
+- Use bulk array operations (`push(...items)`) instead of loops
+- Cache references to deeply nested objects in tight loops
 - Store text fields as plain strings
-- Cache references to deeply nested objects in loops
 
-**Avoid:**
+**Don't:**
 
-- Using `undefined` (prefer `null` or delete the property)
-- Storing functions or class instances (they are not serializable)
-- Awaiting between mutations that should be batched together
-- Repeatedly accessing deep paths in loops without caching the reference
+- Use `undefined` values (use `null` or delete the property)
+- Store functions or class instances (not serializable)
+- Manipulate `array.length` directly (use `splice()` instead)
 
-### Advanced: Concurrent List Reordering
-
-For most apps, standard array operations work perfectly. For **high-frequency concurrent reordering** in collaborative lists (e.g., drag-and-drop task boards with multiple simultaneous users), consider fractional indexing:
-
-```js
-// Standard approach (works for most cases)
-const [task] = tasks.splice(from, 1);
-tasks.splice(to, 0, task);
-
-// Fractional indexing with strings (recommended for advanced cases)
-// Use libraries like fractional-indexing or lexicographic-fractional-indexing
-import { generateKeyBetween } from "fractional-indexing";
-
-type Task = { order: string, title: string };
-tasks[i].order = generateKeyBetween(
-  tasks[i - 1]?.order ?? null,
-  tasks[i + 1]?.order ?? null
-);
-const sorted = [...tasks].sort((a, b) => a.order.localeCompare(b.order));
-
-// Number-based approach (simpler but doesn't scale well)
-// Avoid for production - floating-point precision limits reordering depth
-type Task = { order: number, title: string };
-tasks[i].order = (tasks[i - 1].order + tasks[i + 1].order) / 2;
-```
-
-**When to use fractional indexing:** Large lists (>100 items) with multiple users frequently reordering
-**When NOT needed:** Single-user apps, small lists, or append-only scenarios
-**Why strings over numbers:** String-based fractional indexing scales infinitely without precision issues, while number-based approaches run into floating-point limits after repeated reordering.
-
-For more details, see the [architecture docs](./docs/architecture/)
+**→ See [Performance Guide](./guides/performance-guide.md) for advanced patterns like concurrent list reordering with fractional indexing**
 
 ---
 
