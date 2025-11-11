@@ -16,9 +16,11 @@
   "devDependencies": {
     "@cloudflare/vite-plugin": "^1.14.0",
     "@cloudflare/workers-types": "^4.20251109.0",
+    "@tailwindcss/vite": "^4.1.17",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@vitejs/plugin-react": "^5.1.0",
+    "tailwindcss": "^4.1.17",
     "typescript": "latest",
     "vite": "^7.2.2",
     "wrangler": "^4.46.0"
