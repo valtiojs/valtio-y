@@ -1,31 +1,26 @@
-/**
- * Wrangler configuration for the Y-Party worker (Durable Objects)
- * This worker runs standalone and clients connect to it via WebSocket
- */
 {
-	"$schema": "node_modules/wrangler/config-schema.json",
-	"name": "todos-y-party-worker",
-	"compatibility_date": "2025-04-04",
-	"main": "./workers/y-party-worker.ts",
-	/**
-	 * Durable Objects
-	 */
-	"durable_objects": {
-		"bindings": [
-			{
-				"name": "TodosYServer",
-				"class_name": "TodosYServer",
-				"script_name": "todos-y-party-worker"
-			}
-		]
-	},
-	/**
-	 * Migrations - required for Durable Objects
-	 */
-	"migrations": [
-		{
-			"tag": "v1",
-			"new_classes": ["TodosYServer"]
-		}
-	]
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "valtio-y-todos",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-04-04",
+  "assets": {
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "YDocServer",
+        "class_name": "YDocServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["YDocServer"]
+    }
+  ]
 }

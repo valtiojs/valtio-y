@@ -8,28 +8,32 @@
     "@dnd-kit/sortable": "^10.0.0",
     "@dnd-kit/utilities": "^3.2.2",
     "lucide-react": "^0.544.0",
-    "react": "catalog:",
-    "react-dom": "catalog:",
-    "valtio": "catalog:",
+    "partyserver": "^0.0.75",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "valtio": "^2.2.0",
     "valtio-y": "workspace:*",
     "y-partyserver": "^0.0.51",
-    "yjs": "catalog:"
+    "yjs": "^13.6.27"
   },
   "devDependencies": {
-    "@tailwindcss/vite": "^4.1.14",
+    "@cloudflare/vite-plugin": "^1.14.0",
+    "@cloudflare/workers-types": "^4.20251109.0",
+    "@tailwindcss/vite": "^4.1.17",
     "@types/react": "latest",
     "@types/react-dom": "latest",
-    "@vitejs/plugin-react": "catalog:",
-    "autoprefixer": "^10.4.21",
-    "postcss": "^8.5.6",
-    "tailwindcss": "^4.1.14",
+    "@vitejs/plugin-react": "^5.1.0",
+    "tailwindcss": "^4.1.17",
     "typescript": "latest",
-    "vite": "catalog:"
+    "vite": "^7.2.2",
+    "wrangler": "^4.46.0"
   },
   "scripts": {
-    "dev": "bun run dev:y-party & bun run dev:app",
-    "dev:app": "vite",
-    "dev:y-party": "wrangler dev --config wrangler.jsonc --port 8788",
-    "typecheck": "tsc --noEmit"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "bun run build && vite preview",
+    "deploy": "bun run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "typecheck": "tsc -b"
   }
 }

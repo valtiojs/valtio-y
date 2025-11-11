@@ -37,85 +37,51 @@ import { countTodos, countCompletedTodos } from "../utils";
 import { SyncStatus } from "./sync-status";
 import { TodoItem } from "./todo-item";
 import {
-  connectClient,
-  disconnectClient,
-  isClientConnected,
+  connect,
+  disconnect,
+  isConnected,
   subscribeSyncStatus,
 } from "../yjs-setup";
 
 interface ClientViewProps {
-  /** Display name for this client */
-  name: string;
   /** The valtio-y proxy to read from (via useSnapshot) and write to */
   stateProxy: AppState;
-  /** Color scheme for visual distinction */
-  colorScheme: "blue" | "purple";
-  /** Client ID for sync status */
-  clientId: 1 | 2;
 }
 
-export function ClientView({
-  name,
-  stateProxy,
-  colorScheme,
-  clientId,
-}: ClientViewProps) {
-  /**
-   * IMPORTANT: useSnapshot() gives us a reactive snapshot of the state.
-   * This automatically re-renders when the underlying Yjs document changes,
-   * whether from local edits or remote sync!
-   */
+export function ClientView({ stateProxy }: ClientViewProps) {
   const snap = useSnapshot(stateProxy);
 
   const [newTodoText, setNewTodoText] = useState("");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [selectionMode, setSelectionMode] = useState(false);
   const [activeId, setActiveId] = useState<string | null>(null);
-  const [isConnected, setIsConnected] = useState(() =>
-    isClientConnected(clientId),
-  );
+  const [connected, setConnected] = useState(() => isConnected());
 
-  // Subscribe to connection status changes
   useEffect(() => {
     const unsubscribe = subscribeSyncStatus(() => {
-      setIsConnected(isClientConnected(clientId));
+      setConnected(isConnected());
     });
     return unsubscribe;
-  }, [clientId]);
+  }, []);
 
   function handleConnect() {
-    connectClient(clientId);
+    connect();
   }
 
   function handleDisconnect() {
-    disconnectClient(clientId);
+    disconnect();
   }
 
-  // Color scheme configuration
-  const colors = {
-    blue: {
-      border: "border-blue-200",
-      bg: "bg-blue-50",
-      bgLight: "bg-blue-50/50",
-      text: "text-blue-900",
-      button: "bg-blue-600 hover:bg-blue-700",
-      accent: "text-blue-600",
-      ring: "focus:ring-blue-300",
-      header: "bg-gradient-to-r from-blue-50 to-blue-100",
-    },
-    purple: {
-      border: "border-purple-200",
-      bg: "bg-purple-50",
-      bgLight: "bg-purple-50/50",
-      text: "text-purple-900",
-      button: "bg-purple-600 hover:bg-purple-700",
-      accent: "text-purple-600",
-      ring: "focus:ring-purple-300",
-      header: "bg-gradient-to-r from-purple-50 to-purple-100",
-    },
+  const color = {
+    border: "border-blue-200",
+    bg: "bg-blue-50",
+    bgLight: "bg-blue-50/50",
+    text: "text-blue-900",
+    button: "bg-blue-600 hover:bg-blue-700",
+    accent: "text-blue-600",
+    ring: "focus:ring-blue-300",
+    header: "bg-gradient-to-r from-blue-50 to-blue-100",
   };
-
-  const color = colors[colorScheme];
 
   // Setup drag-and-drop sensors
   const sensors = useSensors(
@@ -279,26 +245,28 @@ export function ClientView({
             <h2
               className={`text-lg font-semibold ${color.text} tracking-tight`}
             >
-              {name}
+              Shared Todo List
             </h2>
             <p className="text-sm text-slate-600 mt-1">
               {completedTodos} of {totalTodos} tasks completed
             </p>
+            <p className="text-xs text-slate-500 mt-1">
+              Open this page in a second browser window or device to watch
+              real-time edits powered by Yjs + PartyServer.
+            </p>
           </div>
           <div className="flex items-center gap-3">
-            <SyncStatus clientId={clientId} />
+            <SyncStatus />
             <button
-              onClick={isConnected ? handleDisconnect : handleConnect}
+              onClick={connected ? handleDisconnect : handleConnect}
               className={`px-3 py-2 rounded-md text-sm font-medium transition-colors flex items-center gap-2 ${
-                isConnected
+                connected
                   ? "bg-red-100 text-red-700 hover:bg-red-200"
                   : "bg-green-100 text-green-700 hover:bg-green-200"
               }`}
-              title={
-                isConnected ? "Disconnect from server" : "Connect to server"
-              }
+              title={connected ? "Disconnect from server" : "Connect to server"}
             >
-              {isConnected ? (
+              {connected ? (
                 <>
                   <WifiOff size={16} />
                   Disconnect
@@ -410,7 +378,7 @@ export function ClientView({
                     onToggleSelect={toggleSelect}
                     selectionMode={selectionMode}
                     nestLevel={0}
-                    colorScheme={colorScheme}
+                    colorScheme="blue"
                   />
                 ))}
               </div>

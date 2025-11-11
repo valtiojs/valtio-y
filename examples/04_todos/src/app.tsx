@@ -16,23 +16,22 @@
  * - components/: Individual React components
  */
 
-import { proxy1, proxy2 } from "./yjs-setup";
+import { proxy } from "./yjs-setup";
 import { ClientView } from "./components/client-view";
 
 /**
  * Main App Component
  *
- * Renders two side-by-side clients to demonstrate real-time collaboration.
- * Each client has its own Y.Doc and proxy, syncing through Y-PartyServer.
+ * Renders a single shared todo list backed by a Y.Doc hosted on PartyServer.
+ * Open this example in a second browser or device to experience real-time sync.
  *
  * Try it:
- * - Add a todo in Client 1, watch it appear in Client 2
- * - Disconnect/reconnect either client to test offline behavior
+ * - Add a todo and watch it appear instantly everywhere
+ * - Disconnect/reconnect to test offline behavior
  * - Drag items to reorder them
  * - Add nested subtasks with the + button
  * - Use selection mode for bulk operations
  * - Double-click any todo to edit it inline
- * - Open multiple browser windows for true multi-client collaboration!
  */
 const App = () => {
   return (
@@ -50,9 +49,9 @@ const App = () => {
           </p>
           <p className="text-sm text-slate-500 max-w-2xl mx-auto mb-4">
             This example showcases how valtio-y handles complex state including
-            nested arrays, drag-and-drop reordering, and bulk operations. Both
-            clients connect to a real PartyServer backend, demonstrating true
-            network synchronization with Yjs CRDTs.
+            nested arrays, drag-and-drop reordering, and bulk operations. Every
+            open browser tab connects to the same PartyServer backend, so edits
+            synchronize instantly via Yjs CRDTs.
           </p>
           <div className="mt-4 flex flex-wrap justify-center gap-4 text-xs text-slate-500">
             <span>💡 Double-click to edit</span>
@@ -64,20 +63,9 @@ const App = () => {
           </div>
         </div>
 
-        {/* Two clients side by side - demonstrates collaboration */}
-        <div className="flex flex-col lg:flex-row gap-6 max-w-7xl mx-auto">
-          <ClientView
-            name="Client 1"
-            stateProxy={proxy1}
-            colorScheme="blue"
-            clientId={1}
-          />
-          <ClientView
-            name="Client 2"
-            stateProxy={proxy2}
-            colorScheme="purple"
-            clientId={2}
-          />
+        {/* Shared client view */}
+        <div className="flex flex-col gap-6 max-w-4xl mx-auto">
+          <ClientView stateProxy={proxy} />
         </div>
 
         {/* Educational footer */}
@@ -117,11 +105,11 @@ const App = () => {
           </div>
           <div className="mt-4 pt-4 border-t border-slate-200">
             <p className="text-xs text-slate-500">
-              💡 <strong>Real-time sync:</strong> Both clients connect to a
-              Y-PartyServer running on Cloudflare Durable Objects. Use the
-              Connect/Disconnect buttons to simulate network interruptions and
-              see how changes sync when reconnected. Try opening multiple
-              browser windows to see true multi-client collaboration!
+              💡 <strong>Real-time sync:</strong> Every open browser tab
+              connects to the same PartyServer-backed Y.Doc. Open this example
+              in a second window or device to watch todos update instantly, even
+              with complex nested structures. Use the Connect button to simulate
+              going offline—changes merge the moment you reconnect.
             </p>
           </div>
         </div>

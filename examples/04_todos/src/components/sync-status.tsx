@@ -11,28 +11,20 @@ import { Wifi, WifiOff, Loader2 } from "lucide-react";
 import { getSyncStatus, subscribeSyncStatus } from "../yjs-setup";
 import type { SyncStatus as SyncStatusType } from "../types";
 
-interface SyncStatusProps {
-  clientId: 1 | 2;
-}
-
 /**
  * Shows the sync status with appropriate icon and color.
  * Updates in real-time as documents sync through the network.
  */
-export function SyncStatus({ clientId }: SyncStatusProps) {
-  const [status, setStatus] = useState<SyncStatusType>("connected");
+export function SyncStatus() {
+  const [status, setStatus] = useState<SyncStatusType>("offline");
 
   useEffect(() => {
-    // Update when sync status changes
-    const updateStatus = () => {
-      setStatus(getSyncStatus(clientId));
-    };
-
-    // Subscribe to sync status changes
-    const unsubscribe = subscribeSyncStatus(updateStatus);
+    const unsubscribe = subscribeSyncStatus(() => {
+      setStatus(getSyncStatus());
+    });
 
     return unsubscribe;
-  }, [clientId]);
+  }, []);
 
   if (status === "syncing") {
     return (
