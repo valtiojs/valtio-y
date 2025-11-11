@@ -171,12 +171,6 @@ export function App() {
     };
   }, [provider, doc]);
 
-  const handleClearCanvas = useCallback(() => {
-    if (proxy.shapes) {
-      proxy.shapes = [];
-    }
-  }, [proxy]);
-
   // Delete selected shape
   const handleDeleteShape = useCallback(() => {
     if (selectedShapeId && proxy.shapes) {
@@ -274,7 +268,6 @@ export function App() {
           onStrokeWidthChange={setStrokeWidth}
           fillEnabled={fillEnabled}
           onFillToggle={() => setFillEnabled(!fillEnabled)}
-          onClearCanvas={handleClearCanvas}
           onUndo={undo}
           onRedo={redo}
           canUndo={canUndo}

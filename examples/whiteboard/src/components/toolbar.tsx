@@ -15,7 +15,6 @@ import {
   Circle,
   MousePointer,
   Eraser,
-  Trash2,
   Undo2,
   Redo2,
   Wifi,
@@ -32,7 +31,6 @@ interface ToolbarProps {
   onStrokeWidthChange: (width: number) => void;
   fillEnabled: boolean;
   onFillToggle: () => void;
-  onClearCanvas: () => void;
   onUndo: () => void;
   onRedo: () => void;
   canUndo: boolean;
@@ -58,7 +56,6 @@ export function Toolbar({
   onColorChange,
   strokeWidth,
   onStrokeWidthChange,
-  onClearCanvas,
   onUndo,
   onRedo,
   canUndo,
@@ -184,15 +181,6 @@ export function Toolbar({
           </button>
         ))}
       </div>
-
-      {/* Clear Canvas */}
-      <button
-        onClick={onClearCanvas}
-        className="p-2 rounded-lg text-gray-600 hover:bg-red-50 hover:text-red-600 transition-all"
-        title="Clear canvas"
-      >
-        <Trash2 size={18} />
-      </button>
     </div>
   );
 }
