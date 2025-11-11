@@ -224,7 +224,7 @@ function YourAppUI({ stateProxy }: { stateProxy: AppState }) {
 - Each room gets its own Y.Doc, proxy, and provider
 - If you used one global `createYjsProxy`, all components would share the same state
 
-For complete working examples, see `examples/sticky-notes` and `examples/04_todos` which both implement this pattern.
+For complete working examples, see `../examples/sticky-notes` and `../examples/todos` which both implement this pattern.
 
 ---
 
@@ -300,10 +300,10 @@ const provider = useRoomProvider({ doc, room: roomId, options });
 
 **Reference implementations:**
 
-See `examples/sticky-notes` and `examples/04_todos` for complete working implementations. The key files are:
+See `../examples/sticky-notes` and `../examples/todos` for complete working implementations. The key files are:
 
-- `src/yjs-setup.ts` - RoomState class
-- `src/use-room-provider.ts` - useRoomProvider hook
-- `src/app.tsx` - Integration with React and routing
+- `../examples/sticky-notes/src/yjs-setup.ts` - RoomState class
+- `../examples/sticky-notes/src/use-room-provider.ts` - useRoomProvider hook
+- `../examples/sticky-notes/src/app.tsx` - Integration with React and routing
 
 **Important note:** The examples provide a starting point, but you should adapt the pattern to your specific requirements. Consider your routing strategy (hash-based, React Router, Next.js), cleanup timing, and whether you need features like awareness, undo/redo, or custom provider options. The core principle remains the same: one Y.Doc per collaborative session with proper lifecycle management.

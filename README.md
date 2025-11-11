@@ -133,19 +133,17 @@ That's it! State is now synchronized via Yjs. Add a provider to sync across clie
 
 Live collaborative demos - open in multiple tabs to see real-time sync:
 
-1. **[Realtime Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Cloudflare Durable Object demo showing collaborative sticky notes in production.
+1. **[Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Cloudflare Durable Object demo showing collaborative sticky notes in production.
 
 2. **[Whiteboard](https://valtio-y-whiteboard.agcty.workers.dev)** - Collaborative whiteboard demo with drawing and shapes.
 
-3. **[Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple)** - Single-file example with detailed comments. Best for learning core concepts (CRUD, nested objects, reordering, offline/online simulation).
+3. **[Todos App](https://valtio-y-todos.agcty.workers.dev)** - Live collaborative todo app demo.
 
 4. **[Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Minimal object synchronization with WebSocket provider.
 
 5. **[Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Array operations (push, pop, splice) with WebSocket sync.
 
-6. **[Full-Featured Todo App](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/04_todos)** - Production-ready app with drag-and-drop, bulk operations, filtering (React, Tailwind, dnd-kit).
-
-7. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
+6. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
 
 ---
 
