@@ -16,8 +16,7 @@
     "lint:fix": "oxlint --type-aware --fix .",
     "format": "bun oxfmt .",
     "check": "bun run format && bun run lint:fix",
-    "version": "changeset version && bun update",
-    "release": "turbo run publish --filter='valtio-*' && changeset tag"
+    "version": "changeset version && bun update"
   },
   "private": true,
   "keywords": [],

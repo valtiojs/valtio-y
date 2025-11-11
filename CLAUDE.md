@@ -241,7 +241,7 @@ Closes #42
 
 ### Release Workflow
 
-This project uses **Changesets** with **Turbo** to manage versioning and releases, providing explicit control over changelogs.
+This project uses **Changesets** to manage versioning and releases, providing explicit control over changelogs.
 
 **How it works:**
 
@@ -273,10 +273,9 @@ This project uses **Changesets** with **Turbo** to manage versioning and release
 
 4. **Merge to publish** - When you merge the Version Packages PR:
    - The workflow runs all quality checks (typecheck, lint, test, build)
-   - Runs: `bun run release` → `turbo run publish --filter='valtio-*' && changeset tag`
-   - Turbo runs the `publish` script in each `valtio-*` package
-   - Each package publishes with: `npm publish --access public --provenance`
-   - Git tags are created for published versions
+   - Changesets automatically detects changed packages and publishes them to npm
+   - Runs the `publish` script in each changed package: `npm publish --access public --provenance`
+   - Git tags are created automatically for published versions
 
 **For AI agents:**
 
@@ -342,16 +341,15 @@ To make a new package publishable:
    }
    ```
 
-2. Ensure the package name matches `valtio-*` pattern
-3. Turbo will automatically discover and publish it in the correct order
+2. Add the package to the workspace in root `package.json`
+3. Changesets will automatically discover and publish it when you create a changeset for it
 
 **Technical details:**
 
 - **Root scripts**:
   - `version`: `changeset version && bun update` (updates versions + fixes Bun lockfile)
-  - `release`: `turbo run publish --filter='valtio-*' && changeset tag` (publishes packages + creates tags)
 - **Bun workaround**: `bun update` after `changeset version` is required because changesets doesn't natively support Bun workspaces. This resolves `workspace:*` references in the lockfile.
-- **Turbo filter**: `--filter='valtio-*'` ensures only `valtio-y` and future `valtio-*` packages are published, never examples
+- **Publishing**: Changesets automatically handles publishing and git tagging when the version PR is merged. It only publishes packages that have changesets and are not marked as `private: true`.
 
 **Version bumping rules:**
 
