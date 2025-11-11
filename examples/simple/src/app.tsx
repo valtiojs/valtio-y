@@ -30,14 +30,14 @@ type AppState = {
 
 const App = () => {
   const [roomId] = useState<string>(
-    () => window.location.hash.slice(1) || "default"
+    () => window.location.hash.slice(1) || "default",
   );
   const [syncStatus, setSyncStatus] = useState<
     "connecting" | "connected" | "syncing" | "disconnected"
   >("connecting");
 
   // Create Y.Doc and proxy (single instance per room)
-  const { doc, proxy, provider } = useMemo(() => {
+  const { proxy, provider } = useMemo(() => {
     const ydoc = new Y.Doc();
 
     // Create the Yjs proxy with realtime sync
@@ -60,15 +60,16 @@ const App = () => {
     }
 
     // Connect to PartyServer
-    const resolvedHost =
-      import.meta.env.PROD ? window.location.host : window.location.host;
+    const resolvedHost = import.meta.env.PROD
+      ? window.location.host
+      : window.location.host;
 
     const provider = new YProvider(resolvedHost, roomId, ydoc, {
       connect: true,
       party: "y-doc-server",
     });
 
-    return { doc: ydoc, proxy, provider };
+    return { proxy, provider };
   }, [roomId]);
 
   // Cleanup on unmount
@@ -247,10 +248,9 @@ const App = () => {
               />
               <button
                 onClick={() => {
-                  const input =
-                    document.querySelector<HTMLInputElement>(
-                      'input[placeholder="Add new item..."]'
-                    );
+                  const input = document.querySelector<HTMLInputElement>(
+                    'input[placeholder="Add new item..."]',
+                  );
                   if (input?.value.trim()) {
                     proxy.items.push(input.value.trim());
                     input.value = "";
@@ -289,7 +289,8 @@ const App = () => {
         {/* Footer */}
         <div className="mt-8 text-center text-gray-500 text-sm">
           <p>
-            Every change syncs instantly with <code>useSnapshot(proxy, &#123; sync: true &#125;)</code>
+            Every change syncs instantly with{" "}
+            <code>useSnapshot(proxy, &#123; sync: true &#125;)</code>
           </p>
         </div>
       </div>
