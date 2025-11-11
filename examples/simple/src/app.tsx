@@ -382,6 +382,9 @@ const App = () => {
                 placeholder="Add new item..."
                 onKeyDown={(e) => {
                   if (e.key === "Enter" && e.currentTarget.value.trim()) {
+                    if (!Array.isArray(proxy.items)) {
+                      proxy.items = [];
+                    }
                     proxy.items.push(e.currentTarget.value.trim());
                     e.currentTarget.value = "";
                   }
@@ -401,6 +404,9 @@ const App = () => {
                     'input[placeholder="Add new item..."]',
                   );
                   if (input?.value.trim()) {
+                    if (!Array.isArray(proxy.items)) {
+                      proxy.items = [];
+                    }
                     proxy.items.push(input.value.trim());
                     input.value = "";
                   }
@@ -442,6 +448,9 @@ const App = () => {
                   <span>{item}</span>
                   <button
                     onClick={() => {
+                      if (!Array.isArray(proxy.items)) {
+                        proxy.items = [];
+                      }
                       proxy.items.splice(index, 1);
                     }}
                     style={{
