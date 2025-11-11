@@ -28,7 +28,9 @@ export class RoomState {
 
     const proxyWithUndo = createYjsProxy<AppState>(this.doc, {
       getRoot: (document: Y.Doc) => document.getMap("root"),
-      undoManager: true,
+      undoManager: {
+        captureTimeout: 100, // Group operations within 100ms (prevents overly aggressive undo)
+      },
     });
 
     this.proxy = proxyWithUndo.proxy;
