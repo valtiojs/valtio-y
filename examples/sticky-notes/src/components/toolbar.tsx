@@ -1,4 +1,3 @@
-
 import { Plus, Trash2, WifiOff, Wifi, Undo2, Redo2 } from "lucide-react";
 import { STICKY_NOTE_COLORS, type SyncStatus } from "../types";
 
