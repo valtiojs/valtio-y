@@ -2,10 +2,6 @@ import { routePartykitRequest } from "partyserver";
 import { YServer } from "y-partyserver";
 import * as Y from "yjs";
 
-interface Env extends Record<string, unknown> {
-  YDocServer: DurableObjectNamespace<YDocServer>;
-}
-
 type TodoSeed = {
   text: string;
   completed: boolean;

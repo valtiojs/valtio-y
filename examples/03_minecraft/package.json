@@ -7,23 +7,33 @@
     "@react-three/cannon": "latest",
     "@react-three/drei": "latest",
     "@react-three/fiber": "latest",
-    "react": "catalog:",
-    "react-dom": "catalog:",
+    "partyserver": "^0.0.75",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
     "three": "latest",
-    "valtio": "catalog:",
+    "valtio": "^2.2.0",
     "valtio-y": "workspace:*",
-    "y-webrtc": "latest",
-    "yjs": "catalog:"
+    "y-partyserver": "^0.0.51",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.27"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.14.0",
+    "@cloudflare/workers-types": "^4.20251109.0",
     "@types/react": "latest",
     "@types/react-dom": "latest",
     "@types/three": "latest",
+    "@vitejs/plugin-react": "^5.1.0",
     "typescript": "latest",
-    "vite": "catalog:"
+    "vite": "^7.2.2",
+    "wrangler": "^4.46.0"
   },
   "scripts": {
-    "dev": "PORT=4444 node node_modules/y-webrtc/bin/server.js & vite",
-    "typecheck": "tsc --noEmit"
+    "dev": "vite",
+    "build": "tsc -b && vite build",
+    "preview": "bun run build && vite preview",
+    "deploy": "bun run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "typecheck": "tsc -b"
   }
 }

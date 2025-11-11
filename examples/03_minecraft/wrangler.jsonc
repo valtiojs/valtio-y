@@ -1,0 +1,26 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "valtio-y-minecraft",
+  "main": "worker/index.ts",
+  "compatibility_date": "2025-04-04",
+  "assets": {
+    "not_found_handling": "single-page-application"
+  },
+  "observability": {
+    "enabled": true
+  },
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "YDocServer",
+        "class_name": "YDocServer"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["YDocServer"]
+    }
+  ]
+}

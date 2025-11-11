@@ -1,15 +1,17 @@
 {
+  "files": [],
+  "references": [
+    {
+      "path": "./tsconfig.app.json"
+    },
+    {
+      "path": "./tsconfig.node.json"
+    },
+    {
+      "path": "./tsconfig.worker.json"
+    }
+  ],
   "compilerOptions": {
-    "strict": true,
-    "target": "es2018",
-    "esModuleInterop": true,
-    "module": "esnext",
-    "moduleResolution": "bundler",
-    "allowArbitraryExtensions": true,
-    "skipLibCheck": true,
-    "allowJs": true,
-    "noUncheckedIndexedAccess": true,
-    "exactOptionalPropertyTypes": true,
-    "jsx": "react-jsx"
+    "types": ["./worker-configuration.d.ts"]
   }
 }

@@ -5,7 +5,6 @@ import * as THREE from "three";
 import { useLoader } from "@react-three/fiber";
 import { usePlane } from "@react-three/cannon";
 import type { Triplet } from "@react-three/cannon";
-import grass from "./assets/grass.jpg";
 
 const GROUND_ROTATION: Triplet = [-Math.PI / 2, 0, 0];
 const PLANE_SIZE: [number, number] = [1000, 1000];
@@ -15,7 +14,7 @@ export const Ground = () => {
   const [ref] = usePlane<THREE.Mesh>(() => ({
     rotation: GROUND_ROTATION,
   }));
-  const texture = useLoader(THREE.TextureLoader, grass);
+  const texture = useLoader(THREE.TextureLoader, "/grass.jpg");
 
   useEffect(() => {
     const [repeatX, repeatY] = GROUND_TEXTURE_REPEAT;

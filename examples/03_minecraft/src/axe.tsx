@@ -11,7 +11,6 @@ title: Minecraft Diamond Axe
 import type { ThreeElements } from "@react-three/fiber";
 import { useGLTF } from "@react-three/drei";
 import * as THREE from "three";
-import axeUrl from "./assets/axe.glb";
 
 const AXE_ROTATION = [0, Math.PI / 1.8, -0.3] as const;
 const AXE_SCALE = 0.5;
@@ -28,7 +27,7 @@ type AxeGLTF = {
 };
 
 export default function Model(props: ThreeElements["group"]) {
-  const { nodes, materials } = useGLTF(axeUrl) as unknown as AxeGLTF;
+  const { nodes, materials } = useGLTF("/axe.glb") as unknown as AxeGLTF;
   return (
     <group dispose={null} {...props}>
       <group rotation={AXE_ROTATION} scale={AXE_SCALE}>
@@ -45,4 +44,4 @@ export default function Model(props: ThreeElements["group"]) {
   );
 }
 
-useGLTF.preload(axeUrl);
+useGLTF.preload("/axe.glb");

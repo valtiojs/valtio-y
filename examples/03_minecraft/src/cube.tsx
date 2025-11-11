@@ -8,34 +8,28 @@ import { useBox, type BoxProps, type Triplet } from "@react-three/cannon";
 import { useSnapshot } from "valtio";
 import * as Y from "yjs";
 import { createYjsProxy } from "valtio-y";
-import { WebrtcProvider } from "y-webrtc";
-import dirt from "./assets/dirt.jpg";
+import YProvider from "y-partyserver/provider";
 
 const ydoc = new Y.Doc();
 
-const provider = new WebrtcProvider("minecraft-valtio-y-demo-3", ydoc, {
-  signaling: ["ws://localhost:4444"],
+// Connect to PartyServer
+const roomId = window.location.hash.slice(1) || "default";
+const resolvedHost = import.meta.env.PROD
+  ? window.location.host
+  : window.location.host;
+
+new YProvider(resolvedHost, roomId, ydoc, {
+  connect: true,
+  party: "y-doc-server",
 });
 
-// (optional) attach provider event logs when debugging connectivity
-
-const { proxy: state, bootstrap } = createYjsProxy<{
+const { proxy: state } = createYjsProxy<{
   cubes?: [number, number, number][];
 }>(ydoc, {
   getRoot: (doc: Y.Doc) => doc.getMap("map"),
 });
 
-// Initialize shared state once per room:
-// - Wait for `synced` so late joiners first receive remote state.
-// - Call `bootstrap` after that; it already no-ops if the root isn't empty, preventing
-//   double-initialization.
-provider.on("synced", () => {
-  try {
-    bootstrap({ cubes: [] });
-  } catch {
-    // Ignore bootstrap errors in example
-  }
-});
+// State is initialized server-side in onLoad
 
 // This is a super naive implementation and wouldn't allow for more than a few thousand boxes.
 // In order to make this scale this has to be one instanced mesh, then it could easily be
@@ -104,7 +98,7 @@ export const Cube = ({ position, ...rest }: CubeProps) => {
     deps,
   );
   const [hover, setHover] = useState<number | null>(null);
-  const texture = useLoader(THREE.TextureLoader, dirt);
+  const texture = useLoader(THREE.TextureLoader, "/dirt.jpg");
   const onMove = useCallback((e: ThreeEvent<PointerEvent>) => {
     e.stopPropagation();
     setHover(Math.floor(e.faceIndex! / 2));
