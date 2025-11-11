@@ -44,12 +44,12 @@ export function App() {
 
   // Connect to PartyServer using useYProvider hook
   // Connect using y-partyserver defaults: /parties/:party/:room.
-  // PartyServer converts StickyNotesRoom -> sticky-notes-room
+  // PartyServer converts YDocServer -> y-doc-server
   // In dev mode, don't specify host - let YProvider auto-detect
   const provider = useRoomProvider({
     host: import.meta.env.PROD ? window.location.host : undefined,
     room: roomId,
-    party: "sticky-notes-room",
+    party: "y-doc-server",
     doc,
     awareness,
   });

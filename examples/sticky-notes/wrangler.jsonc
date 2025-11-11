@@ -12,15 +12,15 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "StickyNotesRoom",
-        "class_name": "StickyNotesRoom"
+        "name": "YDocServer",
+        "class_name": "YDocServer"
       }
     ]
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": ["StickyNotesRoom"]
+      "new_sqlite_classes": ["YDocServer"]
     }
   ]
 }

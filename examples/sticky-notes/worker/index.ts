@@ -14,7 +14,7 @@ const CLEANUP_INTERVAL_MS = import.meta.env.DEV ? 60 * 1000 : 30 * 60 * 1000;
 /**
  * Durable Object that handles a single sticky notes room
  */
-export class StickyNotesRoom extends YServer<Env> {
+export class YDocServer extends YServer<Env> {
   /**
    * Create fresh initial notes in the shared state
    * This is called on initial load and every 30 minutes via alarm
