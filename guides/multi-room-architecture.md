@@ -40,11 +40,13 @@ This is complex lifecycle management that requires a structured approach.
 
 ## The RoomState Pattern
 
-The RoomState pattern encapsulates everything needed for one collaborative session in a single class.
+The RoomState pattern is simple: **one Y.Doc and one Valtio proxy per room**. That's it.
 
-### Core Concept
+How you organize this is up to you - inline in `useMemo`, a class, a custom hook, or whatever fits your app structure. The key is ensuring each room gets its own document and proxy instance.
 
-Create a class that bundles the Y.Doc, Valtio proxy, and cleanup logic together:
+### Example: Using a Class
+
+One way to organize this is with a class that bundles everything together:
 
 ```typescript
 import * as Y from "yjs";
@@ -83,13 +85,25 @@ export class RoomState {
 }
 ```
 
-This gives you:
+### Example: Inline with useMemo
 
-- All room state in one object
-- A `dispose()` method that ensures no memory leaks
-- Undo/redo support per room
-- Type safety through your `AppState` type
-- Easy instantiation for new rooms
+Or keep it simple and inline:
+
+```typescript
+const { proxy, dispose } = useMemo(() => {
+  const doc = new Y.Doc();
+  const { proxy, dispose } = createYjsProxy<AppState>(doc, {
+    getRoot: (doc) => doc.getMap("root"),
+  });
+  return { proxy, dispose };
+}, [roomId]);
+
+useEffect(() => {
+  return () => dispose();
+}, [dispose]);
+```
+
+**Both accomplish the same goal:** new document and proxy per room, with proper cleanup. Choose whatever fits your codebase.
 
 ---
 
