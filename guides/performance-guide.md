@@ -2,6 +2,24 @@
 
 valtio-y is fast by design. This guide covers optimization patterns, automatic performance features, and common pitfalls to avoid.
 
+## TL;DR: Performance is Automatic
+
+**What valtio-y handles for you:**
+
+- ✅ **Automatic batching** - All mutations in the same tick become one network update
+- ✅ **Fine-grained reactivity** - Components only re-render when their accessed data changes (Valtio)
+- ✅ **Efficient proxy creation** - Batched conversion with cached references; remote sync only touches changed subtrees
+- ✅ **Delta-based sync** - Efficient array updates using granular deltas
+- ✅ **Stable references** - Each Yjs type has one stable proxy
+
+**What you should do for best performance:**
+
+- ✅ **Split large lists** into child components (each calls `useSnapshot` for its item)
+- ✅ **Access only what you need** - Don't spread snapshots or access unused properties
+- ✅ **Batch related changes** - Avoid `await` between related mutations
+
+**Most apps get great performance with zero optimization.** Read on for details and advanced patterns.
+
 ## Table of Contents
 
 - [Automatic Optimizations](#automatic-optimizations)
@@ -49,23 +67,31 @@ state.count = 1;
 state.count = 2;
 ```
 
-### Lazy Materialization
+### Efficient Proxy Creation
 
-Nested objects create Valtio proxies only when accessed, not when the entire structure is loaded:
+valtio-y creates proxies efficiently during transaction flush, with lazy behavior for remote sync:
 
 ```typescript
+// Local assignment: eagerly converts to Y types and creates proxies during flush
 state.users = Array(10000).fill({ name: "User", data: {...} });
-// Fast initialization - no proxies created yet
+// Batched conversion happens at end of microtask
 
-const user = state.users[0]; // Materializes this user only
-user.name = "Alice";         // Now it's a proxy
+// Remote sync: only materializes changed/new structures
+// Existing proxies are reused; unchanged structures stay untouched
 ```
+
+**How it works:**
+
+- **Local changes**: Plain objects → Y types → Valtio proxies (batched in single transaction)
+- **Remote sync**: Uses "nearest materialized ancestor" strategy - only changed subtrees get new proxies
+- **Stable references**: Each Y type maps to one cached proxy (WeakMap), preventing duplicate proxy creation
 
 **Benefits:**
 
-- Fast initial load for large nested structures
-- Memory efficient - only accessed objects consume memory for proxies
-- Scales well with deep nesting
+- Fast bootstrap via bulk Y.js operations (see Bootstrap Performance below)
+- Memory efficient - batched conversion minimizes overhead
+- Remote sync only touches changed parts of the tree
+- Scales well with deep nesting due to batching
 
 ### Bulk Operations
 
@@ -200,7 +226,7 @@ bootstrap({
 
 - 1000 items: ~8ms
 - 5000 items: ~43ms
-- Lazy materialization keeps memory usage low
+- Batched conversion and stable references keep memory usage efficient
 
 ### Bulk Array Operations
 
@@ -276,23 +302,23 @@ Performance with deeply nested structures (10+ levels).
 
 ### Access Performance
 
-Lazy materialization makes deep access efficient:
+Cached proxies make deep access efficient:
 
 ```typescript
-// Accessing deep property (creates proxies on first access)
+// Accessing deep property through proxy chain
 const value = state.data.level1.level2.level3.value;
 // ~1.3ms for 10 levels
 
-// Subsequent access to same path reuses cached proxies
+// Subsequent access traverses the same cached proxies
 const value2 = state.data.level1.level2.level3.value;
-// Fast - proxies are cached in WeakMaps
+// Fast - proxies are cached in WeakMaps, no recreation
 ```
 
 **Performance (from official benchmarks):**
 
-- 10 levels deep: ~1.3ms first access
-- 20 levels deep: ~1.4ms first access
-- Proxies are cached automatically - subsequent access to the same path is fast
+- 10 levels deep: ~1.3ms for property traversal
+- 20 levels deep: ~1.4ms for property traversal
+- Proxies are cached automatically - no duplicate proxy creation for same Y types
 
 ### Mutation Performance
 
@@ -447,6 +473,56 @@ function TodoItem({ index }) {
 ```
 
 **Performance:** 1000-item list with fine-grained subscriptions handles 60fps updates easily.
+
+### React.memo with valtio-y Arrays
+
+React.memo CAN work with valtio-y arrays, but requires stable keys:
+
+```typescript
+// ❌ Doesn't work - index keys cause re-renders on array mutations
+{snap.todos.map((_, i) => (
+  <TodoItem key={i} todoProxy={state.todos[i]} />
+))}
+
+// ✅ Works - stable keys preserve component identity
+{snap.todos.map((todo, i) => (
+  <TodoItem key={todo.id} todoProxy={state.todos[i]} />
+))}
+```
+
+**Why stable keys matter:**
+
+Each Y type has a stable controller proxy (cached in WeakMap). When you insert/remove items, the controller at `state.todos[i]` changes position but stays the same object. With stable keys like `key={todo.id}`, React tracks components by identity, so React.memo correctly skips re-renders when the controller reference stays the same.
+
+With index keys (`key={i}`), React associates components with array positions. When you `unshift` a new item, the component at `key={0}` now receives a different controller proxy (the one at the new index 0), causing React.memo to see a prop change even though controller identity is stable.
+
+**Example:**
+
+```typescript
+// Initial: [Y.Map{id:1}, Y.Map{id:2}]
+const item1 = state.todos[0]; // Controller for Y.Map{id:1}
+
+state.todos.unshift({ id: 0 }); // Insert at start
+// New: [Y.Map{id:0}, Y.Map{id:1}, Y.Map{id:2}]
+
+item1 === state.todos[1]; // ✅ TRUE! Same controller, new index
+
+// With key={i}:
+// - Component key={0} WAS rendering Y.Map{id:1}, NOW renders Y.Map{id:0}
+// - Different proxy → React.memo re-renders
+
+// With key={todo.id}:
+// - Component key={1} moves from position 0 to position 1
+// - Same proxy → React.memo skips re-render
+```
+
+**Recommended pattern:**
+
+The split-component approach with `useSnapshot` (shown above) works well without React.memo complexity. Valtio's fine-grained reactivity handles the optimization automatically.
+
+**References:**
+
+- [Valtio useSnapshot docs](https://valtio.dev/docs/api/basic/useSnapshot)
 
 ---
 
@@ -684,12 +760,12 @@ Summary of typical performance numbers (from official benchmark suite):
 
 | Operation                       | Time       | Notes                                  |
 | ------------------------------- | ---------- | -------------------------------------- |
-| Bootstrap 1000 items            | ~8ms       | Fast initialization with lazy proxies  |
+| Bootstrap 1000 items            | ~8ms       | Fast initialization with batched conversion |
 | Bootstrap 5000 items            | ~43ms      | Scales linearly                        |
 | Small updates (1-10 items)      | ~1-3ms     | Typical UI interactions                |
 | Batch updates (100 items)       | ~9.5ms     | Updating items in large array          |
 | Batched mutations (1000 ops)    | ~5ms       | Same-tick batching is very effective   |
-| Deep nesting access (10 levels) | ~1.3ms     | First access with lazy materialization |
+| Deep nesting access (10 levels) | ~1.3ms     | Property traversal through cached proxies |
 | Deep nesting access (20 levels) | ~1.4ms     | Scales well with depth                 |
 | Deep mutation (10 levels)       | ~2.5ms     | Fast regardless of depth               |
 | Multi-client sync (local)       | ~2.4-3.5ms | Local relay (same machine)             |
@@ -710,7 +786,7 @@ These numbers are from the benchmark suite running on modern hardware. Your mile
 **Key takeaways:**
 
 1. **Automatic batching** handles most performance concerns - write natural code
-2. **Lazy materialization** makes large nested structures efficient
+2. **Efficient proxy creation** with stable references makes large nested structures fast
 3. **Bulk operations** (`push(...items)`) are more efficient than individual operations in loops
 4. **Cache deep references** in loops to reduce property lookup overhead
 5. **Fine-grained subscriptions** in React prevent unnecessary re-renders

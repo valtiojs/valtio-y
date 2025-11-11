@@ -235,18 +235,19 @@ See [Structuring Your App](./structuring-your-app.md) for details.
 
 ### Valtio Proxy (Controller)
 
-The proxy is your **live controller** for the Yjs structure with lazy materialization:
+The proxy is your **live controller** for the Yjs structure:
 
 ```typescript
-state.users = [{ name: "Alice" }]; // Enqueues operation
-const user = state.users[0]; // ← Materializes proxy for users[0] NOW
+state.users = [{ name: "Alice" }]; // Enqueues operation (batched)
+await tick(); // Operations flush: plain JS → Y types → Valtio proxies
+const user = state.users[0]; // ← Access existing proxy
 user.name = "Bob"; // Enqueues nested operation
 ```
 
 **Key behaviors:**
 
-- **Lazy materialization** - Nested objects become proxies only when accessed
-- **Identity preservation** - Same Yjs object always maps to same proxy reference
+- **Stable references** - Same Y type always maps to same proxy (cached in WeakMap)
+- **Batched conversion** - Plain objects become proxies during transaction flush
 - **Automatic updates** - Reconciler ensures structure matches Yjs after remote changes
 
 ### Providers (Network Adapters)
