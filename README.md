@@ -62,7 +62,7 @@ valtio-y excels in the **sweet spot between text editors and sync engines**: rea
 - **Collaborative spreadsheets** - Data entry, cell updates (not heavy text editing)
 - **Dashboard configurators** - Widget placement, settings, real-time layout adjustments
 - **Design tool data** - Layer properties, element positions, configuration (not text content)
-- **Multiplayer game state** - Player positions, inventory, world state (see our [Minecraft example](#examples)!)
+- **Multiplayer game state** - Player positions, inventory, world state
 - **Data annotation tools** - Labeling, categorization, collaborative markup
 - **Configuration panels** - Settings that multiple users can adjust simultaneously
 
