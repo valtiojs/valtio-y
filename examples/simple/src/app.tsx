@@ -111,17 +111,37 @@ const App = () => {
   };
 
   return (
-    <div style={{ minHeight: "100vh", background: "#1f2937", color: "white", padding: "2rem" }}>
+    <div
+      style={{
+        minHeight: "100vh",
+        background: "#1f2937",
+        color: "white",
+        padding: "2rem",
+      }}
+    >
       <div style={{ maxWidth: "800px", margin: "0 auto" }}>
         {/* Header */}
         <div style={{ marginBottom: "3rem" }}>
-          <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
+          <h1
+            style={{
+              fontSize: "2.5rem",
+              fontWeight: "bold",
+              marginBottom: "0.5rem",
+            }}
+          >
             valtio-y Simple Example
           </h1>
           <p style={{ color: "#9ca3af" }}>
             Open in multiple browsers to see realtime sync!
           </p>
-          <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+          <div
+            style={{
+              marginTop: "0.5rem",
+              display: "flex",
+              alignItems: "center",
+              gap: "0.5rem",
+            }}
+          >
             <span style={{ fontSize: "0.875rem" }}>Status:</span>
             <span
               style={{
@@ -134,17 +154,38 @@ const App = () => {
             >
               {syncStatus}
             </span>
-            <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Room: {roomId}</span>
+            <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>
+              Room: {roomId}
+            </span>
           </div>
         </div>
 
         {/* Object Example */}
-        <div style={{ background: "#374151", borderRadius: "0.5rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem" }}>
+        <div
+          style={{
+            background: "#374151",
+            borderRadius: "0.5rem",
+            padding: "1.5rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "600",
+              marginBottom: "1rem",
+            }}
+          >
             📦 Object (Nested)
           </h2>
           <div style={{ marginBottom: "1rem" }}>
-            <label style={{ display: "block", fontSize: "0.875rem", marginBottom: "0.25rem" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.875rem",
+                marginBottom: "0.25rem",
+              }}
+            >
               Name
             </label>
             <input
@@ -168,7 +209,13 @@ const App = () => {
             />
           </div>
           <div>
-            <label style={{ display: "block", fontSize: "0.875rem", marginBottom: "0.25rem" }}>
+            <label
+              style={{
+                display: "block",
+                fontSize: "0.875rem",
+                marginBottom: "0.25rem",
+              }}
+            >
               Age
             </label>
             <input
@@ -194,8 +241,23 @@ const App = () => {
         </div>
 
         {/* String Example */}
-        <div style={{ background: "#374151", borderRadius: "0.5rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem" }}>💬 String</h2>
+        <div
+          style={{
+            background: "#374151",
+            borderRadius: "0.5rem",
+            padding: "1.5rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "600",
+              marginBottom: "1rem",
+            }}
+          >
+            💬 String
+          </h2>
           <textarea
             value={snap.message ?? ""}
             onChange={(e) => {
@@ -216,8 +278,21 @@ const App = () => {
         </div>
 
         {/* Number Example */}
-        <div style={{ background: "#374151", borderRadius: "0.5rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem" }}>
+        <div
+          style={{
+            background: "#374151",
+            borderRadius: "0.5rem",
+            padding: "1.5rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "600",
+              marginBottom: "1rem",
+            }}
+          >
             🔢 Number (Counter)
           </h2>
           <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
@@ -237,7 +312,14 @@ const App = () => {
             >
               -
             </button>
-            <span style={{ fontSize: "2rem", fontWeight: "bold", minWidth: "60px", textAlign: "center" }}>
+            <span
+              style={{
+                fontSize: "2rem",
+                fontWeight: "bold",
+                minWidth: "60px",
+                textAlign: "center",
+              }}
+            >
               {snap.counter ?? 0}
             </span>
             <button
@@ -276,8 +358,23 @@ const App = () => {
         </div>
 
         {/* Array Example */}
-        <div style={{ background: "#374151", borderRadius: "0.5rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
-          <h2 style={{ fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem" }}>📋 Array (List)</h2>
+        <div
+          style={{
+            background: "#374151",
+            borderRadius: "0.5rem",
+            padding: "1.5rem",
+            marginBottom: "1.5rem",
+          }}
+        >
+          <h2
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "600",
+              marginBottom: "1rem",
+            }}
+          >
+            📋 Array (List)
+          </h2>
           <div style={{ marginBottom: "1rem" }}>
             <div style={{ display: "flex", gap: "0.5rem" }}>
               <input
@@ -322,9 +419,13 @@ const App = () => {
               </button>
             </div>
           </div>
-          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+          <div
+            style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}
+          >
             {!snap.items || snap.items.length === 0 ? (
-              <p style={{ color: "#9ca3af", fontStyle: "italic", margin: 0 }}>No items yet...</p>
+              <p style={{ color: "#9ca3af", fontStyle: "italic", margin: 0 }}>
+                No items yet...
+              </p>
             ) : (
               snap.items.map((item: string, index: number) => (
                 <div
@@ -362,9 +463,17 @@ const App = () => {
         </div>
 
         {/* Footer */}
-        <div style={{ textAlign: "center", color: "#9ca3af", fontSize: "0.875rem", marginTop: "2rem" }}>
+        <div
+          style={{
+            textAlign: "center",
+            color: "#9ca3af",
+            fontSize: "0.875rem",
+            marginTop: "2rem",
+          }}
+        >
           <p>
-            Every change syncs instantly with <code>useSnapshot(proxy, {"{ sync: true }"})</code>
+            Every change syncs instantly with{" "}
+            <code>useSnapshot(proxy, {"{ sync: true }"})</code>
           </p>
         </div>
       </div>
