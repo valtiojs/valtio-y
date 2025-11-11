@@ -133,17 +133,15 @@ That's it! State is now synchronized via Yjs. Add a provider to sync across clie
 
 Live collaborative demos - open in multiple tabs to see real-time sync:
 
-1. **[Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Cloudflare Durable Object demo showing collaborative sticky notes in production.
+1. **[Simple App](https://valtio-y-simple.agcty.workers.dev/)** - Complete example demonstrating objects, arrays, strings, and numbers with real-time sync. Simple example for beginners.
 
-2. **[Whiteboard](https://valtio-y-whiteboard.agcty.workers.dev)** - Collaborative whiteboard demo with drawing and shapes.
+2. **[Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Cloudflare Durable Object demo showing collaborative sticky notes in production.
 
-3. **[Todos App](https://valtio-y-todos.agcty.workers.dev)** - Live collaborative todo app demo.
+3. **[Whiteboard](https://valtio-y-whiteboard.agcty.workers.dev)** - Collaborative whiteboard demo with drawing and shapes.
 
-4. **[Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)** - Minimal object synchronization with WebSocket provider.
+4. **[Todos App](https://valtio-y-todos.agcty.workers.dev)** - Live collaborative todo app demo.
 
-5. **[Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)** - Array operations (push, pop, splice) with WebSocket sync.
-
-6. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
+5. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
 
 ---
 
@@ -246,7 +244,7 @@ const { proxy: state, bootstrap } = createYjsProxy(ydoc, {
 });
 
 // Wait for sync, then safely initialize if empty
-provider.on("synced", () => {
+provider.once("synced", () => {
   bootstrap({
     todos: [],
     settings: { theme: "light" },

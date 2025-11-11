@@ -11,7 +11,7 @@
  * Open this in multiple browsers to see changes sync in real-time!
  */
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import * as Y from "yjs";
 import YProvider from "y-partyserver/provider";
 import { createYjsProxy } from "valtio-y";
@@ -28,66 +28,40 @@ type AppState = {
   items: string[];
 };
 
+// Create Y.Doc and valtio-y proxy (single global instance)
+const ydoc = new Y.Doc();
+const { proxy, bootstrap } = createYjsProxy<AppState>(ydoc, {
+  getRoot: (doc: Y.Doc) => doc.getMap("root"),
+});
+
+// Connect to PartyServer
+const roomId = window.location.hash.slice(1) || "default";
+const resolvedHost = import.meta.env.PROD
+  ? window.location.host
+  : window.location.host;
+
+const provider = new YProvider(resolvedHost, roomId, ydoc, {
+  connect: true,
+  party: "y-doc-server",
+});
+
+// Initialize default state after sync (no-op if remote data exists)
+provider.once("synced", () => {
+  bootstrap({
+    user: { name: "sfsdfd", age: 0 },
+    message: "sss",
+    counter: 2,
+    items: [],
+  });
+});
+
 const App = () => {
-  const [roomId] = useState<string>(
-    () => window.location.hash.slice(1) || "default",
-  );
   const [syncStatus, setSyncStatus] = useState<
     "connecting" | "connected" | "syncing" | "disconnected"
   >("connecting");
 
-  // Create Y.Doc and proxy (single instance per room)
-  const { proxy, provider } = useMemo(() => {
-    const ydoc = new Y.Doc();
-
-    // Create the Yjs proxy with realtime sync
-    const { proxy } = createYjsProxy<AppState>(ydoc, {
-      getRoot: (doc: Y.Doc) => doc.getMap("root"),
-    });
-
-    // Initialize default state if empty
-    if (!proxy.user) {
-      proxy.user = { name: "", age: 0 };
-    }
-    if (!proxy.message) {
-      proxy.message = "";
-    }
-    if (typeof proxy.counter !== "number") {
-      proxy.counter = 0;
-    }
-    if (!proxy.items) {
-      proxy.items = [];
-    }
-
-    // Connect to PartyServer
-    const resolvedHost = import.meta.env.PROD
-      ? window.location.host
-      : window.location.host;
-
-    const provider = new YProvider(resolvedHost, roomId, ydoc, {
-      connect: true,
-      party: "y-doc-server",
-    });
-
-    return { proxy, provider };
-  }, [roomId]);
-
-  // Cleanup on unmount
-  useEffect(() => {
-    return () => {
-      provider.disconnect();
-      if (typeof provider.destroy === "function") {
-        provider.destroy();
-      }
-    };
-  }, [provider]);
-
   // Track sync status
   useEffect(() => {
-    if (!provider) return;
-
-    setSyncStatus("connecting");
-
     type ProviderWithConnectionState = typeof provider & {
       wsconnected: boolean;
       wsconnecting: boolean;
@@ -118,104 +92,167 @@ const App = () => {
       provider.off("connection-error", () => {});
       provider.off("connection-close", () => {});
     };
-  }, [provider]);
+  }, []);
 
   // Use snapshot with sync: true for realtime updates (every keystroke)
   const snap = useSnapshot(proxy, { sync: true });
 
+  const getStatusColor = () => {
+    switch (syncStatus) {
+      case "connected":
+        return "#22c55e";
+      case "syncing":
+        return "#eab308";
+      case "connecting":
+        return "#3b82f6";
+      default:
+        return "#ef4444";
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 text-white p-8">
-      <div className="max-w-2xl mx-auto">
+    <div style={{ minHeight: "100vh", background: "#1f2937", color: "white", padding: "2rem" }}>
+      <div style={{ maxWidth: "800px", margin: "0 auto" }}>
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2">valtio-y Simple Example</h1>
-          <p className="text-gray-400">
+        <div style={{ marginBottom: "3rem" }}>
+          <h1 style={{ fontSize: "2.5rem", fontWeight: "bold", marginBottom: "0.5rem" }}>
+            valtio-y Simple Example
+          </h1>
+          <p style={{ color: "#9ca3af" }}>
             Open in multiple browsers to see realtime sync!
           </p>
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-sm">Status:</span>
+          <div style={{ marginTop: "0.5rem", display: "flex", alignItems: "center", gap: "0.5rem" }}>
+            <span style={{ fontSize: "0.875rem" }}>Status:</span>
             <span
-              className={`px-2 py-1 rounded text-xs font-medium ${
-                syncStatus === "connected"
-                  ? "bg-green-600"
-                  : syncStatus === "syncing"
-                    ? "bg-yellow-600"
-                    : syncStatus === "connecting"
-                      ? "bg-blue-600"
-                      : "bg-red-600"
-              }`}
+              style={{
+                background: getStatusColor(),
+                padding: "0.25rem 0.5rem",
+                borderRadius: "0.25rem",
+                fontSize: "0.75rem",
+                fontWeight: "500",
+              }}
             >
               {syncStatus}
             </span>
-            <span className="text-xs text-gray-500">Room: {roomId}</span>
+            <span style={{ fontSize: "0.75rem", color: "#9ca3af" }}>Room: {roomId}</span>
           </div>
         </div>
 
         {/* Object Example */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
-          <h2 className="text-2xl font-semibold mb-4">📦 Object (Nested)</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium mb-1">Name</label>
-              <input
-                type="text"
-                value={snap.user.name}
-                onChange={(e) => {
-                  proxy.user.name = e.target.value;
-                }}
-                placeholder="Type your name..."
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Age</label>
-              <input
-                type="number"
-                value={snap.user.age}
-                onChange={(e) => {
-                  proxy.user.age = parseInt(e.target.value) || 0;
-                }}
-                placeholder="Enter age..."
-                className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
+        <div style={{ background: "#374151", borderRadius: "0.5rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem" }}>
+            📦 Object (Nested)
+          </h2>
+          <div style={{ marginBottom: "1rem" }}>
+            <label style={{ display: "block", fontSize: "0.875rem", marginBottom: "0.25rem" }}>
+              Name
+            </label>
+            <input
+              type="text"
+              value={snap.user?.name ?? ""}
+              onChange={(e) => {
+                if (!proxy.user) {
+                  proxy.user = { name: "", age: 0 };
+                }
+                proxy.user.name = e.target.value;
+              }}
+              placeholder="Type your name..."
+              style={{
+                width: "100%",
+                padding: "0.5rem",
+                background: "#1f2937",
+                border: "1px solid #4b5563",
+                borderRadius: "0.25rem",
+                color: "white",
+              }}
+            />
+          </div>
+          <div>
+            <label style={{ display: "block", fontSize: "0.875rem", marginBottom: "0.25rem" }}>
+              Age
+            </label>
+            <input
+              type="number"
+              value={snap.user?.age ?? 0}
+              onChange={(e) => {
+                if (!proxy.user) {
+                  proxy.user = { name: "", age: 0 };
+                }
+                proxy.user.age = parseInt(e.target.value) || 0;
+              }}
+              placeholder="Enter age..."
+              style={{
+                width: "100%",
+                padding: "0.5rem",
+                background: "#1f2937",
+                border: "1px solid #4b5563",
+                borderRadius: "0.25rem",
+                color: "white",
+              }}
+            />
           </div>
         </div>
 
         {/* String Example */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
-          <h2 className="text-2xl font-semibold mb-4">💬 String</h2>
+        <div style={{ background: "#374151", borderRadius: "0.5rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem" }}>💬 String</h2>
           <textarea
-            value={snap.message}
+            value={snap.message ?? ""}
             onChange={(e) => {
               proxy.message = e.target.value;
             }}
             placeholder="Type a message..."
             rows={3}
-            className="w-full px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+            style={{
+              width: "100%",
+              padding: "0.5rem",
+              background: "#1f2937",
+              border: "1px solid #4b5563",
+              borderRadius: "0.25rem",
+              color: "white",
+              fontFamily: "inherit",
+            }}
           />
         </div>
 
         {/* Number Example */}
-        <div className="bg-gray-800 rounded-lg p-6 mb-6 border border-gray-700">
-          <h2 className="text-2xl font-semibold mb-4">🔢 Number (Counter)</h2>
-          <div className="flex items-center gap-4">
+        <div style={{ background: "#374151", borderRadius: "0.5rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem" }}>
+            🔢 Number (Counter)
+          </h2>
+          <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
             <button
               onClick={() => {
                 proxy.counter--;
               }}
-              className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-medium"
+              style={{
+                padding: "0.5rem 1rem",
+                background: "#dc2626",
+                border: "none",
+                borderRadius: "0.25rem",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: "500",
+              }}
             >
               -
             </button>
-            <span className="text-3xl font-bold min-w-[60px] text-center">
-              {snap.counter}
+            <span style={{ fontSize: "2rem", fontWeight: "bold", minWidth: "60px", textAlign: "center" }}>
+              {snap.counter ?? 0}
             </span>
             <button
               onClick={() => {
                 proxy.counter++;
               }}
-              className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-medium"
+              style={{
+                padding: "0.5rem 1rem",
+                background: "#16a34a",
+                border: "none",
+                borderRadius: "0.25rem",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: "500",
+              }}
             >
               +
             </button>
@@ -223,7 +260,15 @@ const App = () => {
               onClick={() => {
                 proxy.counter = 0;
               }}
-              className="px-4 py-2 bg-gray-600 hover:bg-gray-700 rounded font-medium"
+              style={{
+                padding: "0.5rem 1rem",
+                background: "#4b5563",
+                border: "none",
+                borderRadius: "0.25rem",
+                color: "white",
+                cursor: "pointer",
+                fontWeight: "500",
+              }}
             >
               Reset
             </button>
@@ -231,10 +276,10 @@ const App = () => {
         </div>
 
         {/* Array Example */}
-        <div className="bg-gray-800 rounded-lg p-6 border border-gray-700">
-          <h2 className="text-2xl font-semibold mb-4">📋 Array (List)</h2>
-          <div className="space-y-4">
-            <div className="flex gap-2">
+        <div style={{ background: "#374151", borderRadius: "0.5rem", padding: "1.5rem", marginBottom: "1.5rem" }}>
+          <h2 style={{ fontSize: "1.5rem", fontWeight: "600", marginBottom: "1rem" }}>📋 Array (List)</h2>
+          <div style={{ marginBottom: "1rem" }}>
+            <div style={{ display: "flex", gap: "0.5rem" }}>
               <input
                 type="text"
                 placeholder="Add new item..."
@@ -244,7 +289,14 @@ const App = () => {
                     e.currentTarget.value = "";
                   }
                 }}
-                className="flex-1 px-4 py-2 bg-gray-700 border border-gray-600 rounded focus:outline-none focus:ring-2 focus:ring-blue-500"
+                style={{
+                  flex: 1,
+                  padding: "0.5rem",
+                  background: "#1f2937",
+                  border: "1px solid #4b5563",
+                  borderRadius: "0.25rem",
+                  color: "white",
+                }}
               />
               <button
                 onClick={() => {
@@ -256,41 +308,63 @@ const App = () => {
                     input.value = "";
                   }
                 }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-medium"
+                style={{
+                  padding: "0.5rem 1rem",
+                  background: "#2563eb",
+                  border: "none",
+                  borderRadius: "0.25rem",
+                  color: "white",
+                  cursor: "pointer",
+                  fontWeight: "500",
+                }}
               >
                 Add
               </button>
             </div>
-            <div className="space-y-2">
-              {snap.items.length === 0 ? (
-                <p className="text-gray-500 italic">No items yet...</p>
-              ) : (
-                snap.items.map((item: string, index: number) => (
-                  <div
-                    key={index}
-                    className="flex items-center justify-between bg-gray-700 px-4 py-2 rounded"
+          </div>
+          <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem" }}>
+            {!snap.items || snap.items.length === 0 ? (
+              <p style={{ color: "#9ca3af", fontStyle: "italic", margin: 0 }}>No items yet...</p>
+            ) : (
+              snap.items.map((item: string, index: number) => (
+                <div
+                  key={index}
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    background: "#1f2937",
+                    padding: "0.5rem",
+                    borderRadius: "0.25rem",
+                  }}
+                >
+                  <span>{item}</span>
+                  <button
+                    onClick={() => {
+                      proxy.items.splice(index, 1);
+                    }}
+                    style={{
+                      background: "transparent",
+                      border: "1px solid #ef4444",
+                      color: "#ef4444",
+                      borderRadius: "0.25rem",
+                      padding: "0.25rem 0.5rem",
+                      cursor: "pointer",
+                      fontSize: "0.875rem",
+                    }}
                   >
-                    <span>{item}</span>
-                    <button
-                      onClick={() => {
-                        proxy.items.splice(index, 1);
-                      }}
-                      className="text-red-400 hover:text-red-300 font-medium"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                ))
-              )}
-            </div>
+                    ✕
+                  </button>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
         {/* Footer */}
-        <div className="mt-8 text-center text-gray-500 text-sm">
+        <div style={{ textAlign: "center", color: "#9ca3af", fontSize: "0.875rem", marginTop: "2rem" }}>
           <p>
-            Every change syncs instantly with{" "}
-            <code>useSnapshot(proxy, &#123; sync: true &#125;)</code>
+            Every change syncs instantly with <code>useSnapshot(proxy, {"{ sync: true }"})</code>
           </p>
         </div>
       </div>

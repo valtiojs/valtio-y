@@ -1,6 +1,6 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "valtio-y-todos",
+  "name": "valtio-y-simple",
   "main": "worker/index.ts",
   "compatibility_date": "2025-04-04",
   "assets": {
