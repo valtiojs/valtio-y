@@ -12,49 +12,130 @@ type TodoSeed = {
   children?: TodoSeed[];
 };
 
+// Reset the room every 30 minutes in production, or every minute in dev mode
+const CLEANUP_INTERVAL_MS = import.meta.env.DEV ? 60 * 1000 : 30 * 60 * 1000;
+
 const INITIAL_TODOS: TodoSeed[] = [
   {
-    text: "Plan project architecture",
-    completed: true,
-    children: [
-      { text: "Research technologies", completed: true },
-      { text: "Design data model", completed: true },
-    ],
-  },
-  {
-    text: "Connect with your team",
+    text: "Welcome to valtio-y collaborative todos! ⚡",
     completed: false,
     children: [
-      { text: "Share this room link with a teammate", completed: false },
       {
-        text: "Open the app in a second browser or device to see live sync",
+        text: "Real-time synchronization powered by Valtio + Yjs CRDTs",
+        completed: false,
+      },
+      {
+        text: "Open this page in 2+ browser tabs to see instant sync!",
         completed: false,
       },
     ],
   },
   {
-    text: "Explore collaboration features",
+    text: "Try editing and organizing",
     completed: false,
     children: [
+      { text: "Double-click any todo to edit it", completed: false },
       { text: "Drag todos to reorder them", completed: false },
-      { text: "Add nested subtasks with the + button", completed: false },
-      { text: "Toggle selection mode for bulk actions", completed: false },
+      { text: "Check/uncheck items to mark complete", completed: false },
+    ],
+  },
+  {
+    text: "Add nested subtasks",
+    completed: false,
+    children: [
+      {
+        text: "Click the + button next to any todo to add a subtask",
+        completed: false,
+      },
+      { text: "Build deep hierarchies for complex projects", completed: false },
+      {
+        text: "All nesting syncs perfectly in real-time",
+        completed: false,
+      },
+    ],
+  },
+  {
+    text: "Use rooms for privacy 🔒",
+    completed: false,
+    children: [
+      {
+        text: "Add #room-name to the URL to create a private room",
+        completed: false,
+      },
+      {
+        text: "Example: localhost:5173#my-team-tasks",
+        completed: false,
+      },
+      { text: "Each room is completely separate", completed: false },
+    ],
+  },
+  {
+    text: "Bulk operations",
+    completed: false,
+    children: [
+      {
+        text: "Toggle selection mode with the checkbox icon",
+        completed: false,
+      },
+      { text: "Select multiple todos", completed: false },
+      { text: "Delete them all at once with the trash icon", completed: false },
+    ],
+  },
+  {
+    text: "Demo mode - room resets every 30 minutes ⏰",
+    completed: false,
+    children: [
+      {
+        text: "This keeps the default room clean for new visitors",
+        completed: false,
+      },
+      {
+        text: "Your changes are safe in custom rooms (#room-name)",
+        completed: false,
+      },
+      { text: "Feel free to experiment!", completed: false },
     ],
   },
 ];
 
 export class YDocServer extends YServer<Env> {
+  /**
+   * Initialize document with sample todos if empty
+   * Called once when a client connects to the server
+   */
   async onLoad(): Promise<void> {
-    const sharedState = this.document.getMap("sharedState");
+    const sharedState = this.document.getMap("root");
     if (sharedState.size === 0) {
       this.createInitialTodos(sharedState);
     }
+
+    // Schedule the first alarm to clean the room
+    const now = Date.now();
+    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
   }
 
   onError(error: unknown): void {
     console.error("[YDocServer] connection error", error);
   }
 
+  /**
+   * Alarm handler that cleans the room and creates fresh todos
+   * This is called automatically by the Durable Objects runtime
+   */
+  async alarm(): Promise<void> {
+    const sharedState = this.document.getMap("root");
+    // Create fresh initial todos
+    this.createInitialTodos(sharedState);
+
+    // Schedule the next alarm
+    const now = Date.now();
+    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
+  }
+
+  /**
+   * Create fresh initial todos in the shared state
+   * This is called on initial load and every 30 minutes via alarm
+   */
   private createInitialTodos(sharedState: Y.Map<unknown>): void {
     this.document.transact(() => {
       sharedState.delete("todos");
