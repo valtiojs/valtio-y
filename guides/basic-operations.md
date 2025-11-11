@@ -250,5 +250,5 @@ function moveItem(from: number, to: number) {
 
 **See it in action:**
 
-- [Simple Todos Example](../examples/05_todos_simple) - Basic patterns with comments
-- [Full Todo App](../examples/04_todos) - Advanced UI patterns
+- [Simple Example](../examples/simple) - Basic patterns with objects, arrays, and primitives
+- [Todos App](../examples/todos) - Advanced UI patterns with routing and RoomState

@@ -68,7 +68,7 @@ Live collaborative demos - open in multiple tabs to see real-time sync:
 
 4. **[Todos App](https://valtio-y-todos.agcty.workers.dev)** - Live collaborative todo app demo.
 
-5. **[Minecraft Clone](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/03_minecraft)** - Real-time multiplayer 3D game with WebRTC P2P sync (Three.js, y-webrtc).
+5. **[Minecraft Clone](https://valtio-y-minecraft.agcty.workers.dev)** - Real-time multiplayer 3D game with Cloudflare Durable Objects sync (Three.js, valtio-y).
 
 ## Collaboration Setup
 
