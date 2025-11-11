@@ -45,7 +45,7 @@ export class YDocServer extends YServer<Env> {
       note1.set("color", "#fef08a"); // yellow
       note1.set(
         "text",
-        "Welcome to valtio-y! ⚡\n\nReal-time collaborative sticky notes powered by Valtio + Yjs CRDTs.\n\nOpen this on 2 devices to see instant sync!",
+        "Welcome to valtio-y! ⚡\n\nReal-time collaborative sticky notes powered by Valtio + Yjs CRDTs.",
       );
       note1.set("z", 0);
       yNotes.set(id1, note1);
@@ -60,7 +60,7 @@ export class YDocServer extends YServer<Env> {
       note2.set("color", "#fecaca"); // red
       note2.set(
         "text",
-        "Try it out! 🎨\n\n• Double-click to edit\n• Drag to move\n• Drag corner to resize\n• Use toolbar to add notes",
+        "Try it out! 🎨\n\n• Click to edit\n• Drag to move\n• Drag corner to resize\n• Use toolbar to add notes",
       );
       note2.set("z", 1);
       yNotes.set(id2, note2);
@@ -90,7 +90,7 @@ export class YDocServer extends YServer<Env> {
       note4.set("color", "#d9f99d"); // lime
       note4.set(
         "text",
-        "How it works 🛠️\n\nValtio = Reactive state\nYjs = CRDT sync\nvaltio-y = Magic bridge\n\nConflict-free collaboration!",
+        "How it works 🛠️\n\nValtio = Reactive state\nYjs = CRDT sync\nvaltio-y = Magic bridge",
       );
       note4.set("z", 3);
       yNotes.set(id4, note4);
@@ -105,7 +105,7 @@ export class YDocServer extends YServer<Env> {
       note5.set("color", "#e9d5ff"); // purple
       note5.set(
         "text",
-        "Demo mode ⏰\n\nThis room resets every minute to keep it clean.\n\nFeel free to experiment!",
+        "Try it yourself! 🧪\n\nOpen this in two browser tabs to see real-time sync in action.",
       );
       note5.set("z", 4);
       yNotes.set(id5, note5);
@@ -120,7 +120,7 @@ export class YDocServer extends YServer<Env> {
       note6.set("color", "#fecdd3"); // pink
       note6.set(
         "text",
-        "Everyone sees this! 👀\n\nChanges you make here are visible to all users on this page.\n\nBe nice! ✨",
+        "Everyone sees this! 👀\n\nChanges sync to all users.\n\nThis room resets every 30 mins to keep it clean. ✨",
       );
       note6.set("z", 5);
       yNotes.set(id6, note6);

@@ -183,7 +183,11 @@ function TodoList() {
 }
 ```
 
+**Key principle:** Read from the snapshot (`snap`), mutate the proxy (`state`).
+
 valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Solid, and vanilla JavaScript.
+
+**For optimizing large lists** with thousands of items, see the [Performance Guide](./guides/performance-guide.md#optimizing-lists).
 
 **Note for text inputs:** When using controlled text inputs (like `<input>` or `<textarea>`), add `{ sync: true }` to prevent cursor jumping:
 
@@ -265,14 +269,14 @@ redo(); // Redo
 
 ## Performance
 
-valtio-y is fast out of the box with automatic batching, bulk operations, and lazy materialization. Typical performance characteristics:
+valtio-y is fast out of the box with automatic batching, bulk operations, and efficient proxy creation. Typical performance characteristics:
 
 | Operation                   | Time     | Notes                      |
 | --------------------------- | -------- | -------------------------- |
 | Small updates (1-10 items)  | ~1-3ms   | Typical UI interactions    |
 | Bulk operations (100 items) | ~3-8ms   | Automatically optimized    |
 | Large arrays (1000 items)   | ~15-30ms | Bootstrap/import scenarios |
-| Deep nesting (10+ levels)   | ~2-4ms   | Lazy materialization helps |
+| Deep nesting (10+ levels)   | ~2-4ms   | Cached proxies stay fast   |
 
 **→ See [Performance Guide](./guides/performance-guide.md) for benchmarking, optimization patterns, and React integration**
 

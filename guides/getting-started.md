@@ -252,6 +252,8 @@ function TodoList() {
 
 **Key principle:** Read from the snapshot (`snap`), mutate the proxy (`state`).
 
+**For optimizing large lists** with thousands of items, see the [Performance Guide](./performance-guide.md#optimizing-lists).
+
 ### Controlled Text Inputs
 
 For `<input>` or `<textarea>` elements, use `{ sync: true }` to prevent cursor jumping:
@@ -269,6 +271,35 @@ function TextInput() {
 **Why?** Valtio batches updates asynchronously by default. For text inputs, this causes the cursor to jump. `{ sync: true }` forces synchronous updates. See [Valtio issue #270](https://github.com/pmndrs/valtio/issues/270).
 
 **Only use `{ sync: true }` for controlled text inputs.** For everything else, the default async batching is more performant.
+
+### Performance Tips
+
+valtio-y is fast by default with automatic optimizations:
+
+**Automatic (zero config):**
+
+- All mutations in the same tick are batched into one network update
+- Components only re-render when their accessed data changes
+- Efficient proxy creation with stable references keeps operations fast
+
+**For large lists (100+ items):**
+
+Split into child components where each item calls `useSnapshot` for its own data:
+
+```typescript
+function TodoList() {
+  const snap = useSnapshot(state);
+  return snap.todos.map((_, i) => <TodoItem key={i} index={i} />);
+}
+
+function TodoItem({ index }) {
+  const snap = useSnapshot(state);
+  const todo = snap.todos[index]; // Fine-grained subscription
+  return <li>{todo.text}</li>;
+}
+```
+
+**Most apps get great performance with zero optimization.** See the [Performance Guide](./performance-guide.md) for advanced patterns and benchmarks.
 
 ### Other Frameworks
 

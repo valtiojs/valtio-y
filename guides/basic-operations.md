@@ -105,7 +105,7 @@ state.grid = [
 state.grid[0][1] = 99;
 ```
 
-**Lazy materialization:** Proxies are created on-demand when you access nested structures. This makes large datasets fast to initialize.
+**Efficient batching:** Proxies are created during transaction flush using stable references (cached in WeakMap). Batched conversion makes large datasets fast to initialize.
 
 **Performance tip for loops:**
 

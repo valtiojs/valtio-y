@@ -11,18 +11,19 @@ state.users[0].name = "Alice";
 // Automatically syncs across all connected users
 ```
 
-## Installation
+## Live Examples
 
-```bash
-# npm
-npm install valtio-y valtio yjs
+**Open any demo in multiple browser tabs and watch them sync in real-time:**
 
-# pnpm
-pnpm add valtio-y valtio yjs
+🎮 **[Minecraft Clone](https://valtio-y-minecraft.agcty.workers.dev)** - Simple showcase inspired by Minecraft. Lets multiple users place and remove blocks in real time using Three.js and valtio-y.
 
-# bun
-bun add valtio-y valtio yjs
-```
+🎨 **[Whiteboard](https://valtio-y-whiteboard.agcty.workers.dev)** - Collaborative drawing with shapes, colors, and real-time cursors. Google Docs for drawing.
+
+📝 **[Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Production-ready app running on Cloudflare Workers (this is real infrastructure, not a demo server).
+
+✅ **[Todos App](https://valtio-y-todos.agcty.workers.dev)** - Classic collaborative todo list. Real-time updates, no refresh needed.
+
+🧪 **[Simple Demo](https://valtio-y-simple.agcty.workers.dev/)** – Best for understanding the basic sync patterns (objects, arrays, primitives); other demos above are more production-focused.
 
 ## Quick Start
 
@@ -56,19 +57,60 @@ state.todos[0].done = true;
 
 That's it! State is now synchronized via Yjs. Add a provider to sync across clients.
 
-## Examples
+## Installation
 
-Live collaborative demos - open in multiple tabs to see real-time sync:
+```bash
+# npm
+npm install valtio-y valtio yjs
 
-1. **[Simple App](https://valtio-y-simple.agcty.workers.dev/)** - Complete example demonstrating objects, arrays, strings, and numbers with real-time sync. Simple example for beginners.
+# pnpm
+pnpm add valtio-y valtio yjs
 
-2. **[Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Cloudflare Durable Object demo showing collaborative sticky notes in production.
+# bun
+bun add valtio-y valtio yjs
+```
 
-3. **[Whiteboard](https://valtio-y-whiteboard.agcty.workers.dev)** - Collaborative whiteboard demo with drawing and shapes.
+## React Integration
 
-4. **[Todos App](https://valtio-y-todos.agcty.workers.dev)** - Live collaborative todo app demo.
+Use Valtio's `useSnapshot` hook to automatically re-render components when data changes:
 
-5. **[Minecraft Clone](https://valtio-y-minecraft.agcty.workers.dev)** - Real-time multiplayer 3D game with Cloudflare Durable Objects sync (Three.js, valtio-y).
+```jsx
+import { useSnapshot } from "valtio/react";
+
+function TodoList() {
+  const snap = useSnapshot(state);
+
+  return (
+    <ul>
+      {snap.todos.map((todo, i) => (
+        <li key={i}>
+          <input
+            type="checkbox"
+            checked={todo.done}
+            onChange={() => (state.todos[i].done = !state.todos[i].done)}
+          />
+          {todo.text}
+        </li>
+      ))}
+    </ul>
+  );
+}
+```
+
+**Key principle:** Read from the snapshot (`snap`), mutate the proxy (`state`).
+
+valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Solid, and vanilla JavaScript.
+
+**For optimizing large lists** with thousands of items, see the [Performance Guide](../guides/performance-guide.md#optimizing-lists).
+
+**Note for text inputs:** When using controlled text inputs (like `<input>` or `<textarea>`), add `{ sync: true }` to prevent cursor jumping:
+
+```jsx
+const snap = useSnapshot(state, { sync: true });
+<input value={snap.text} onChange={(e) => (state.text = e.target.value)} />;
+```
+
+This forces synchronous updates instead of Valtio's default async batching. See [Valtio issue #270](https://github.com/pmndrs/valtio/issues/270) for details.
 
 ## Collaboration Setup
 
@@ -144,44 +186,6 @@ redo(); // state.count -> 1
 
 See [guides/undo-redo.md](../guides/undo-redo.md) for full documentation.
 
-## Using with React
-
-Use Valtio's `useSnapshot` hook to bind state to components. Components re-render only when their data changes:
-
-```jsx
-import { useSnapshot } from "valtio/react";
-
-function TodoList() {
-  const snap = useSnapshot(state);
-
-  return (
-    <ul>
-      {snap.todos.map((todo, i) => (
-        <li key={i}>
-          <input
-            type="checkbox"
-            checked={todo.done}
-            onChange={() => (state.todos[i].done = !state.todos[i].done)}
-          />
-          {todo.text}
-        </li>
-      ))}
-    </ul>
-  );
-}
-```
-
-valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Solid, and vanilla JavaScript.
-
-**Note for text inputs:** When using controlled text inputs (like `<input>` or `<textarea>`), add `{ sync: true }` to prevent cursor jumping:
-
-```jsx
-const snap = useSnapshot(state, { sync: true });
-<input value={snap.text} onChange={(e) => (state.text = e.target.value)} />;
-```
-
-This forces synchronous updates instead of Valtio's default async batching. See [Valtio issue #270](https://github.com/pmndrs/valtio/issues/270) for details.
-
 ## Features
 
 - **Zero API overhead** - Just mutate objects like normal JavaScript
@@ -190,6 +194,16 @@ This forces synchronous updates instead of Valtio's default async batching. See 
 - **TypeScript** - Full type safety and inference
 - **Production-ready** - Comprehensive tests and benchmarks
 - **Framework-agnostic** - Works with React, Vue, Svelte, Solid, and vanilla JS
+
+## Why valtio-y?
+
+Stop writing sync logic. Just mutate objects.
+
+- **Valtio** gives you reactive state with zero boilerplate
+- **Yjs** gives you conflict-free sync and offline support
+- **valtio-y** connects them - you get both, write neither
+
+No reducers, no actions, no manual sync code. Just: `state.count++`
 
 ## Limitations
 
