@@ -214,29 +214,20 @@ Core documentation for understanding and using valtio-y effectively:
 
 ## Collaboration Setup
 
-Connect multiple clients with any Yjs provider:
+Connect any Yjs provider to sync across clients:
 
 ```js
 import { WebsocketProvider } from "y-websocket";
 
-const ydoc = new Y.Doc();
-const provider = new WebsocketProvider("ws://localhost:1234", "my-room", ydoc);
-
-const { proxy: state } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("state"),
-});
-
-// Now all clients in "my-room" share the same state!
-state.message = "Hello from client 1";
+const provider = new WebsocketProvider(
+  "ws://localhost:1234",
+  "room-name",
+  ydoc
+);
+// That's it—state syncs automatically
 ```
 
-**Supported providers:**
-
-- [y-websocket](https://github.com/yjs/y-websocket) - WebSocket sync
-- [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver) - PartyKit/Cloudflare Durable Objects backend
-- [y-webrtc](https://github.com/yjs/y-webrtc) - P2P WebRTC sync
-- [y-indexeddb](https://github.com/yjs/y-indexeddb) - Offline persistence
-- Any Yjs provider
+Works with any provider: [y-websocket](https://github.com/yjs/y-websocket), [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver) (great for Cloudflare), [y-webrtc](https://github.com/yjs/y-webrtc), [y-indexeddb](https://github.com/yjs/y-indexeddb), etc.
 
 ---
 
