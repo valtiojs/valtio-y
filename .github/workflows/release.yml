@@ -29,7 +29,7 @@ jobs:
 
       # --- 3. Install dependencies -------------------------------------------
       - name: Install dependencies
-        run: bun install --frozen-lockfile --ignore-scripts
+        run: bun install --ignore-scripts
 
       # --- 4. Build all packages ---------------------------------------------
       - name: Build
