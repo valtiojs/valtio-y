@@ -15,7 +15,8 @@
  * - Deeply nested updates propagate correctly
  */
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
+import type { PointerEvent as ReactPointerEvent } from "react";
 import {
   CheckCircle2,
   Circle,
@@ -27,23 +28,7 @@ import {
   CheckSquare,
   Square,
 } from "lucide-react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardSensor,
-  PointerSensor,
-  useSensor,
-  useSensors,
-} from "@dnd-kit/core";
-import type { DragEndEvent } from "@dnd-kit/core";
-import {
-  arrayMove,
-  SortableContext,
-  sortableKeyboardCoordinates,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
+import { AnimatePresence, Reorder, useDragControls } from "motion/react";
 import type { TodoItem as TodoItemType, AppState } from "../types";
 import { getItemByPath, getContainingArray } from "../utils";
 
@@ -80,32 +65,9 @@ export function TodoItem({
   const [isEditing, setIsEditing] = useState(false);
   const [editText, setEditText] = useState(item.text);
   const inputRef = useRef<HTMLInputElement>(null);
+  const dragControls = useDragControls();
 
   const hasChildren = item.children && item.children.length > 0;
-
-  // Setup drag-and-drop for nested children
-  const childSensors = useSensors(
-    useSensor(PointerSensor),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-    }),
-  );
-
-  // Setup sortable for this item
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: item.id });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
-  };
 
   /**
    * Toggle completion status.
@@ -179,26 +141,40 @@ export function TodoItem({
   }
 
   /**
-   * Handle reordering of child todos via drag-and-drop
+   * Handle reordering of child todos via drag-and-drop.
+   * Motion's Reorder component calls this with the new order directly.
    */
-  function handleChildDragEnd(event: DragEndEvent) {
-    const { active, over } = event;
-
-    if (over && active.id !== over.id) {
+  const handleChildReorder = useCallback(
+    (newOrder: readonly TodoItemType[]) => {
       const target = getItemByPath(stateProxy.todos, path);
       if (target && target.children) {
-        const children = target.children;
-        const oldIndex = children.findIndex((c) => c.id === active.id);
-        const newIndex = children.findIndex((c) => c.id === over.id);
+        // Map the reordered snapshots back to the actual proxy items
+        const idToChild = new Map(
+          target.children.map((child) => [child.id, child]),
+        );
+        const reordered = newOrder
+          .map((child) => idToChild.get(child.id))
+          .filter((child): child is TodoItemType => Boolean(child));
 
-        if (oldIndex !== -1 && newIndex !== -1) {
-          // Reorder and update the array
-          const newOrder = arrayMove(children, oldIndex, newIndex);
-          children.splice(0, children.length, ...newOrder);
+        if (reordered.length === target.children.length) {
+          // Replace the entire array - valtio-y tracks this!
+          target.children = reordered;
         }
       }
-    }
-  }
+    },
+    [stateProxy.todos, path],
+  );
+
+  /**
+   * Handle pointer down on drag handle to initiate drag
+   */
+  const handleDragPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      dragControls.start(event);
+    },
+    [dragControls],
+  );
 
   function handleKeyDown(e: React.KeyboardEvent) {
     if (isEditing) {
@@ -235,24 +211,26 @@ export function TodoItem({
   const accentColor = accentColors[colorScheme];
 
   return (
-    <div ref={setNodeRef} style={style}>
-      <div
-        className={`group ${bgColor} ${
-          isSelected ? "ring-2 ring-blue-500 ring-inset" : ""
-        }`}
-      >
-        <div className="flex items-start gap-2 py-2.5 px-3 rounded-md hover:bg-slate-50/50 transition-all duration-150">
-          {/* Drag handle */}
-          {!selectionMode && (
-            <button
-              {...attributes}
-              {...listeners}
-              className="mt-0.5 flex-shrink-0 text-slate-300 hover:text-slate-600 cursor-grab active:cursor-grabbing transition-colors"
-              aria-label="Drag to reorder"
-            >
-              <GripVertical size={16} />
-            </button>
-          )}
+    <Reorder.Item
+      value={item}
+      dragControls={dragControls}
+      dragListener={false}
+      className={`group ${bgColor} ${
+        isSelected ? "ring-2 ring-blue-500 ring-inset" : ""
+      }`}
+    >
+      <div className="flex items-start gap-2 py-2.5 px-3 rounded-md hover:bg-slate-50/50 transition-all duration-150">
+        {/* Drag handle */}
+        {!selectionMode && (
+          <button
+            type="button"
+            onPointerDown={handleDragPointerDown}
+            className="mt-0.5 flex-shrink-0 text-slate-300 hover:text-slate-600 cursor-grab active:cursor-grabbing transition-colors"
+            aria-label="Drag to reorder"
+          >
+            <GripVertical size={16} />
+          </button>
+        )}
 
           {/* Selection checkbox */}
           {selectionMode && (
@@ -353,36 +331,33 @@ export function TodoItem({
           )}
         </div>
 
-        {/* Recursive children rendering */}
-        {hasChildren && isExpanded && (
-          <div className="ml-8 border-l-2 border-slate-200 pl-3">
-            <DndContext
-              sensors={childSensors}
-              collisionDetection={closestCenter}
-              onDragEnd={handleChildDragEnd}
-            >
-              <SortableContext
-                items={item.children!.map((c) => c.id)}
-                strategy={verticalListSortingStrategy}
-              >
-                {item.children!.map((child, index) => (
-                  <TodoItem
-                    key={child.id}
-                    item={child}
-                    stateProxy={stateProxy}
-                    path={[...path, index]}
-                    isSelected={isSelected}
-                    onToggleSelect={onToggleSelect}
-                    selectionMode={selectionMode}
-                    nestLevel={nestLevel + 1}
-                    colorScheme={colorScheme}
-                  />
-                ))}
-              </SortableContext>
-            </DndContext>
-          </div>
-        )}
-      </div>
-    </div>
+      {/* Recursive children rendering */}
+      {hasChildren && isExpanded && (
+        <div className="ml-8 border-l-2 border-slate-200 pl-3">
+          <Reorder.Group
+            axis="y"
+            values={item.children!}
+            onReorder={handleChildReorder}
+            className="list-none"
+          >
+            <AnimatePresence initial={false}>
+              {item.children!.map((child, index) => (
+                <TodoItem
+                  key={child.id}
+                  item={child}
+                  stateProxy={stateProxy}
+                  path={[...path, index]}
+                  isSelected={isSelected}
+                  onToggleSelect={onToggleSelect}
+                  selectionMode={selectionMode}
+                  nestLevel={nestLevel + 1}
+                  colorScheme={colorScheme}
+                />
+              ))}
+            </AnimatePresence>
+          </Reorder.Group>
+        </div>
+      )}
+    </Reorder.Item>
   );
 }
