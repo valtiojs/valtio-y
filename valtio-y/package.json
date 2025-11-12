@@ -3,6 +3,8 @@
   "description": "Collaborative Valtio state",
   "version": "1.1.1",
   "type": "module",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "author": "Alex Gogl",
   "repository": {
     "type": "git",
@@ -12,10 +14,13 @@
     "./package.json": "./package.json",
     ".": {
       "types": "./dist/index.d.ts",
+      "workerd": {
+        "module": "./dist/index.js",
+        "import": "./dist/index.js"
+      },
       "node": {
         "module": "./dist/index.js",
-        "import": "./dist/index.js",
-        "require": "./dist/index.cjs"
+        "import": "./dist/index.js"
       },
       "browser": {
         "module": "./dist/index.js",
