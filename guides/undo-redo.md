@@ -135,17 +135,25 @@ const { proxy, undo, redo } = createYjsProxy(ydoc, {
 });
 ```
 
-### Track All Changes (Including Remote)
+### Track Changes Without Explicit Origin
 
-By default, only local changes are tracked. To undo everything:
+By default, only local valtio-y changes (with `VALTIO_Y_ORIGIN`) are tracked. To track changes without an explicit origin:
 
 ```typescript
 const { proxy, undo, redo } = createYjsProxy(ydoc, {
   getRoot: (doc) => doc.getMap("state"),
   undoManager: {
-    trackedOrigins: undefined, // Track ALL changes (including remote users)
+    trackedOrigins: undefined, // Track only changes without explicit origin
   },
 });
+```
+
+**Note:** This does NOT track all changes. Yjs has no built-in way to track all origins. To track multiple specific origins, use a Set:
+
+```typescript
+undoManager: {
+  trackedOrigins: new Set([VALTIO_Y_ORIGIN, 'custom-origin', 'another-origin'])
+}
 ```
 
 ### Advanced: Custom UndoManager

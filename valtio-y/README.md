@@ -184,7 +184,7 @@ undo(); // state.count -> undefined
 redo(); // state.count -> 1
 ```
 
-See [guides/undo-redo.md](../guides/undo-redo.md) for full documentation.
+See [API documentation](src/undo/setup-undo-manager.ts) for configuration options.
 
 ## Features
 

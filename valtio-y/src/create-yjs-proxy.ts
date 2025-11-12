@@ -108,10 +108,17 @@ export interface CreateYjsProxyOptions<_T> {
    * }
    * ```
    *
-   * @example Track all changes (including remote)
+   * @example Track changes without explicit origin (Yjs default)
    * ```typescript
    * undoManager: {
-   *   trackedOrigins: undefined  // Track ALL origins
+   *   trackedOrigins: undefined  // Track only changes with no origin
+   * }
+   * ```
+   *
+   * @example Track multiple specific origins
+   * ```typescript
+   * undoManager: {
+   *   trackedOrigins: new Set([VALTIO_Y_ORIGIN, 'custom-origin'])
    * }
    * ```
    *
