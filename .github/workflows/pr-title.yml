@@ -33,4 +33,5 @@ jobs:
             deps
             tests
             repo
+            release
           requireScope: true
