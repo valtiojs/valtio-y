@@ -1,7 +1,7 @@
 # valtio-y
 
-## 1.0.4
+## 1.1.0
 
-### Patch Changes
+### Minor Changes
 
-- 84e4498: test if changesets work
+- a24858c: Initial public release of valtio-y - collaborative state management for real-time applications. Two-way sync between Valtio proxies and Yjs CRDTs with zero API overhead. Write normal JavaScript, get real-time collaboration free. 👋
