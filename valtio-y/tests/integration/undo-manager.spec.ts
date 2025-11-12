@@ -296,7 +296,9 @@ describe("UndoManager integration", () => {
       expect(manager.undoStack).toHaveLength(1);
     });
 
-    it("tracks all origins when trackedOrigins is undefined", async () => {
+    it("tracks changes without explicit origin when trackedOrigins is undefined", async () => {
+      const yRoot = doc.getMap("state");
+
       const { proxy, undoState, manager } = createYjsProxy<{ count?: number }>(
         doc,
         {
@@ -307,20 +309,18 @@ describe("UndoManager integration", () => {
         },
       );
 
-      // Local change
-      proxy.count = 1;
-      await waitMicrotask();
-
-      // Remote change
-      const yRoot = doc.getMap("state");
+      // Change WITHOUT explicit origin (defaults to null)
       doc.transact(() => {
-        yRoot.set("count", 2);
-      }, "remote-origin");
-
+        yRoot.set("count", 1);
+      });
       await waitMicrotask();
 
-      // Should track both changes
-      expect(manager.undoStack.length).toBeGreaterThan(0);
+      // Change with VALTIO_Y_ORIGIN should NOT be tracked
+      proxy.count = 2;
+      await waitMicrotask();
+
+      // Only the change without origin should be tracked
+      expect(manager.undoStack).toHaveLength(1);
       expect(undoState.canUndo).toBe(true);
     });
 
@@ -797,7 +797,7 @@ describe("UndoManager integration", () => {
       expect(proxy1.count).toBe(2);
     });
 
-    it("tracks all local transactions when trackedOrigins is undefined", async () => {
+    it("tracks only changes without explicit origin when trackedOrigins is undefined", async () => {
       const yRoot = doc.getMap("state");
 
       const { proxy, undo } = createYjsProxy<{
@@ -808,24 +808,23 @@ describe("UndoManager integration", () => {
         getRoot: (d) => d.getMap("state"),
         undoManager: {
           captureTimeout: 0,
-          trackedOrigins: undefined, // Track all local origins
+          trackedOrigins: undefined, // Track changes without explicit origin
         },
       });
 
       // Make changes with different origins to different keys
-      // (different keys to ensure separate undo items)
 
-      // Change with VALTIO_Y_ORIGIN
+      // Change with VALTIO_Y_ORIGIN (should NOT be tracked)
       proxy.count = 1;
       await waitMicrotask();
 
-      // Change with custom origin
+      // Change with custom origin (should NOT be tracked)
       doc.transact(() => {
         yRoot.set("value", "custom");
       }, "custom-origin");
       await waitMicrotask();
 
-      // Change with no origin
+      // Change with no origin (should BE tracked)
       doc.transact(() => {
         yRoot.set("flag", true);
       });
@@ -835,19 +834,15 @@ describe("UndoManager integration", () => {
       expect(proxy.value).toBe("custom");
       expect(proxy.flag).toBe(true);
 
-      // With trackedOrigins: undefined, all local transactions are tracked
-      // We should be able to undo all 3 changes
-      undo(); // Undo flag=true
+      // With trackedOrigins: undefined, only changes without explicit origin are tracked
+      // We should only be able to undo the "flag" change
+      undo();
       await waitMicrotask();
       expect(proxy.flag).toBe(undefined);
 
-      undo(); // Undo value="custom"
-      await waitMicrotask();
-      expect(proxy.value).toBe(undefined);
-
-      undo(); // Undo count=1
-      await waitMicrotask();
-      expect(proxy.count).toBe(undefined);
+      // The other changes should remain (they weren't tracked)
+      expect(proxy.value).toBe("custom");
+      expect(proxy.count).toBe(1);
     });
   });
 

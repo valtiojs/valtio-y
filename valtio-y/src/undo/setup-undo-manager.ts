@@ -31,16 +31,23 @@ export interface UndoManagerOptions {
    * In collaborative apps, you typically want to undo only YOUR changes, not remote users' changes.
    * The default setting achieves this by only tracking changes with the VALTIO_Y_ORIGIN.
    *
-   * Set to `undefined` to track ALL changes (including remote users).
+   * Set to `undefined` to track only changes without an explicit origin (Yjs default behavior).
+   * Note: This will NOT track changes with VALTIO_Y_ORIGIN or any other explicit origin.
+   * There is no built-in way to track ALL origins - you must explicitly list them in a Set.
    *
-   * @example Track only local changes (default)
+   * @example Track only local valtio-y changes (default)
    * ```typescript
    * trackedOrigins: new Set([VALTIO_Y_ORIGIN])
    * ```
    *
-   * @example Track all changes (including remote)
+   * @example Track only changes without explicit origin
    * ```typescript
    * trackedOrigins: undefined
+   * ```
+   *
+   * @example Track multiple specific origins
+   * ```typescript
+   * trackedOrigins: new Set([VALTIO_Y_ORIGIN, 'custom-origin', 'another-origin'])
    * ```
    */
   trackedOrigins?: Set<unknown>;
@@ -117,7 +124,10 @@ export function setupUndoManager(
     // Standard: Create with custom options (undoConfig is UndoManagerOptions)
     const config = {
       captureTimeout: undoConfig.captureTimeout ?? 500,
-      trackedOrigins: undoConfig.trackedOrigins ?? new Set([VALTIO_Y_ORIGIN]),
+      trackedOrigins:
+        "trackedOrigins" in undoConfig
+          ? undoConfig.trackedOrigins
+          : new Set([VALTIO_Y_ORIGIN]),
       deleteFilter: undoConfig.deleteFilter,
     };
     manager = new Y.UndoManager(yRoot, config);

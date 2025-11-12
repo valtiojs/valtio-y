@@ -96,23 +96,23 @@ describe("setupUndoManager", () => {
       expect(manager.undoStack).toHaveLength(1); // Only custom origin tracked
     });
 
-    it("tracks all origins when trackedOrigins is undefined", () => {
+    it("tracks changes without explicit origin when trackedOrigins is undefined", () => {
       const { manager } = setupUndoManager(yRoot, {
         trackedOrigins: undefined,
       });
 
-      // Make changes with different origins
+      // Make changes WITHOUT specifying an origin (defaults to null)
       doc.transact(() => {
         yRoot.set("key1", "value1");
-      }, "origin1");
+      });
 
       doc.transact(() => {
         yRoot.set("key2", "value2");
-      }, "origin2");
+      });
 
       doc.transact(() => {
         yRoot.set("key3", "value3");
-      }, VALTIO_Y_ORIGIN);
+      });
 
       expect(manager.undoStack.length).toBeGreaterThan(0);
       expect(manager.canUndo()).toBe(true);
