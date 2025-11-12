@@ -6,3 +6,4 @@ node_modules
 *.tsbuild
 .DS_Store
 .turbo
+.wrangler

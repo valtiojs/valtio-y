@@ -11,18 +11,19 @@ state.users[0].name = "Alice";
 // Automatically syncs across all connected users
 ```
 
-## Installation
+## Live Examples
 
-```bash
-# npm
-npm install valtio-y valtio yjs
+**Open any demo in multiple browser tabs and watch them sync in real-time:**
 
-# pnpm
-pnpm add valtio-y valtio yjs
+🎮 **[Minecraft Clone](https://valtio-y-minecraft.agcty.workers.dev)** - Simple showcase inspired by Minecraft. Lets multiple users place and remove blocks in real time using Three.js and valtio-y.
 
-# bun
-bun add valtio-y valtio yjs
-```
+🎨 **[Whiteboard](https://valtio-y-whiteboard.agcty.workers.dev)** - Collaborative drawing with shapes, colors, and real-time cursors. Google Docs for drawing.
+
+📝 **[Sticky Notes](https://valtio-y-stickynotes.agcty.workers.dev/)** - Production-ready app running on Cloudflare Workers (this is real infrastructure, not a demo server).
+
+✅ **[Todos App](https://valtio-y-todos.agcty.workers.dev)** - Classic collaborative todo list. Real-time updates, no refresh needed.
+
+🧪 **[Simple Demo](https://valtio-y-simple.agcty.workers.dev/)** – Best for understanding the basic sync patterns (objects, arrays, primitives); other demos above are more production-focused.
 
 ## Quick Start
 
@@ -37,7 +38,7 @@ const ydoc = new Y.Doc();
 
 // Create a synchronized proxy
 const { proxy: state } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("mymap"),
+  getRoot: (doc) => doc.getMap("root"),
 });
 
 // Mutate state like a normal object
@@ -56,79 +57,22 @@ state.todos[0].done = true;
 
 That's it! State is now synchronized via Yjs. Add a provider to sync across clients.
 
-## Collaboration Setup
+## Installation
 
-Connect multiple clients with any Yjs provider:
+```bash
+# npm
+npm install valtio-y valtio yjs
 
-```js
-import { WebsocketProvider } from "y-websocket";
+# pnpm
+pnpm add valtio-y valtio yjs
 
-const ydoc = new Y.Doc();
-const provider = new WebsocketProvider("ws://localhost:1234", "my-room", ydoc);
-
-const { proxy: state } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("state"),
-});
-
-// Now all clients in "my-room" share the same state!
-state.message = "Hello from client 1";
+# bun
+bun add valtio-y valtio yjs
 ```
 
-Supported providers: [y-websocket](https://github.com/yjs/y-websocket), [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver), [y-webrtc](https://github.com/yjs/y-webrtc), [y-indexeddb](https://github.com/yjs/y-indexeddb), and any Yjs provider.
+## React Integration
 
-## Common Operations
-
-### Initializing State
-
-When using network providers, initialize after first sync:
-
-```js
-const { proxy: state, bootstrap } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("state"),
-});
-
-provider.on("synced", () => {
-  bootstrap({ todos: [], settings: { theme: "light" } });
-  // Only writes if document is empty
-});
-```
-
-### Arrays
-
-```js
-state.items.push(newItem);
-state.items[0] = updatedItem;
-state.items.splice(1, 2, replacement1, replacement2);
-const [item] = state.items.splice(2, 1);
-state.items.splice(0, 0, item); // Move item
-```
-
-### Objects
-
-```js
-state.user.name = "Alice";
-delete state.user.temporaryFlag;
-state.data.deeply.nested.value = 42;
-```
-
-### Undo/Redo
-
-```js
-const { proxy: state, undo, redo } = createYjsProxy(ydoc, {
-  getRoot: (doc) => doc.getMap("state"),
-  undoManager: true  // Enable with defaults
-});
-
-state.count = 1;
-undo();  // state.count -> undefined
-redo();  // state.count -> 1
-```
-
-See [guides/undo-redo.md](../guides/undo-redo.md) for full documentation.
-
-## Using with React
-
-Use Valtio's `useSnapshot` hook to bind state to components. Components re-render only when their data changes:
+Use Valtio's `useSnapshot` hook to automatically re-render components when data changes:
 
 ```jsx
 import { useSnapshot } from "valtio/react";
@@ -153,7 +97,94 @@ function TodoList() {
 }
 ```
 
+**Key principle:** Read from the snapshot (`snap`), mutate the proxy (`state`).
+
 valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Solid, and vanilla JavaScript.
+
+**For optimizing large lists** with thousands of items, see the [Performance Guide](../guides/performance-guide.md#optimizing-lists).
+
+**Note for text inputs:** When using controlled text inputs (like `<input>` or `<textarea>`), add `{ sync: true }` to prevent cursor jumping:
+
+```jsx
+const snap = useSnapshot(state, { sync: true });
+<input value={snap.text} onChange={(e) => (state.text = e.target.value)} />;
+```
+
+This forces synchronous updates instead of Valtio's default async batching. See [Valtio issue #270](https://github.com/pmndrs/valtio/issues/270) for details.
+
+## Collaboration Setup
+
+Connect any Yjs provider to sync across clients:
+
+```js
+import { WebsocketProvider } from "y-websocket";
+
+const provider = new WebsocketProvider(
+  "ws://localhost:1234",
+  "room-name",
+  ydoc
+);
+// That's it—state syncs automatically
+```
+
+Works with any provider: [y-websocket](https://github.com/yjs/y-websocket), [y-partyserver](https://github.com/partykit/partykit/tree/main/packages/y-partyserver) (great for Cloudflare), [y-webrtc](https://github.com/yjs/y-webrtc), [y-indexeddb](https://github.com/yjs/y-indexeddb), etc.
+
+## Common Operations
+
+### Initializing State
+
+When using network providers, initialize after first sync:
+
+```js
+const { proxy: state, bootstrap } = createYjsProxy(ydoc, {
+  getRoot: (doc) => doc.getMap("state"),
+});
+
+provider.once("synced", () => {
+  bootstrap({
+    todos: [],
+    settings: { theme: "light" },
+  });
+  // Only writes if the document is empty
+});
+```
+
+### Arrays
+
+```js
+state.items.push(newItem);
+state.items[0] = updatedItem;
+state.items.splice(1, 2, replacement1, replacement2);
+const [item] = state.items.splice(2, 1);
+state.items.splice(0, 0, item); // Move item
+```
+
+### Objects
+
+```js
+state.user.name = "Alice";
+delete state.user.temporaryFlag;
+state.data.deeply.nested.value = 42;
+```
+
+### Undo/Redo
+
+```js
+const {
+  proxy: state,
+  undo,
+  redo,
+} = createYjsProxy(ydoc, {
+  getRoot: (doc) => doc.getMap("state"),
+  undoManager: true, // Enable with defaults
+});
+
+state.count = 1;
+undo(); // state.count -> undefined
+redo(); // state.count -> 1
+```
+
+See [guides/undo-redo.md](../guides/undo-redo.md) for full documentation.
 
 ## Features
 
@@ -164,6 +195,16 @@ valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Soli
 - **Production-ready** - Comprehensive tests and benchmarks
 - **Framework-agnostic** - Works with React, Vue, Svelte, Solid, and vanilla JS
 
+## Why valtio-y?
+
+Stop writing sync logic. Just mutate objects.
+
+- **Valtio** gives you reactive state with zero boilerplate
+- **Yjs** gives you conflict-free sync and offline support
+- **valtio-y** connects them - you get both, write neither
+
+No reducers, no actions, no manual sync code. Just: `state.count++`
+
 ## Limitations
 
 - Don't use `undefined` (use `null` or delete the property)
@@ -171,14 +212,6 @@ valtio-y works with any framework that Valtio supports: React, Vue, Svelte, Soli
 - Use `array.splice()` instead of `array.length = N`
 
 For text editors, use native Yjs integrations: [Lexical](https://lexical.dev/), [TipTap](https://tiptap.dev/), or [ProseMirror](https://prosemirror.net/).
-
-## Examples
-
-See [examples on GitHub](https://github.com/valtiojs/valtio-y/tree/main/examples):
-
-- [Simple Todos](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/05_todos_simple) - Best for learning
-- [Object Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/01_obj)
-- [Array Sync](https://stackblitz.com/github/valtiojs/valtio-y/tree/main/examples/02_array)
 
 ## API Reference
 

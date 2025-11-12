@@ -1,0 +1,39 @@
+{
+  "name": "example-03-minecraft",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@react-three/cannon": "latest",
+    "@react-three/drei": "latest",
+    "@react-three/fiber": "latest",
+    "partyserver": "^0.0.75",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0",
+    "three": "latest",
+    "valtio": "^2.2.0",
+    "valtio-y": "workspace:*",
+    "y-partyserver": "^0.0.51",
+    "y-protocols": "^1.0.6",
+    "yjs": "^13.6.27"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "^1.14.1",
+    "@cloudflare/workers-types": "^4.20251111.0",
+    "@types/react": "latest",
+    "@types/react-dom": "latest",
+    "@types/three": "latest",
+    "@vitejs/plugin-react": "^5.1.0",
+    "typescript": "latest",
+    "vite": "^7.2.2",
+    "wrangler": "^4.47.0"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "bun run cf-typegen && tsc -b && vite build",
+    "preview": "bun run build && vite preview",
+    "deploy": "bun run build && wrangler deploy",
+    "cf-typegen": "wrangler types",
+    "typecheck": "tsc -b"
+  }
+}

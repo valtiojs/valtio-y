@@ -230,6 +230,7 @@ Closes #42
    ```
 
 5. **PR Title** must follow conventional commits with scope (enforced by CI):
+
    ```
    feat(core): add PartyKit provider support
    fix(docs): correct installation instructions
@@ -240,26 +241,31 @@ Closes #42
 
 ### Release Workflow
 
-This project uses **Changesets** with **Turbo** to manage versioning and releases, providing explicit control over changelogs.
+This project uses **Changesets** to manage versioning and releases, providing explicit control over changelogs.
 
 **How it works:**
 
 1. **Create a changeset** - When making changes, run `bun changeset` to create a changeset file:
+
    ```bash
    bun changeset
    ```
+
    This prompts you to:
+
    - Select the packages to version (usually `valtio-y`)
    - Choose the version bump type (major, minor, patch)
    - Write a user-focused description for the changelog
 
 2. **Commit the changeset** - The changeset file (`.changeset/*.md`) should be committed with your changes:
+
    ```bash
    git add .changeset/
    git commit -m "feat(core): add new feature"
    ```
 
 3. **Version PR created** - When merged to main, the Release workflow automatically creates/updates a "Version Packages" PR with:
+
    - Runs: `bun run version` → `changeset version && bun update`
    - Updates package.json versions and CHANGELOG.md files
    - **Bun workaround**: `bun update` fixes the lockfile to resolve `workspace:*` references
@@ -267,10 +273,9 @@ This project uses **Changesets** with **Turbo** to manage versioning and release
 
 4. **Merge to publish** - When you merge the Version Packages PR:
    - The workflow runs all quality checks (typecheck, lint, test, build)
-   - Runs: `bun run release` → `turbo run publish --filter='valtio-*' && changeset tag`
-   - Turbo runs the `publish` script in each `valtio-*` package
-   - Each package publishes with: `npm publish --access public --provenance`
-   - Git tags are created for published versions
+   - Changesets automatically detects changed packages and publishes them to npm
+   - Runs the `publish` script in each changed package: `npm publish --access public --provenance`
+   - Git tags are created automatically for published versions
 
 **For AI agents:**
 
@@ -279,12 +284,14 @@ This project uses **Changesets** with **Turbo** to manage versioning and release
 Create a changeset ONLY for changes that affect the published npm package:
 
 ✅ **Need a changeset:**
+
 - `feat(core)` - New features, APIs, exports
 - `fix(core)` - Bug fixes users will notice
 - `perf(core)` - Performance improvements
 - Breaking changes to published APIs
 
 ❌ **NO changeset needed:**
+
 - `chore(ci)` - CI/CD, workflows, build config
 - `chore(repo)` - Dev tooling, linting, formatting
 - `feat(examples)` - Examples don't get published
@@ -325,6 +332,7 @@ git commit -m "fix(core): resolve array sync race condition"
 To make a new package publishable:
 
 1. Add a `publish` script to the package's `package.json`:
+
    ```json
    {
      "scripts": {
@@ -333,16 +341,15 @@ To make a new package publishable:
    }
    ```
 
-2. Ensure the package name matches `valtio-*` pattern
-3. Turbo will automatically discover and publish it in the correct order
+2. Add the package to the workspace in root `package.json`
+3. Changesets will automatically discover and publish it when you create a changeset for it
 
 **Technical details:**
 
 - **Root scripts**:
   - `version`: `changeset version && bun update` (updates versions + fixes Bun lockfile)
-  - `release`: `turbo run publish --filter='valtio-*' && changeset tag` (publishes packages + creates tags)
 - **Bun workaround**: `bun update` after `changeset version` is required because changesets doesn't natively support Bun workspaces. This resolves `workspace:*` references in the lockfile.
-- **Turbo filter**: `--filter='valtio-*'` ensures only `valtio-y` and future `valtio-*` packages are published, never examples
+- **Publishing**: Changesets automatically handles publishing and git tagging when the version PR is merged. It only publishes packages that have changesets and are not marked as `private: true`.
 
 **Version bumping rules:**
 
