@@ -42,6 +42,8 @@ jobs:
         with:
           # This script runs changeset version with bun update to fix workspace:* refs
           version: bun run version
+          # This publishes packages when the version PR is merged
+          publish: bun changeset publish
           # Changesets automatically publishes packages when versions are merged
           # It will call the "publish" script in each package's package.json
           title: "chore(release): version packages"
