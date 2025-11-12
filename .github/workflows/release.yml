@@ -52,9 +52,9 @@ jobs:
           # This script runs changeset version with bun update to fix workspace:* refs
           version: bun run version
           # This publishes packages when the version PR is merged
-          publish: bun changeset publish
-          # Changesets automatically publishes packages when versions are merged
-          # It will call the "publish" script in each package's package.json
+          publish: changeset publish
+          # Create GitHub releases automatically (includes tag creation)
+          createGithubReleases: true
           title: "chore(release): version packages"
           commit: "chore(release): version packages"
         env:
