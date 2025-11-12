@@ -1,5 +1,11 @@
 # valtio-y
 
+## 1.1.1
+
+### Patch Changes
+
+- bbcc527: Fix `trackedOrigins: undefined` handling in UndoManager. Previously, explicitly passing `trackedOrigins: undefined` was incorrectly replaced with the default Set. Now properly preserves `undefined` to track only changes without explicit origins, matching Yjs behavior.
+
 ## 1.1.0
 
 ### Minor Changes
