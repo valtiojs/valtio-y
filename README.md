@@ -12,7 +12,9 @@
 
 <br />
 <p align="center">
-  <img src="https://i.imgur.com/a36KJ2a.gif" alt="Sticky Notes Demo (valtio-y)" width="100%" />
+  <a href="https://valtio-y-stickynotes.agcty.workers.dev/">
+    <img src="https://i.imgur.com/a36KJ2a.gif" alt="Sticky Notes Demo (valtio-y)" width="100%" />
+  </a>
 </p>
 <br />
 
