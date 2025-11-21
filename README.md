@@ -42,6 +42,10 @@ You get automatic conflict resolution, offline support, and efficient re-renders
 state.todos.push({ text: "Buy milk", done: false });
 state.users[0].name = "Alice";
 state.dashboard.widgets[2].position = { x: 100, y: 200 };
+
+// Move item from index 0 to 2 (handled efficiently)
+const [todo] = state.todos.splice(0, 1);
+state.todos.splice(2, 0, todo);
 ```
 
 It automatically syncs across all connected users with **zero configuration**. No special APIs, no operational transforms to understand, no conflict resolution code to write.
