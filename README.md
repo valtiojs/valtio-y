@@ -1,8 +1,8 @@
 # valtio-y ⚡
 
-### Collaborative State Management
+### Effortless Collaborative State
 
-**Write normal JavaScript, get real-time sync free**
+**Write normal JavaScript. Sync in real-time automatically.**
 
 [![CI](https://img.shields.io/github/actions/workflow/status/valtiojs/valtio-y/ci.yml?branch=main)](https://github.com/valtiojs/valtio-y/actions?query=workflow%3ACI)
 [![npm version](https://img.shields.io/npm/v/valtio-y)](https://www.npmjs.com/package/valtio-y)
