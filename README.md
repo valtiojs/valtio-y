@@ -13,8 +13,7 @@
 
 <br />
 <p align="center">
-  <img src="https://i.imgur.com/a36KJ2a.gif" alt="valtio-y demo 1" width="340px" /><br />
-  <img src="https://i.imgur.com/uncxyMV.gif" alt="valtio-y demo 2" width="340px" />
+  <img src="https://i.imgur.com/uncxyMV.gif" alt="Sticky Notes Demo (valtio-y)" width="100%" />
 </p>
 <br />
 
