@@ -11,7 +11,15 @@
 [![Discord](https://img.shields.io/discord/627656437971288081)](https://discord.gg/MrQdmzd)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
 
-Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs. Build collaborative apps for **structured data** (forms, dashboards, boards)—no special APIs, just mutate objects naturally.
+<br />
+<p align="center">
+  <img src="https://i.imgur.com/Ma8kkfM.gif" alt="valtio-y demo" width="100%" />
+</p>
+<br />
+
+**Build multiplayer apps as easily as writing local state.**
+
+valtio-y synchronizes your [Valtio](https://github.com/pmndrs/valtio) state with [Yjs](https://github.com/yjs/yjs) automatically. It solves the difficult edge cases of state-CRDT syncing—like **array moves**, **item replacements**, and **list reordering**—while remaining significantly more performant than naive bindings.
 
 [Examples](#examples) · [Guides](#guides) · [Discord](https://discord.gg/MrQdmzd)
 
@@ -19,13 +27,15 @@ Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs
 
 ## Why valtio-y?
 
-Building collaborative apps for **structured data** (not text documents, not simple CRUD) is **hard**. You need:
+Most CRDT bindings struggle with the "last 10%" of complexity: correctly handling **array moves** (reordering items without deleting/recreating them), **replacing objects** without breaking references, and maintaining **referential equality** for React renders.
 
-- Automatic conflict resolution when users edit simultaneously
-- Offline support that merges changes correctly when reconnected
-- Network protocols (WebSocket, WebRTC, etc.)
-- State consistency across clients
-- Efficient re-renders without performance issues
+valtio-y is a ground-up rewrite focused on **correctness** and **performance**:
+
+- **Solves Hard Sync Problems**: Handles array moves, replacements, and reordering correctly.
+- **High Performance**: Optimized for bulk operations and deep state trees; significantly faster than other proxy-based solutions.
+- **Production Ready**: Handles the edge cases that usually cause sync divergence in other libraries.
+
+You get automatic conflict resolution, offline support, and efficient re-renders, but with a level of robustness that stands up to complex real-world usage.
 
 **valtio-y handles all of this for you.** Just mutate your state like normal:
 
