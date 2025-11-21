@@ -5,11 +5,27 @@
 
 Two-way sync between [Valtio](https://github.com/pmndrs/valtio) proxies and [Yjs](https://github.com/yjs/yjs) CRDTs. Build collaborative apps with automatic conflict resolution and offline support—just mutate objects naturally.
 
+### Effortless Collaborative State
+
+**Write normal JavaScript. Sync in real-time automatically.**
+
 ```typescript
 state.todos.push({ text: "Buy milk", done: false });
 state.users[0].name = "Alice";
-// Automatically syncs across all connected users
+state.dashboard.widgets[2].position = { x: 100, y: 200 };
+
+// Move item from index 0 to 2 (handled efficiently)
+const [todo] = state.todos.splice(0, 1);
+state.todos.splice(2, 0, todo);
 ```
+
+<br />
+<p align="center">
+  <a href="https://valtio-y-stickynotes.agcty.workers.dev/">
+    <img src="https://i.imgur.com/a36KJ2a.gif" alt="Sticky Notes Demo (valtio-y)" width="100%" />
+  </a>
+</p>
+<br />
 
 ## Live Examples
 
