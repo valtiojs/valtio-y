@@ -13,7 +13,7 @@
 
 <br />
 <p align="center">
-  <img src="https://i.imgur.com/Ma8kkfM.gif" alt="valtio-y demo 1" width="48%" />
+  <img src="https://i.imgur.com/a36KJ2a.gif" alt="valtio-y demo 1" width="48%" />
   <img src="https://i.imgur.com/uncxyMV.gif" alt="valtio-y demo 2" width="48%" />
 </p>
 <br />
@@ -22,7 +22,7 @@
 
 valtio-y synchronizes your [Valtio](https://github.com/pmndrs/valtio) state with [Yjs](https://github.com/yjs/yjs) automatically. It solves the difficult edge cases of state-CRDT syncing—like **array moves**, **item replacements**, and **list reordering**—while remaining significantly more performant than naive bindings.
 
-[Examples](#examples) · [Guides](#guides) · [Discord](https://discord.gg/MrQdmzd)
+[Examples](#examples) · [Guides](#guides)
 
 ---
 
