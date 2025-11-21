@@ -78,7 +78,7 @@ export function findRemovedControllers(
 //   proxies exist (materialized) and match the Y tree shape.
 // - No deepEqual. Only add missing keys, remove extra keys, and create
 //   nested controllers for Y types as needed.
-// - Uses runWithoutValtioReflection to avoid reflecting these changes back
+// - Uses withReconcilingLock to avoid reflecting these changes back
 //   to Yjs.
 /**
  * Reconciles the structure of a Valtio proxy to match its underlying Y.Map.

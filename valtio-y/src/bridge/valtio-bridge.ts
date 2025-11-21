@@ -8,7 +8,6 @@
 // - Lazily create nested controllers when a Y value is another Y type.
 import * as Y from "yjs";
 import { proxy, subscribe } from "valtio/vanilla";
-// import removed: origin tagging handled by context scheduler
 
 import type { YSharedContainer } from "../core/yjs-types";
 import type { ValtioYjsCoordinator } from "../core/coordinator";
@@ -24,8 +23,6 @@ import {
   rollbackArrayChanges,
   rollbackMapChanges,
 } from "./controller-helpers";
-
-// All caches are moved into SynchronizationContext
 
 // Subscribe to a Valtio array proxy and translate top-level index operations
 // into minimal Y.Array operations.

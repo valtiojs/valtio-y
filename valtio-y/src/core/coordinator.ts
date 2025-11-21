@@ -51,17 +51,14 @@ export class ValtioYjsCoordinator {
     // This eliminates the need for setter injection
     const applyFunctions: ApplyFunctions = {
       applyMapDeletes: (deletes) => {
-        // Current signature: applyMapDeletes(mapDeletes, log)
         applyMapDeletes(deletes, this.logger);
       },
 
       applyMapSets: (sets, queue, withLock) => {
-        // Updated signature: applyMapSets(mapSets, postQueue, coordinator, withReconcilingLock)
         applyMapSets(sets, queue, this, withLock);
       },
 
       applyArrayOperations: (sets, deletes, replaces, queue, withLock) => {
-        // Updated signature: applyArrayOperations(coordinator, arraySets, arrayDeletes, arrayReplaces, postQueue, withReconcilingLock)
         applyArrayOperations(this, sets, deletes, replaces, queue, withLock);
       },
 
