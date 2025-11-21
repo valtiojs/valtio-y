@@ -431,7 +431,7 @@ TypeScript monorepo using **Bun** (package manager) for a library that syncs **V
 ### Folder Structure
 
 ```text
-/Users/alex/code/valtio-yjs/
+/Users/alex/code/valtio-y/
 
 ├── valtio-y/            # Main package
 │   ├── src/             # Source code
