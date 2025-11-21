@@ -13,7 +13,8 @@
 
 <br />
 <p align="center">
-  <img src="https://i.imgur.com/Ma8kkfM.gif" alt="valtio-y demo" width="100%" />
+  <img src="https://i.imgur.com/Ma8kkfM.gif" alt="valtio-y demo 1" width="48%" />
+  <img src="https://i.imgur.com/uncxyMV.gif" alt="valtio-y demo 2" width="48%" />
 </p>
 <br />
 
