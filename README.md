@@ -8,7 +8,6 @@
 [![npm version](https://img.shields.io/npm/v/valtio-y)](https://www.npmjs.com/package/valtio-y)
 [![bundle size](https://img.shields.io/bundlephobia/minzip/valtio-y)](https://bundlephobia.com/result?p=valtio-y)
 [![npm downloads](https://img.shields.io/npm/dm/valtio-y)](https://www.npmjs.com/package/valtio-y)
-[![Discord](https://img.shields.io/discord/627656437971288081)](https://discord.gg/MrQdmzd)
 [![TypeScript](https://img.shields.io/badge/TypeScript-Ready-blue)](https://www.typescriptlang.org/)
 
 <br />
