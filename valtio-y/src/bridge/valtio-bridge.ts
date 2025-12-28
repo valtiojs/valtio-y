@@ -7,7 +7,19 @@
 //   transactions tagged with VALTIO_Y_ORIGIN.
 // - Lazily create nested controllers when a Y value is another Y type.
 import * as Y from "yjs";
-import { proxy, subscribe } from "valtio/vanilla";
+import * as valtioVanilla from "valtio/vanilla";
+
+const { proxy, subscribe } = valtioVanilla;
+
+// Enable ops in subscribe callback - required for valtio-y to receive change operations
+// This is a global opt-in as of valtio v2.x (see https://github.com/pmndrs/valtio/pull/1189)
+// We check for existence to maintain backwards compatibility with older valtio versions
+if (
+  "unstable_enableOp" in valtioVanilla &&
+  typeof valtioVanilla.unstable_enableOp === "function"
+) {
+  valtioVanilla.unstable_enableOp(true);
+}
 
 import type { YSharedContainer } from "../core/yjs-types";
 import type { ValtioYjsCoordinator } from "../core/coordinator";
