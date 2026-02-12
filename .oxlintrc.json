@@ -38,6 +38,7 @@
     "**/server-build/**",
     "**/client-build/**",
     "**/.next/**",
+    "**/vendor/**",
     "**/*.config.js",
     "**/*.config.ts"
   ],
@@ -185,7 +186,7 @@
   ],
   "settings": {
     "react": {
-      "version": "detect"
+      "version": "19"
     }
   }
 }
