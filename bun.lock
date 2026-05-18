@@ -22,8 +22,8 @@
         "@react-three/drei": "latest",
         "@react-three/fiber": "latest",
         "partyserver": "^0.0.75",
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0",
+        "react": "^19.2.6",
+        "react-dom": "^19.2.6",
         "three": "latest",
         "valtio": "^2.3.2",
         "valtio-y": "workspace:*",
@@ -48,8 +48,8 @@
       "version": "0.0.0",
       "dependencies": {
         "partyserver": "^0.0.75",
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0",
+        "react": "^19.2.6",
+        "react-dom": "^19.2.6",
         "valtio": "^2.3.2",
         "valtio-y": "workspace:*",
         "y-partyserver": "^0.0.51",
@@ -76,8 +76,8 @@
         "lucide-react": "^0.544.0",
         "motion": "^12.23.24",
         "partyserver": "^0.0.75",
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0",
+        "react": "^19.2.6",
+        "react-dom": "^19.2.6",
         "valtio": "^2.3.2",
         "valtio-y": "workspace:*",
         "y-partyserver": "^0.0.51",
@@ -104,8 +104,8 @@
         "lucide-react": "^0.544.0",
         "motion": "^12.23.24",
         "partyserver": "^0.0.75",
-        "react": "^19.2.0",
-        "react-dom": "^19.2.0",
+        "react": "^19.2.6",
+        "react-dom": "^19.2.6",
         "valtio": "^2.3.2",
         "valtio-y": "workspace:*",
         "y-partyserver": "^0.0.51",
@@ -133,8 +133,8 @@
         "motion": "^12.23.24",
         "partyserver": "^0.0.75",
         "perfect-freehand": "^1.2.2",
-        "react": "^19.1.1",
-        "react-dom": "^19.1.1",
+        "react": "^19.2.6",
+        "react-dom": "^19.2.6",
         "valtio": "^2.3.2",
         "valtio-y": "workspace:*",
         "y-partyserver": "^0.0.51",
@@ -144,8 +144,8 @@
       "devDependencies": {
         "@cloudflare/vite-plugin": "^1.13.5",
         "@tailwindcss/vite": "^4.1.13",
-        "@types/react": "^19.1.13",
-        "@types/react-dom": "^19.1.9",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "^5.1.0",
         "tailwindcss": "^4.1.13",
         "typescript": "^5.9.2",
@@ -157,8 +157,8 @@
       "name": "valtio-y",
       "version": "1.1.3",
       "devDependencies": {
-        "@types/react": "^19.2.2",
-        "@types/react-dom": "^19.2.2",
+        "@types/react": "^19.2.14",
+        "@types/react-dom": "^19.2.3",
         "@vitejs/plugin-react": "catalog:",
         "@vitest/browser": "^4.0.6",
         "@vitest/browser-playwright": "^4.0.6",
@@ -186,8 +186,8 @@
     "@cloudflare/workers-types": "^4.20251109.0",
     "@vitejs/plugin-react": "^5.1.0",
     "partyserver": "^0.0.75",
-    "react": "^19.2.0",
-    "react-dom": "^19.2.0",
+    "react": "^19.2.6",
+    "react-dom": "^19.2.6",
     "valtio": "^2.3.2",
     "vite": "^7.2.2",
     "wrangler": "^4.46.0",
@@ -619,7 +619,7 @@
 
     "@types/offscreencanvas": ["@types/offscreencanvas@2019.7.3", "", {}, "sha512-ieXiYmgSRXUDeOntE1InxjWyvEelZGP63M+cGuquuRLuIKKT1osnkXjxev9B7d1nXSug5vpunx+gNlbVxMlC9A=="],
 
-    "@types/react": ["@types/react@19.2.7", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-MWtvHrGZLFttgeEj28VXHxpmwYbor/ATPYbBfSFZEIRK0ecCFLl2Qo55z52Hss+UV9CRN7trSeq1zbgx7YDWWg=="],
+    "@types/react": ["@types/react@19.2.14", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-ilcTH/UniCkMdtexkoCN0bI7pMcJDvmQFPvuPvmEaYA/NSfFTAgdUSLAoVjaRJm7+6PvcM+q1zYOwS4wTYMF9w=="],
 
     "@types/react-dom": ["@types/react-dom@19.2.3", "", { "peerDependencies": { "@types/react": "^19.2.0" } }, "sha512-jp2L/eY6fn+KgVVQAOqYItbF0VY/YApe5Mz2F0aykSO8gx31bYCZyvSeYxCHKvzHG5eZjc+zyaS5BrBWya2+kQ=="],
 
@@ -1003,9 +1003,9 @@
 
     "queue-microtask": ["queue-microtask@1.2.3", "", {}, "sha512-NuaNSa6flKT5JaSYQzJok04JzTL1CA6aGhv5rfLW3PgqA+M2ChpZQnAC8h8i4ZFkBS8X5RqkDBHA7r4hej3K9A=="],
 
-    "react": ["react@19.2.0", "", {}, "sha512-tmbWg6W31tQLeB5cdIBOicJDJRR2KzXsV7uSK9iNfLWQ5bIZfxuPEHp7M8wiHyHnn0DD1i7w3Zmin0FtkrwoCQ=="],
+    "react": ["react@19.2.6", "", {}, "sha512-sfWGGfavi0xr8Pg0sVsyHMAOziVYKgPLNrS7ig+ivMNb3wbCBw3KxtflsGBAwD3gYQlE/AEZsTLgToRrSCjb0Q=="],
 
-    "react-dom": ["react-dom@19.2.0", "", { "dependencies": { "scheduler": "^0.27.0" }, "peerDependencies": { "react": "^19.2.0" } }, "sha512-UlbRu4cAiGaIewkPyiRGJk0imDN2T3JjieT6spoL2UeSf5od4n5LB/mQ4ejmxhCFT1tYe8IvaFulzynWovsEFQ=="],
+    "react-dom": ["react-dom@19.2.6", "", { "dependencies": { "scheduler": "^0.27.0" }, "peerDependencies": { "react": "^19.2.6" } }, "sha512-0prMI+hvBbPjsWnxDLxlCGyM8PN6UuWjEUCYmZhO67xIV9Xasa/r/vDnq+Xyq4Lo27g8QSbO5YzARu0D1Sps3g=="],
 
     "react-reconciler": ["react-reconciler@0.31.0", "", { "dependencies": { "scheduler": "^0.25.0" }, "peerDependencies": { "react": "^19.0.0" } }, "sha512-7Ob7Z+URmesIsIVRjnLoDGwBEG/tVitidU0nMsqX/eeJaLY89RISO/10ERe0MqmzuKUUB1rmY+h1itMbUHg9BQ=="],
 
