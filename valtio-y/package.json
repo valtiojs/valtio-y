@@ -49,8 +49,8 @@
   ],
   "license": "MIT",
   "devDependencies": {
-    "@types/react": "^19.2.2",
-    "@types/react-dom": "^19.2.2",
+    "@types/react": "^19.2.14",
+    "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "catalog:",
     "@vitest/browser": "^4.0.6",
     "@vitest/browser-playwright": "^4.0.6",
@@ -68,7 +68,7 @@
     "yjs": "catalog:"
   },
   "peerDependencies": {
-    "valtio": ">=2.1.8",
+    "valtio": ">=2.1.8 <3.0.0",
     "yjs": ">=13.6.27"
   }
 }
