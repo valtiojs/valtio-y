@@ -41,7 +41,7 @@
     "wrangler": "^4.46.0",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "valtio": "^2.2.0",
+    "valtio": "^2.3.2",
     "yjs": "^13.6.27",
     "y-partyserver": "^0.0.51",
     "partyserver": "^0.0.75"

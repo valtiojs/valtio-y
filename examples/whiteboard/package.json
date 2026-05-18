@@ -19,7 +19,7 @@
 		"perfect-freehand": "^1.2.2",
 		"react": "^19.1.1",
 		"react-dom": "^19.1.1",
-		"valtio": "^2.2.0",
+		"valtio": "^2.3.2",
 		"valtio-y": "workspace:*",
 		"y-partyserver": "^0.0.51",
 		"y-protocols": "^1.0.6",

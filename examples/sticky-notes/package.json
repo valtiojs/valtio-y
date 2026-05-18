@@ -9,7 +9,7 @@
     "partyserver": "^0.0.75",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "valtio": "^2.2.0",
+    "valtio": "^2.3.2",
     "valtio-y": "workspace:*",
     "y-partyserver": "^0.0.51",
     "y-protocols": "^1.0.6",
