@@ -1,5 +1,11 @@
 # valtio-y
 
+## 1.1.4
+
+### Patch Changes
+
+- 147bce0: Update the tested Valtio dependency to Valtio 2.3.2, keep the peer dependency compatible with supported Valtio 2 releases, and align the tested React dependency ranges with React 19.2.6.
+
 ## 1.1.3
 
 ### Patch Changes
