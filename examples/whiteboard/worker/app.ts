@@ -14,6 +14,16 @@ export class YDocServer extends YServer<Env> {
     hibernate: true,
   };
 
+  private hasActiveConnections(): boolean {
+    return this.ctx
+      .getWebSockets()
+      .some((socket) => socket.readyState === WebSocket.OPEN);
+  }
+
+  private async scheduleNextCleanup(): Promise<void> {
+    await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL_MS);
+  }
+
   // Configure periodic snapshots - saves every 2s or after 10s max
   static callbackOptions = {
     debounceWait: 2000, // Wait 2s after last update
@@ -54,9 +64,8 @@ export class YDocServer extends YServer<Env> {
       this.createInitialShapes();
     }
 
-    // Schedule the first alarm to clean the room
-    const now = Date.now();
-    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
+    // Schedule the first alarm for a newly opened room
+    await this.scheduleNextCleanup();
   }
 
   // Save document state to Durable Object storage (called automatically)
@@ -75,13 +84,17 @@ export class YDocServer extends YServer<Env> {
    * Alarm handler that resets the room to empty state
    * This is called automatically by the Durable Objects runtime
    */
-  async alarm(): Promise<void> {
+  async onAlarm(): Promise<void> {
+    if (!this.hasActiveConnections()) {
+      await this.ctx.storage.deleteAlarm();
+      return;
+    }
+
     // Reset to empty state
     this.createInitialShapes();
 
     // Schedule the next alarm
-    const now = Date.now();
-    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
+    await this.scheduleNextCleanup();
   }
 }
 
