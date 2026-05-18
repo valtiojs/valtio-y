@@ -68,7 +68,7 @@
     "yjs": "catalog:"
   },
   "peerDependencies": {
-    "valtio": ">=2.3.2 <3.0.0",
+    "valtio": ">=2.1.8 <3.0.0",
     "yjs": ">=13.6.27"
   }
 }
