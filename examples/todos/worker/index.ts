@@ -103,6 +103,16 @@ export class YDocServer extends YServer<Env> {
     hibernate: true,
   };
 
+  private hasActiveConnections(): boolean {
+    return this.ctx
+      .getWebSockets()
+      .some((socket) => socket.readyState === WebSocket.OPEN);
+  }
+
+  private async scheduleNextCleanup(): Promise<void> {
+    await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL_MS);
+  }
+
   /**
    * Initialize document with sample todos if empty
    * Called once when a client connects to the server
@@ -113,9 +123,8 @@ export class YDocServer extends YServer<Env> {
       this.createInitialTodos(sharedState);
     }
 
-    // Schedule the first alarm to clean the room
-    const now = Date.now();
-    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
+    // Schedule the first alarm for a newly opened room.
+    await this.scheduleNextCleanup();
   }
 
   onError(error: unknown): void {
@@ -126,14 +135,18 @@ export class YDocServer extends YServer<Env> {
    * Alarm handler that cleans the room and creates fresh todos
    * This is called automatically by the Durable Objects runtime
    */
-  async alarm(): Promise<void> {
+  async onAlarm(): Promise<void> {
+    if (!this.hasActiveConnections()) {
+      await this.ctx.storage.deleteAlarm();
+      return;
+    }
+
     const sharedState = this.document.getMap("root");
     // Create fresh initial todos
     this.createInitialTodos(sharedState);
 
     // Schedule the next alarm
-    const now = Date.now();
-    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
+    await this.scheduleNextCleanup();
   }
 
   /**

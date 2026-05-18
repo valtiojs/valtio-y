@@ -19,6 +19,16 @@ export class YDocServer extends YServer<Env> {
     hibernate: true,
   };
 
+  private hasActiveConnections(): boolean {
+    return this.ctx
+      .getWebSockets()
+      .some((socket) => socket.readyState === WebSocket.OPEN);
+  }
+
+  private async scheduleNextCleanup(): Promise<void> {
+    await this.ctx.storage.setAlarm(Date.now() + CLEANUP_INTERVAL_MS);
+  }
+
   /**
    * Create fresh initial notes in the shared state
    * This is called on initial load and every 30 minutes via alarm
@@ -142,22 +152,25 @@ export class YDocServer extends YServer<Env> {
       this.createInitialNotes();
     }
 
-    // Schedule the first alarm to clean the room
-    const now = Date.now();
-    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
+    // Schedule the first alarm for a newly opened room.
+    await this.scheduleNextCleanup();
   }
 
   /**
    * Alarm handler that cleans the room and creates fresh notes
    * This is called automatically by the Durable Objects runtime
    */
-  async alarm(): Promise<void> {
+  async onAlarm(): Promise<void> {
+    if (!this.hasActiveConnections()) {
+      await this.ctx.storage.deleteAlarm();
+      return;
+    }
+
     // Create fresh initial notes
     this.createInitialNotes();
 
     // Schedule the next alarm
-    const now = Date.now();
-    await this.ctx.storage.setAlarm(now + CLEANUP_INTERVAL_MS);
+    await this.scheduleNextCleanup();
   }
 }
 
